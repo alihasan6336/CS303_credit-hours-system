@@ -14,6 +14,8 @@ export interface IStudent extends Document {
   gpa: number;
   level: number;
   comparePassword(candidatePassword: string): Promise<boolean>;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
