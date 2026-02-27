@@ -13,6 +13,9 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
+
+        {/* <Route path="/home" element={<Home />} /> */}
+        <Route path="/home" element={<Navigate to="/home" replace />} />
       </Routes>
     </BrowserRouter>
   );
