@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
+import Home from "./pages/home/Home";
 
 function App() {
   return (
@@ -14,8 +15,8 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
 
-        {/* <Route path="/home" element={<Home />} /> */}
-        <Route path="/home" element={<Navigate to="/home" replace />} />
+        {/* Mustafa's home page route */}
+        <Route path="/home" element={<Home />} />
       </Routes>
     </BrowserRouter>
   );
