@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
-                               // main fields // 
+                               // main fields // all has 1-1 map 
 export interface IStudent extends Document {
   fullName: string;
   universityId: string;
