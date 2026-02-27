@@ -100,7 +100,7 @@ const dayColors: Record<string, string> = {
   Thursday: styles.dayThursday,
 };
 
-const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
+const Home: React.FC<HomeProps> = () => {
   const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [currentStudent, setCurrentStudent] = useState(defaultStudent);
