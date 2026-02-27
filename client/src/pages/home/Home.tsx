@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styles from "./Home.module.css";
+import { useNavigate } from "react-router-dom";
+import { authApi } from "../../utils/api";
 
 interface Course {
   code: string;
@@ -99,10 +101,50 @@ const dayColors: Record<string, string> = {
 };
 
 const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
+  const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState("Dashboard");
-  const totalCredits = student.courses.reduce((sum, c) => sum + c.credits, 0);
+  const [currentStudent, setCurrentStudent] = useState(defaultStudent);
+
+  const totalCredits = currentStudent.courses.reduce(
+    (sum, c) => sum + c.credits,
+    0,
+  );
   const maxHours = 120;
-  const progressPct = Math.round((student.completedHours / maxHours) * 100);
+  const progressPct = Math.round(
+    (currentStudent.completedHours / maxHours) * 100,
+  );
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      // No token – send back to login
+      navigate("/login");
+      return;
+    }
+
+    authApi
+      .me(token)
+      .then((response) => {
+        if (!response.success || !response.student) return;
+
+        const s = response.student;
+
+        setCurrentStudent((prev) => ({
+          ...prev,
+          name: s.fullName,
+          id: s.universityId,
+          level: s.level,
+          gpa: s.gpa,
+          completedHours: s.completedCreditHours,
+          major: s.major,
+          semester: `${s.currentSemester} ${s.academicYear}`,
+        }));
+      })
+      .catch(() => {
+        // If token invalid or backend not reachable, send user to login
+        navigate("/login");
+      });
+  }, [navigate]);
 
   return (
     <div className={styles.homeContainer}>
@@ -119,15 +161,15 @@ const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
 
         <div className={styles.studentCard}>
           <div className={styles.avatar}>
-            {student.name
+            {currentStudent.name
               .split(" ")
               .map((n) => n[0])
               .join("")
               .slice(0, 2)}
           </div>
           <div className={styles.studentInfo}>
-            <p className={styles.studentName}>{student.name}</p>
-            <p className={styles.studentId}>{student.id}</p>
+            <p className={styles.studentName}>{currentStudent.name}</p>
+            <p className={styles.studentId}>{currentStudent.id}</p>
           </div>
         </div>
 
@@ -156,11 +198,11 @@ const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
           <div>
             <h1 className={styles.pageTitle}>Dashboard</h1>
             <p className={styles.pageSubtitle}>
-              {student.semester} — {student.major}
+              {currentStudent.semester} — {currentStudent.major}
             </p>
           </div>
           <div className={styles.topBarRight}>
-            <div className={styles.semesterBadge}>{student.semester}</div>
+            <div className={styles.semesterBadge}>{currentStudent.semester}</div>
             <div className={styles.notifBtn}>🔔</div>
           </div>
         </header>
@@ -170,7 +212,9 @@ const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
           <div className={`${styles.statCard} ${styles.statBlue}`}>
             <div className={styles.statIcon}>📖</div>
             <div>
-              <p className={styles.statValue}>{student.courses.length}</p>
+              <p className={styles.statValue}>
+                {currentStudent.courses.length}
+              </p>
               <p className={styles.statLabel}>Enrolled Courses</p>
             </div>
           </div>
@@ -184,14 +228,18 @@ const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
           <div className={`${styles.statCard} ${styles.statGreen}`}>
             <div className={styles.statIcon}>🏆</div>
             <div>
-              <p className={styles.statValue}>{student.gpa.toFixed(2)}</p>
+              <p className={styles.statValue}>
+                {currentStudent.gpa.toFixed(2)}
+              </p>
               <p className={styles.statLabel}>GPA</p>
             </div>
           </div>
           <div className={`${styles.statCard} ${styles.statOrange}`}>
             <div className={styles.statIcon}>✅</div>
             <div>
-              <p className={styles.statValue}>{student.completedHours}</p>
+              <p className={styles.statValue}>
+                {currentStudent.completedHours}
+              </p>
               <p className={styles.statLabel}>Completed Hours</p>
             </div>
           </div>
@@ -203,7 +251,7 @@ const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
             <h3 className={styles.cardTitle}>Degree Progress</h3>
             <div className={styles.progressInfo}>
               <span>
-                {student.completedHours} / {maxHours} hours
+                {currentStudent.completedHours} / {maxHours} hours
               </span>
               <span className={styles.progressPct}>{progressPct}%</span>
             </div>
@@ -215,9 +263,11 @@ const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
             </div>
             <div className={styles.progressLabels}>
               <span>
-                Year {student.level} — Level {student.level}
+                Year {currentStudent.level} — Level {currentStudent.level}
               </span>
-              <span>{maxHours - student.completedHours} hrs remaining</span>
+              <span>
+                {maxHours - currentStudent.completedHours} hrs remaining
+              </span>
             </div>
           </div>
 
@@ -226,25 +276,29 @@ const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
             <ul className={styles.infoList}>
               <li>
                 <span className={styles.infoKey}>Major</span>
-                <span className={styles.infoVal}>{student.major}</span>
+                <span className={styles.infoVal}>{currentStudent.major}</span>
               </li>
               <li>
                 <span className={styles.infoKey}>Level</span>
-                <span className={styles.infoVal}>Year {student.level}</span>
+                <span className={styles.infoVal}>
+                  Year {currentStudent.level}
+                </span>
               </li>
               <li>
                 <span className={styles.infoKey}>GPA</span>
                 <span className={`${styles.infoVal} ${styles.gpaBadge}`}>
-                  {student.gpa.toFixed(2)}
+                  {currentStudent.gpa.toFixed(2)}
                 </span>
               </li>
               <li>
                 <span className={styles.infoKey}>Semester</span>
-                <span className={styles.infoVal}>{student.semester}</span>
+                <span className={styles.infoVal}>
+                  {currentStudent.semester}
+                </span>
               </li>
               <li>
                 <span className={styles.infoKey}>Student ID</span>
-                <span className={styles.infoVal}>{student.id}</span>
+                <span className={styles.infoVal}>{currentStudent.id}</span>
               </li>
             </ul>
           </div>
@@ -270,7 +324,7 @@ const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
                 </tr>
               </thead>
               <tbody>
-                {student.courses.map((course) => (
+                {currentStudent.courses.map((course) => (
                   <tr key={course.code}>
                     <td>
                       <span className={styles.courseCode}>{course.code}</span>

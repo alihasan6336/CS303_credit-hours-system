@@ -5,6 +5,7 @@ import AuthLayout from "../components/auth/AuthLayout";
 import FormInput from "../components/auth/FormInput";
 import SubmitButton from "../components/auth/SubmitButton";
 import { validateEmail } from "../utils/validation";
+import { authApi } from "../utils/api";
 
 interface FormData {
   email: string;
@@ -12,6 +13,7 @@ interface FormData {
 
 interface FormErrors {
   email?: string;
+  form?: string;
 }
 
 const ForgotPassword: React.FC = () => {
@@ -24,6 +26,7 @@ const ForgotPassword: React.FC = () => {
     Partial<Record<keyof FormData, boolean>>
   >({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = (): FormErrors => {
     const newErrors: FormErrors = {};
@@ -66,7 +69,7 @@ const ForgotPassword: React.FC = () => {
     setErrors(newErrors);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Mark all fields as touched
@@ -82,10 +85,23 @@ const ForgotPassword: React.FC = () => {
     const newErrors = validateForm();
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
-      console.log("Password reset requested for:", formData.email);
+    if (Object.keys(newErrors).length > 0) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await authApi.forgotPassword({ email: formData.email });
       setIsSubmitted(true);
-      // Here you would typically send the data to your backend
+    } catch (error: any) {
+      setErrors((prev) => ({
+        ...prev,
+        form:
+          error?.message ||
+          "Failed to request password reset. Please try again.",
+      }));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -117,6 +133,11 @@ const ForgotPassword: React.FC = () => {
       {!isSubmitted ? (
         <>
           <form onSubmit={handleSubmit} className="space-y-5">
+            {errors.form && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                {errors.form}
+              </p>
+            )}
             {/* Email */}
             <FormInput
               label="Email Address"
@@ -132,7 +153,9 @@ const ForgotPassword: React.FC = () => {
             />
 
             {/* Submit Button */}
-            <SubmitButton disabled={!isFormValid}>Send Reset Link</SubmitButton>
+            <SubmitButton disabled={!isFormValid || isSubmitting}>
+              {isSubmitting ? "Sending..." : "Send Reset Link"}
+            </SubmitButton>
           </form>
 
           <div className="mt-6">

@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Mail } from "lucide-react";
 import AuthLayout from "../components/auth/AuthLayout";
 import FormInput from "../components/auth/FormInput";
 import PasswordInput from "../components/auth/PasswordInput";
 import SubmitButton from "../components/auth/SubmitButton";
 import { validateEmail } from "../utils/validation";
+import { authApi } from "../utils/api";
 
 interface FormData {
   email: string;
@@ -16,9 +17,11 @@ interface FormData {
 interface FormErrors {
   email?: string;
   password?: string;
+  form?: string;
 }
 
 const Login: React.FC = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
@@ -29,6 +32,7 @@ const Login: React.FC = () => {
   const [touched, setTouched] = useState<
     Partial<Record<keyof FormData, boolean>>
   >({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = (): FormErrors => {
     const newErrors: FormErrors = {};
@@ -78,7 +82,7 @@ const Login: React.FC = () => {
     setErrors(newErrors);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Mark all fields as touched
@@ -94,9 +98,30 @@ const Login: React.FC = () => {
     const newErrors = validateForm();
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
-      console.log("Login submitted successfully:", formData);
-      // Here you would typically send the data to your backend
+    if (Object.keys(newErrors).length > 0) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await authApi.login({
+        email: formData.email,
+        password: formData.password,
+        rememberMe: formData.rememberMe,
+      });
+
+      // Persist token and basic student info
+      localStorage.setItem("authToken", response.token);
+      localStorage.setItem("student", JSON.stringify(response.student));
+
+      navigate("/home");
+    } catch (error: any) {
+      setErrors((prev) => ({
+        ...prev,
+        form: error?.message || "Failed to sign in. Please try again.",
+      }));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -126,6 +151,11 @@ const Login: React.FC = () => {
       formSubtitle="Welcome back! Please enter your details"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
+        {errors.form && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+            {errors.form}
+          </p>
+        )}
         {/* Email */}
         <FormInput
           label="Email Address"
@@ -179,7 +209,9 @@ const Login: React.FC = () => {
         </div>
 
         {/* Submit Button */}
-        <SubmitButton disabled={!isFormValid}>Sign In</SubmitButton>
+        <SubmitButton disabled={!isFormValid || isSubmitting}>
+          {isSubmitting ? "Signing In..." : "Sign In"}
+        </SubmitButton>
       </form>
 
       <div className="mt-6 text-center">

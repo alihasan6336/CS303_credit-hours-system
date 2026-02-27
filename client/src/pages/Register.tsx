@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   User,
   Mail,
@@ -14,6 +14,7 @@ import PasswordInput from "../components/auth/PasswordInput";
 import SelectInput from "../components/auth/SelectInput";
 import SubmitButton from "../components/auth/SubmitButton";
 import { validateEmail } from "../utils/validation";
+import { authApi } from "../utils/api";
 
 interface FormData {
   fullName: string;
@@ -40,9 +41,11 @@ interface FormErrors {
   currentSemester?: string;
   completedCreditHours?: string;
   acceptTerms?: string;
+  form?: string;
 }
 
 const Register: React.FC = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     universityId: "",
@@ -61,6 +64,7 @@ const Register: React.FC = () => {
   const [touched, setTouched] = useState<
     Partial<Record<keyof FormData, boolean>>
   >({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const majors = [
     "Computer Science",
@@ -169,7 +173,7 @@ const Register: React.FC = () => {
     setErrors(newErrors);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Mark all fields as touched
@@ -185,9 +189,37 @@ const Register: React.FC = () => {
     const newErrors = validateForm();
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
-      console.log("Form submitted successfully:", formData);
-      // Here you would typically send the data to your backend
+    if (Object.keys(newErrors).length > 0) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const response = await authApi.register({
+        fullName: formData.fullName,
+        universityId: formData.universityId,
+        email: formData.email,
+        password: formData.password,
+        major: formData.major,
+        academicYear: formData.academicYear,
+        currentSemester: formData.currentSemester,
+        completedCreditHours: formData.completedCreditHours,
+        phoneNumber: formData.phoneNumber || undefined,
+      });
+
+      // Option 1: auto-login after registration
+      localStorage.setItem("authToken", response.token);
+      localStorage.setItem("student", JSON.stringify(response.student));
+
+      navigate("/home");
+    } catch (error: any) {
+      setErrors((prev) => ({
+        ...prev,
+        form: error?.message || "Failed to create account. Please try again.",
+      }));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -227,6 +259,11 @@ const Register: React.FC = () => {
       formSubtitle="Join thousands of students managing their academic journey"
     >
       <form onSubmit={handleSubmit} className="space-y-3">
+        {errors.form && (
+          <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+            {errors.form}
+          </p>
+        )}
         {/* Full Name & University ID - Two Columns */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FormInput
@@ -417,8 +454,8 @@ const Register: React.FC = () => {
         </div>
 
         {/* Submit Button */}
-        <SubmitButton disabled={!isFormValid} compact>
-          Create Account
+        <SubmitButton disabled={!isFormValid || isSubmitting} compact>
+          {isSubmitting ? "Creating Account..." : "Create Account"}
         </SubmitButton>
       </form>
 
