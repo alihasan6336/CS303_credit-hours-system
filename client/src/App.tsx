@@ -1,5 +1,6 @@
 import React from "react";
 import "./App.css";
+
 import {
   BrowserRouter,
   Routes,
@@ -22,7 +23,6 @@ function ProtectedRoute() {
 
 function App() {
   return (
-    <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
@@ -33,7 +33,7 @@ function App() {
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </BrowserRouter>
+
   );
 }
 
