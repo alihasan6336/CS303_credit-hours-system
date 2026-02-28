@@ -2,9 +2,11 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db';
+import authRoutes   from './routes/authRoutes';
+import homeRoutes   from './routes/homeRoutes';
+import courseRoutes from './routes/courseRoutes';
 
 dotenv.config();
-
 connectDB();
 
 const app = express();
@@ -26,8 +28,16 @@ app.get('/api/health', (req: Request, res: Response) => {
 
 // Root route
 app.get('/', (req: Request, res: Response) => {
-  res.json({ message: 'Welcome to the API' });
+  res.json({ message: 'Welcome to the APIs for cridit' });
 });
+app.get('/api/health',  (_req, res) => res.json({ status: 'all ok' }));
+
+//  PUBLIC  routes inside authRoutes: /register  /login  /forgot-password  /reset-password/:token
+//  PROTECTED routes inside authRoutes: /me
+
+app.use('/api/auth',    authRoutes);
+app.use('/api/home',    homeRoutes);
+app.use('/api/courses', courseRoutes);
 
 // Start server
 app.listen(PORT, () => {
