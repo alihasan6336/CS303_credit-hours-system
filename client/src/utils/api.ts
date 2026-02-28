@@ -10,6 +10,7 @@ interface StudentFromApi {
   academicYear: string;
   currentSemester: string;
   completedCreditHours: number;
+  phoneNumber: string;
   gpa: number;
   level: number;
 }
@@ -27,13 +28,37 @@ interface BasicResponse {
   resetURL?: string;
 }
 
+interface MeResponse {
+  success: boolean;
+  student: StudentFromApi;
+}
+
+interface HomeResponse {
+  success: boolean;
+  student: StudentFromApi;
+  courses: CourseFromApi[];
+}
+
+interface CourseFromApi {
+  code: string;
+  name: string;
+  day: string;
+  time: string;
+  room: string;
+  credits: number;
+  instructor: string;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const token = localStorage.getItem("authToken");
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
     ...options,
@@ -92,17 +117,19 @@ export const authApi = {
     });
   },
 
-  me(token: string): Promise<{ success: boolean; student: StudentFromApi }> {
-    return request<{ success: boolean; student: StudentFromApi }>(
-      "/api/auth/me",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    );
+  me(): Promise<MeResponse> {
+    return request<MeResponse>("/api/auth/me");
+  },
+
+  home(): Promise<HomeResponse> {
+    return request<HomeResponse>("/api/home");
+  },
+
+  logout(): void {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("student");
   },
 };
 
-export type { StudentFromApi, AuthResponse };
+export type { StudentFromApi, AuthResponse, MeResponse, HomeResponse, CourseFromApi };
 

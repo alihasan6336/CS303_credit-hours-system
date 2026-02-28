@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { Mail } from "lucide-react";
 import AuthLayout from "../components/auth/AuthLayout";
 import FormInput from "../components/auth/FormInput";
@@ -21,6 +21,11 @@ interface FormErrors {
 }
 
 const Login: React.FC = () => {
+  // Redirect already logged-in users to home
+  if (localStorage.getItem("authToken")) {
+    return <Navigate to="/home" replace />;
+  }
+
   const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
     email: "",

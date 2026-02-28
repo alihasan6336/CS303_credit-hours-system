@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import {
   User,
   Mail,
@@ -45,6 +45,11 @@ interface FormErrors {
 }
 
 const Register: React.FC = () => {
+  // Redirect already logged-in users to home
+  if (localStorage.getItem("authToken")) {
+    return <Navigate to="/home" replace />;
+  }
+
   const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
     fullName: "",

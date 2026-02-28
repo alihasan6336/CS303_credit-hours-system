@@ -105,6 +105,11 @@ const Home: React.FC<HomeProps> = () => {
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [currentStudent, setCurrentStudent] = useState(defaultStudent);
 
+  const handleSignOut = () => {
+    authApi.logout();
+    navigate("/login");
+  };
+
   const totalCredits = currentStudent.courses.reduce(
     (sum, c) => sum + c.credits,
     0,
@@ -117,17 +122,17 @@ const Home: React.FC<HomeProps> = () => {
   useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (!token) {
-      // No token – send back to login
       navigate("/login");
       return;
     }
 
     authApi
-      .me(token)
+      .home()
       .then((response) => {
         if (!response.success || !response.student) return;
 
         const s = response.student;
+        const courses: Course[] = response.courses || [];
 
         setCurrentStudent((prev) => ({
           ...prev,
@@ -138,10 +143,10 @@ const Home: React.FC<HomeProps> = () => {
           completedHours: s.completedCreditHours,
           major: s.major,
           semester: `${s.currentSemester} ${s.academicYear}`,
+          courses,
         }));
       })
       .catch(() => {
-        // If token invalid or backend not reachable, send user to login
         navigate("/login");
       });
   }, [navigate]);
@@ -186,7 +191,7 @@ const Home: React.FC<HomeProps> = () => {
           ))}
         </nav>
 
-        <button className={styles.logoutBtn}>
+        <button className={styles.logoutBtn} onClick={handleSignOut}>
           <span>🚪</span> Sign Out
         </button>
       </aside>
@@ -324,29 +329,37 @@ const Home: React.FC<HomeProps> = () => {
                 </tr>
               </thead>
               <tbody>
-                {currentStudent.courses.map((course) => (
-                  <tr key={course.code}>
-                    <td>
-                      <span className={styles.courseCode}>{course.code}</span>
-                    </td>
-                    <td className={styles.courseName}>{course.name}</td>
-                    <td className={styles.instructor}>{course.instructor}</td>
-                    <td>
-                      <span
-                        className={`${styles.dayBadge} ${dayColors[course.day] || ""}`}
-                      >
-                        {course.day}
-                      </span>
-                    </td>
-                    <td className={styles.timeCell}>{course.time}</td>
-                    <td>{course.room}</td>
-                    <td>
-                      <span className={styles.creditsBadge}>
-                        {course.credits} cr
-                      </span>
+                {currentStudent.courses.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: "center", padding: "20px" }}>
+                      No courses enrolled yet.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  currentStudent.courses.map((course) => (
+                    <tr key={course.code}>
+                      <td>
+                        <span className={styles.courseCode}>{course.code}</span>
+                      </td>
+                      <td className={styles.courseName}>{course.name}</td>
+                      <td className={styles.instructor}>{course.instructor}</td>
+                      <td>
+                        <span
+                          className={`${styles.dayBadge} ${dayColors[course.day] || ""}`}
+                        >
+                          {course.day}
+                        </span>
+                      </td>
+                      <td className={styles.timeCell}>{course.time}</td>
+                      <td>{course.room}</td>
+                      <td>
+                        <span className={styles.creditsBadge}>
+                          {course.credits} cr
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
