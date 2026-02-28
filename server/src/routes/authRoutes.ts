@@ -1,7 +1,6 @@
-
 // PUBLIC routes  — no JWT required (Login, Register, ForgotPassword pages)
 // PROTECTED routes — JWT required (getMe, used to rehydrate session)
-//
+
 // Middleware pipeline for each route:
 //   PUBLIC:    validate → controller
 //   PROTECTED: protect  → controller
