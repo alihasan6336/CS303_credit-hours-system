@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './Home.css';
-
+import { useNavigate } from 'react-router-dom';
 interface Course {
   code: string;
   name: string;
@@ -63,7 +63,7 @@ const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
   const totalCredits = student.courses.reduce((sum, c) => sum + c.credits, 0);
   const maxHours = 120;
   const progressPct = Math.round((student.completedHours / maxHours) * 100);
-
+const navigate = useNavigate();
   return (
     <div className="home-container">
       {/* ── Blue Sidebar ── */}
@@ -94,7 +94,7 @@ const Home: React.FC<HomeProps> = ({ student = defaultStudent }) => {
           ))}
         </nav>
 
-        <button className="logout-btn">
+        <button onClick={()=>navigate('/login')} className="logout-btn">
           <span>🚪</span> Sign Out
         </button>
       </aside>
