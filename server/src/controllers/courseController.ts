@@ -24,7 +24,7 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
 };
 
 // GET /api/courses/:id
-export const getCourse = async (req: Request, res: Response): Promise<void> => {
+export const getCourseByID = async (req: Request, res: Response): Promise<void> => {
   try {
     const course = await Course.findById(req.params.id);
     if (!course) {
@@ -34,6 +34,42 @@ export const getCourse = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({ success: true, course });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+// GET /api/courses/my-courses
+export const getMyCourses = async ( req: Request,res: Response): Promise<void> => {
+  try {
+    const student = req.student!;
+
+    const { semester, academicYear } = req.query;
+
+    const filter: any = {
+      student: student._id,
+    };
+
+    // Optional filtering
+    if (semester) filter.semester = semester;
+    if (academicYear) filter.academicYear = academicYear;
+
+    const enrollments = await Enrollment.find(filter)
+      .populate({
+        path: "course",
+        select: "code name day time room credits instructor capacity enrolledCount",
+      })
+      .sort({ enrolledAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: enrollments.length,
+      data: enrollments,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
