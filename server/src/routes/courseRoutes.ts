@@ -8,10 +8,12 @@ const router = Router();
 router.use(protect);
 
 router.get("/", getCourses);
-router.get("/:id", getCourseByID);
+
 router.get("/my-courses", getMyCourses);
 
-router.post("/", protect, createCourse);
+router.get("/:id", getCourseByID);
+
+router.post("/", protect, createCourse); //admin
 
 router.post('/:id/enroll',   enrollCourse);  
 router.delete('/:id/enroll', dropCourse);    
