@@ -206,11 +206,13 @@ const Register: React.FC = () => {
         universityId: formData.universityId,
         email: formData.email,
         password: formData.password,
+        confirmPassword: formData.confirmPassword,
         major: formData.major,
         academicYear: formData.academicYear,
         currentSemester: formData.currentSemester,
         completedCreditHours: formData.completedCreditHours,
         phoneNumber: formData.phoneNumber || undefined,
+        acceptTerms: formData.acceptTerms,
       });
 
       // Option 1: auto-login after registration

@@ -33,13 +33,25 @@ interface MeResponse {
   student: StudentFromApi;
 }
 
-interface HomeResponse {
-  success: boolean;
-  student: StudentFromApi;
+// Shape returned by GET /api/home  (homeController.ts)
+interface HomeStudentPayload {
+  name: string;           // student.fullName
+  id: string;             // student.universityId
+  level: number;
+  gpa: number;
+  completedHours: number; // student.completedCreditHours
+  major: string;
+  semester: string;       // e.g. "Fall 2025" (already formatted by server)
   courses: CourseFromApi[];
 }
 
+interface HomeResponse {
+  success: boolean;
+  student: HomeStudentPayload;
+}
+
 interface CourseFromApi {
+  _id?: string;
   code: string;
   name: string;
   day: string;
@@ -47,6 +59,24 @@ interface CourseFromApi {
   room: string;
   credits: number;
   instructor: string;
+  capacity?: number;
+  enrolledCount?: number;
+}
+
+interface CoursesListResponse {
+  success: boolean;
+  courses: CourseFromApi[];
+}
+
+interface MyCoursesResponse {
+  success: boolean;
+  count: number;
+  data: Array<{ course: CourseFromApi; semester: string; academicYear: string }>;
+}
+
+interface EnrollResponse {
+  success: boolean;
+  message: string;
 }
 
 async function request<T>(
@@ -98,11 +128,13 @@ export const authApi = {
     universityId: string;
     email: string;
     password: string;
+    confirmPassword: string;
     major: string;
     academicYear: string;
     currentSemester: string;
     completedCreditHours: string;
     phoneNumber?: string;
+    acceptTerms: boolean;
   }): Promise<AuthResponse> {
     return request<AuthResponse>("/api/auth/register", {
       method: "POST",
@@ -131,5 +163,41 @@ export const authApi = {
   },
 };
 
-export type { StudentFromApi, AuthResponse, MeResponse, HomeResponse, CourseFromApi };
+export const courseApi = {
+  /** GET /api/courses — all active courses */
+  list(): Promise<CoursesListResponse> {
+    return request<CoursesListResponse>("/api/courses");
+  },
+
+  /** GET /api/courses/my-courses — student's enrolled courses */
+  myCourses(): Promise<MyCoursesResponse> {
+    return request<MyCoursesResponse>("/api/courses/my-courses");
+  },
+
+  /** POST /api/courses/:id/enroll */
+  enroll(courseId: string): Promise<EnrollResponse> {
+    return request<EnrollResponse>(`/api/courses/${courseId}/enroll`, {
+      method: "POST",
+    });
+  },
+
+  /** DELETE /api/courses/:id/enroll */
+  drop(courseId: string): Promise<EnrollResponse> {
+    return request<EnrollResponse>(`/api/courses/${courseId}/enroll`, {
+      method: "DELETE",
+    });
+  },
+};
+
+export type {
+  StudentFromApi,
+  AuthResponse,
+  MeResponse,
+  HomeResponse,
+  HomeStudentPayload,
+  CourseFromApi,
+  CoursesListResponse,
+  MyCoursesResponse,
+  EnrollResponse,
+};
 
