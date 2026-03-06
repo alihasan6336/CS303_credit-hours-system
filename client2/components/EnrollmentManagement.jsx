@@ -1,77 +1,103 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-    Alert,
-    ScrollView, StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-
-const students = [
-  { id: "2021-CS-0342", name: "Ahmed Al-Rashidi", level: "Year 3" },
-  { id: "2022-CS-0101", name: "Sara Mohammed", level: "Year 2" },
-  { id: "2023-CS-0055", name: "Omar Hassan", level: "Year 1" },
-  { id: "2021-CS-0210", name: "Layla Ibrahim", level: "Year 3" },
-];
-
-const courses = [
-  { code: "CS303", name: "Software Engineering", groups: ["G1", "G2"] },
-  { code: "CS311", name: "Database Systems", groups: ["G1"] },
-  { code: "CS321", name: "Computer Networks", groups: ["G1", "G2"] },
-  { code: "CS101", name: "Intro to Programming", groups: ["G1", "G2", "G3"] },
-];
+import { adminApi, courseApi } from "../utils/api";
 
 export default function EnrollmentManagement() {
+  const [students, setStudents] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [enrollments, setEnrollments] = useState([
-    { studentId: "2021-CS-0342", courseCode: "CS303", group: "G1" },
-    { studentId: "2021-CS-0342", courseCode: "CS311", group: "G1" },
-  ]);
+  const [enrolling, setEnrolling] = useState(false);
 
-  const filteredStudents = students.filter(s =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.id.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const studentEnrollments = enrollments.filter(e => e.studentId === selectedStudent?.id);
-
-  const enroll = () => {
-    if (!selectedStudent || !selectedCourse || !selectedGroup) {
-      Alert.alert("Error", "Please select a student, course, and group");
-      return;
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const [studentsRes, coursesRes, enrollmentsRes] = await Promise.all([
+        adminApi.getStudents("student"),
+        courseApi.getAll(),
+        adminApi.getEnrollments(),
+      ]);
+      setStudents(studentsRes.students || []);
+      setCourses(coursesRes.courses || []);
+      setEnrollments(enrollmentsRes.enrollments || []);
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setIsLoading(false);
     }
-    const already = enrollments.find(e => e.studentId === selectedStudent.id && e.courseCode === selectedCourse.code);
-    if (already) {
-      Alert.alert("Already Enrolled", `${selectedStudent.name} is already enrolled in ${selectedCourse.code}`);
-      return;
-    }
-    setEnrollments([...enrollments, { studentId: selectedStudent.id, courseCode: selectedCourse.code, group: selectedGroup }]);
-    Alert.alert("Success", `${selectedStudent.name} enrolled in ${selectedCourse.code} - ${selectedGroup}`);
-    setSelectedCourse(null);
-    setSelectedGroup(null);
   };
 
-  const unenroll = (courseCode) => {
-    Alert.alert("Remove Enrollment", "Are you sure?", [
+  useEffect(() => { fetchData(); }, []);
+
+  const filteredStudents = students.filter(s =>
+    s.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+    s.universityId?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const studentEnrollments = enrollments.filter(e => e.student?._id === selectedStudent?._id);
+
+  const isStudentEnrolledInCourse = (courseId) => {
+    return studentEnrollments.some(e => e.course?._id === courseId);
+  };
+
+  const enroll = async () => {
+    if (!selectedStudent || !selectedCourse) {
+      Alert.alert("Error", "Please select a student and course");
+      return;
+    }
+    try {
+      setEnrolling(true);
+      await adminApi.enroll(selectedStudent._id, selectedCourse._id);
+      Alert.alert("Success", `${selectedStudent.fullName} enrolled in ${selectedCourse.code}`);
+      setSelectedCourse(null);
+      await fetchData();
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const unenroll = (enrollmentId, courseName) => {
+    Alert.alert("Remove Enrollment", `Remove ${courseName}?`, [
       { text: "Cancel", style: "cancel" },
-      { text: "Remove", style: "destructive", onPress: () => setEnrollments(enrollments.filter(e => !(e.studentId === selectedStudent?.id && e.courseCode === courseCode))) },
+      {
+        text: "Remove", style: "destructive",
+        onPress: async () => {
+          try {
+            await adminApi.unenroll(enrollmentId);
+            await fetchData();
+          } catch (err) {
+            Alert.alert("Error", err.message);
+          }
+        },
+      },
     ]);
   };
 
+  if (isLoading) {
+    return <View style={styles.centerBox}><ActivityIndicator size="large" color="#2554e8" /></View>;
+  }
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-
-      {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Enrollment</Text>
         <Text style={styles.headerSub}>Manually enroll students into courses</Text>
       </View>
 
-      {/* SEARCH STUDENT */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>1. Select Student</Text>
         <View style={styles.searchWrapper}>
@@ -84,41 +110,46 @@ export default function EnrollmentManagement() {
             onChangeText={setSearch}
           />
         </View>
-        {filteredStudents.map((student) => (
+        {filteredStudents.slice(0, 10).map((student) => (
           <TouchableOpacity
-            key={student.id}
-            style={[styles.studentCard, selectedStudent?.id === student.id && styles.studentCardActive]}
-            onPress={() => { setSelectedStudent(student); setSelectedCourse(null); setSelectedGroup(null); }}
+            key={student._id}
+            style={[styles.studentCard, selectedStudent?._id === student._id && styles.studentCardActive]}
+            onPress={() => { setSelectedStudent(student); setSelectedCourse(null); }}
           >
             <View style={styles.studentAvatar}>
-              <Text style={styles.studentAvatarText}>{student.name.split(" ").map(n => n[0]).join("").slice(0, 2)}</Text>
+              <Text style={styles.studentAvatarText}>
+                {student.fullName?.split(" ").map(n => n[0]).join("").slice(0, 2)}
+              </Text>
             </View>
             <View>
-              <Text style={styles.studentName}>{student.name}</Text>
-              <Text style={styles.studentMeta}>{student.id} • {student.level}</Text>
+              <Text style={styles.studentName}>{student.fullName}</Text>
+              <Text style={styles.studentMeta}>{student.universityId} • Level {student.level}</Text>
             </View>
-            {selectedStudent?.id === student.id && <Text style={styles.selectedCheck}>✓</Text>}
+            {selectedStudent?._id === student._id && <Text style={styles.selectedCheck}>✓</Text>}
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* SELECT COURSE */}
       {selectedStudent && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>2. Select Course</Text>
           {courses.map((course) => {
-            const isEnrolled = enrollments.find(e => e.studentId === selectedStudent.id && e.courseCode === course.code);
+            const enrolled = isStudentEnrolledInCourse(course._id);
             return (
               <TouchableOpacity
-                key={course.code}
-                style={[styles.courseCard, selectedCourse?.code === course.code && styles.courseCardActive, isEnrolled && styles.courseCardEnrolled]}
-                onPress={() => { if (!isEnrolled) { setSelectedCourse(course); setSelectedGroup(null); } }}
+                key={course._id}
+                style={[
+                  styles.courseCard,
+                  selectedCourse?._id === course._id && styles.courseCardActive,
+                  enrolled && styles.courseCardEnrolled,
+                ]}
+                onPress={() => { if (!enrolled) setSelectedCourse(course); }}
               >
                 <Text style={styles.courseCode}>{course.code}</Text>
                 <Text style={styles.courseName}>{course.name}</Text>
-                {isEnrolled
+                {enrolled
                   ? <Text style={styles.enrolledBadge}>✅ Enrolled</Text>
-                  : selectedCourse?.code === course.code && <Text style={styles.selectedCheck}>✓</Text>
+                  : selectedCourse?._id === course._id && <Text style={styles.selectedCheck}>✓</Text>
                 }
               </TouchableOpacity>
             );
@@ -126,48 +157,30 @@ export default function EnrollmentManagement() {
         </View>
       )}
 
-      {/* SELECT GROUP */}
-      {selectedCourse && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>3. Select Group</Text>
-          <View style={styles.groupRow}>
-            {selectedCourse.groups.map((group) => (
-              <TouchableOpacity
-                key={group}
-                style={[styles.groupBtn, selectedGroup === group && styles.groupBtnActive]}
-                onPress={() => setSelectedGroup(group)}
-              >
-                <Text style={[styles.groupBtnText, selectedGroup === group && styles.groupBtnTextActive]}>{group}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* ENROLL BUTTON */}
-      {selectedStudent && selectedCourse && selectedGroup && (
-        <TouchableOpacity style={styles.enrollBtn} onPress={enroll}>
-          <Text style={styles.enrollBtnText}>✅ Enroll {selectedStudent.name} in {selectedCourse.code} - {selectedGroup}</Text>
+      {selectedStudent && selectedCourse && (
+        <TouchableOpacity style={styles.enrollBtn} onPress={enroll} disabled={enrolling}>
+          {enrolling ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.enrollBtnText}>
+              ✅ Enroll {selectedStudent.fullName} in {selectedCourse.code}
+            </Text>
+          )}
         </TouchableOpacity>
       )}
 
-      {/* CURRENT ENROLLMENTS */}
       {selectedStudent && studentEnrollments.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Current Enrollments — {selectedStudent.name}</Text>
-          {studentEnrollments.map((e, i) => {
-            const course = courses.find(c => c.code === e.courseCode);
-            return (
-              <View key={i} style={styles.enrollmentRow}>
-                <Text style={styles.enrollmentCode}>{e.courseCode}</Text>
-                <Text style={styles.enrollmentName}>{course?.name}</Text>
-                <Text style={styles.enrollmentGroup}>{e.group}</Text>
-                <TouchableOpacity onPress={() => unenroll(e.courseCode)}>
-                  <Text style={styles.removeText}>Remove</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          })}
+          <Text style={styles.sectionTitle}>Current Enrollments — {selectedStudent.fullName}</Text>
+          {studentEnrollments.map((e) => (
+            <View key={e._id} style={styles.enrollmentRow}>
+              <Text style={styles.enrollmentCode}>{e.course?.code}</Text>
+              <Text style={styles.enrollmentName}>{e.course?.name}</Text>
+              <TouchableOpacity onPress={() => unenroll(e._id, e.course?.name)}>
+                <Text style={styles.removeText}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
         </View>
       )}
 
@@ -178,6 +191,7 @@ export default function EnrollmentManagement() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f0f2f5" },
+  centerBox: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: {
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: "#fff",
   },
@@ -218,14 +232,6 @@ const styles = StyleSheet.create({
   courseCode: { fontSize: 13, fontWeight: "700", color: "#2554e8" },
   courseName: { flex: 1, fontSize: 13, color: "#333" },
   enrolledBadge: { fontSize: 11, color: "#22c55e", fontWeight: "700" },
-  groupRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
-  groupBtn: {
-    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10,
-    backgroundColor: "#f0f2f5", borderWidth: 1.5, borderColor: "#e0e0e0",
-  },
-  groupBtnActive: { backgroundColor: "#2554e8", borderColor: "#2554e8" },
-  groupBtnText: { fontSize: 14, fontWeight: "700", color: "#555" },
-  groupBtnTextActive: { color: "#fff" },
   enrollBtn: {
     backgroundColor: "#2554e8", marginHorizontal: 16, marginTop: 12,
     borderRadius: 14, paddingVertical: 16, alignItems: "center",
@@ -237,6 +243,5 @@ const styles = StyleSheet.create({
   },
   enrollmentCode: { fontSize: 12, fontWeight: "700", color: "#2554e8", width: 50 },
   enrollmentName: { flex: 1, fontSize: 12, color: "#333" },
-  enrollmentGroup: { fontSize: 12, color: "#888", fontWeight: "600" },
   removeText: { fontSize: 12, color: "#ef4444", fontWeight: "700" },
 });

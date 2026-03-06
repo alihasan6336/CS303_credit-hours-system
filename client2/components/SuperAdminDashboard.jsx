@@ -1,70 +1,96 @@
 import {
-    Dimensions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View
+  ActivityIndicator,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
+import { useEffect, useState } from "react";
+import { adminApi } from "../utils/api";
 
 const { width } = Dimensions.get("window");
 
-const stats = {
-  totalStudents: 340,
-  totalCourses: 24,
-  totalAdmins: 5,
-  totalGroups: 48,
-};
-
-const studentsByLevel = [
-  { level: "Year 1", count: 102, color: "#3b82f6" },
-  { level: "Year 2", count: 89, color: "#8b5cf6" },
-  { level: "Year 3", count: 85, color: "#f59e0b" },
-  { level: "Year 4", count: 64, color: "#22c55e" },
-];
-
-const popularCourses = [
-  { code: "CS303", name: "Software Engineering", enrolled: 45, capacity: 50, color: "#3b82f6" },
-  { code: "CS311", name: "Database Systems", enrolled: 38, capacity: 40, color: "#8b5cf6" },
-  { code: "CS321", name: "Computer Networks", enrolled: 40, capacity: 45, color: "#f59e0b" },
-  { code: "CS101", name: "Intro to Programming", enrolled: 98, capacity: 100, color: "#22c55e" },
-];
+const LEVEL_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#22c55e"];
+const COURSE_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#22c55e", "#ef4444", "#06b6d4", "#ec4899", "#14b8a6", "#6366f1", "#f97316"];
 
 export default function SuperAdminDashboard() {
+  const [stats, setStats] = useState(null);
+  const [studentsByLevel, setStudentsByLevel] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+      const response = await adminApi.getStats();
+      setStats(response.stats);
+      setStudentsByLevel(response.studentsByLevel || []);
+      setCourses(response.courses || []);
+    } catch (err) {
+      setError(err.message || "Failed to load admin data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={styles.centerBox}>
+        <ActivityIndicator size="large" color="#2554e8" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerBox}>
+        <Text style={styles.errorText}>⚠️ {error}</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={fetchData}>
+          <Text style={styles.retryBtnText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-
-      {/* HEADER */}
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Super Admin</Text>
-          <Text style={styles.headerSub}>Spring 2025 — Full Control</Text>
+          <Text style={styles.headerSub}>Dashboard Overview</Text>
         </View>
         <View style={styles.bellWrapper}>
           <Text style={styles.bellIcon}>🔔</Text>
         </View>
       </View>
 
-      {/* ADMIN CARD */}
       <View style={styles.adminCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>SA</Text>
         </View>
         <View>
           <Text style={styles.adminName}>Super Admin</Text>
-          <Text style={styles.adminEmail}>superadmin@sci.com</Text>
+          <Text style={styles.adminEmail}>Full Control Panel</Text>
         </View>
         <View style={styles.adminBadge}>
           <Text style={styles.adminBadgeText}>👑 Super Admin</Text>
         </View>
       </View>
 
-      {/* STAT CARDS */}
       <View style={styles.statsGrid}>
         {[
-          { icon: "👥", number: stats.totalStudents, label: "Total Students", color: "#3b82f6" },
-          { icon: "📚", number: stats.totalCourses, label: "Total Courses", color: "#8b5cf6" },
-          { icon: "🛡️", number: stats.totalAdmins, label: "Admins", color: "#f59e0b" },
-          { icon: "👨‍👩‍👧‍👦", number: stats.totalGroups, label: "Groups", color: "#22c55e" },
+          { icon: "👥", number: stats?.totalStudents || 0, label: "Total Students", color: "#3b82f6" },
+          { icon: "📚", number: stats?.totalCourses || 0, label: "Total Courses", color: "#8b5cf6" },
+          { icon: "🛡️", number: stats?.totalAdmins || 0, label: "Admins", color: "#f59e0b" },
+          { icon: "📝", number: stats?.totalEnrollments || 0, label: "Enrollments", color: "#22c55e" },
         ].map((s, i) => (
           <View key={i} style={[styles.statCard, { borderLeftColor: s.color }]}>
             <Text style={styles.statIcon}>{s.icon}</Text>
@@ -74,44 +100,51 @@ export default function SuperAdminDashboard() {
         ))}
       </View>
 
-      {/* STUDENTS BY LEVEL */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Students by Level</Text>
-        {studentsByLevel.map((item, i) => (
-          <View key={i} style={styles.levelRow}>
-            <Text style={styles.levelLabel}>{item.level}</Text>
-            <View style={styles.levelBarBg}>
-              <View style={[styles.levelBarFill, {
-                width: `${(item.count / stats.totalStudents) * 100}%`,
-                backgroundColor: item.color,
-              }]} />
-            </View>
-            <Text style={[styles.levelCount, { color: item.color }]}>{item.count}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* COURSE ENROLLMENT */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Course Enrollment</Text>
-        {popularCourses.map((course, i) => {
-          const pct = Math.round((course.enrolled / course.capacity) * 100);
-          return (
-            <View key={i} style={[styles.courseRow, i !== popularCourses.length - 1 && styles.courseRowBorder]}>
-              <View style={styles.courseRowTop}>
-                <Text style={[styles.courseCode, { color: course.color }]}>{course.code}</Text>
-                <Text style={styles.courseName}>{course.name}</Text>
-                <Text style={styles.courseCount}>{course.enrolled}/{course.capacity}</Text>
-              </View>
+        {studentsByLevel.length === 0 ? (
+          <Text style={styles.emptyText}>No student data available</Text>
+        ) : (
+          studentsByLevel.map((item, i) => (
+            <View key={i} style={styles.levelRow}>
+              <Text style={styles.levelLabel}>Lvl {item.level}</Text>
               <View style={styles.levelBarBg}>
                 <View style={[styles.levelBarFill, {
-                  width: `${pct}%`,
-                  backgroundColor: pct >= 90 ? "#ef4444" : course.color,
+                  width: `${((item.count / (stats?.totalStudents || 1)) * 100)}%`,
+                  backgroundColor: LEVEL_COLORS[i % LEVEL_COLORS.length],
                 }]} />
               </View>
+              <Text style={[styles.levelCount, { color: LEVEL_COLORS[i % LEVEL_COLORS.length] }]}>{item.count}</Text>
             </View>
-          );
-        })}
+          ))
+        )}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Course Enrollment</Text>
+        {courses.length === 0 ? (
+          <Text style={styles.emptyText}>No courses available</Text>
+        ) : (
+          courses.map((course, i) => {
+            const pct = Math.round((course.enrolled / course.capacity) * 100);
+            const color = COURSE_COLORS[i % COURSE_COLORS.length];
+            return (
+              <View key={i} style={[styles.courseRow, i !== courses.length - 1 && styles.courseRowBorder]}>
+                <View style={styles.courseRowTop}>
+                  <Text style={[styles.courseCode, { color }]}>{course.code}</Text>
+                  <Text style={styles.courseName}>{course.name}</Text>
+                  <Text style={styles.courseCount}>{course.enrolled}/{course.capacity}</Text>
+                </View>
+                <View style={styles.levelBarBg}>
+                  <View style={[styles.levelBarFill, {
+                    width: `${pct}%`,
+                    backgroundColor: pct >= 90 ? "#ef4444" : color,
+                  }]} />
+                </View>
+              </View>
+            );
+          })
+        )}
       </View>
 
       <View style={{ height: 100 }} />
@@ -121,6 +154,11 @@ export default function SuperAdminDashboard() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f0f2f5" },
+  centerBox: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
+  errorText: { fontSize: 14, color: "#ef4444", marginBottom: 16, textAlign: "center" },
+  retryBtn: { backgroundColor: "#2554e8", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  retryBtnText: { color: "#fff", fontWeight: "600" },
+  emptyText: { color: "#888", fontSize: 14, textAlign: "center", paddingVertical: 16 },
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12, backgroundColor: "#fff",

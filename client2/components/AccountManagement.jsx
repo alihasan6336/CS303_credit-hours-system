@@ -1,69 +1,107 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-    Alert,
-    Modal,
-    ScrollView, StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-
-const initialAccounts = [
-  { id: 1, type: "admin", name: "Dr. Sara Ahmed", email: "sara@sci.com", role: "Admin" },
-  { id: 2, type: "admin", name: "Dr. Khalid Nasser", email: "khalid@sci.com", role: "Admin" },
-  { id: 3, type: "student", name: "Ahmed Al-Rashidi", email: "ahmed@sci.com", studentId: "2021-CS-0342", level: "Year 3", major: "Computer Science" },
-  { id: 4, type: "student", name: "Sara Mohammed", email: "sara.m@sci.com", studentId: "2022-CS-0101", level: "Year 2", major: "Computer Science" },
-  { id: 5, type: "student", name: "Omar Hassan", email: "omar@sci.com", studentId: "2023-CS-0055", level: "Year 1", major: "Computer Science" },
-];
+import { adminApi } from "../utils/api";
 
 export default function AccountManagement() {
-  const [accounts, setAccounts] = useState(initialAccounts);
+  const [accounts, setAccounts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [tab, setTab] = useState("student");
   const [modalVisible, setModalVisible] = useState(false);
   const [accountType, setAccountType] = useState("student");
-  const [form, setForm] = useState({ name: "", email: "", password: "", studentId: "", level: "Year 1", major: "Computer Science", role: "Admin" });
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: "", email: "", password: "",
+    studentId: "", level: "1st Year", major: "Computer Science",
+    currentSemester: "Fall",
+  });
 
-  const filtered = accounts.filter(a => a.type === tab);
+  const fetchAccounts = async () => {
+    try {
+      setIsLoading(true);
+      const response = await adminApi.getStudents();
+      setAccounts(response.students || []);
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchAccounts(); }, []);
+
+  const students = accounts.filter(a => a.role === "student");
+  const admins = accounts.filter(a => a.role === "superadmin");
+  const filtered = tab === "student" ? students : admins;
 
   const openAddModal = (type) => {
     setAccountType(type);
-    setForm({ name: "", email: "", password: "", studentId: "", level: "Year 1", major: "Computer Science", role: "Admin" });
+    setForm({ name: "", email: "", password: "", studentId: "", level: "1st Year", major: "Computer Science", currentSemester: "Fall" });
     setModalVisible(true);
   };
 
-  const saveAccount = () => {
+  const saveAccount = async () => {
     if (!form.name || !form.email || !form.password) {
       Alert.alert("Error", "Please fill all required fields");
       return;
     }
-    const newAccount = {
-      id: Date.now(),
-      type: accountType,
-      name: form.name,
-      email: form.email,
-      ...(accountType === "student" ? {
-        studentId: form.studentId || `2025-CS-${Math.floor(Math.random() * 9000 + 1000)}`,
-        level: form.level,
-        major: form.major,
-      } : { role: "Admin" }),
-    };
-    setAccounts([...accounts, newAccount]);
-    setModalVisible(false);
+    try {
+      setSaving(true);
+      const payload = {
+        fullName: form.name,
+        email: form.email,
+        password: form.password,
+        role: accountType === "admin" ? "superadmin" : "student",
+      };
+      if (accountType === "student") {
+        payload.universityId = form.studentId || undefined;
+        payload.academicYear = form.level;
+        payload.major = form.major;
+        payload.currentSemester = form.currentSemester;
+      }
+      await adminApi.createAccount(payload);
+      setModalVisible(false);
+      await fetchAccounts();
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const deleteAccount = (id) => {
-    Alert.alert("Delete Account", "Are you sure you want to delete this account?", [
+  const deleteAccount = (id, name) => {
+    Alert.alert("Delete Account", `Delete ${name}?`, [
       { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => setAccounts(accounts.filter(a => a.id !== id)) },
+      {
+        text: "Delete", style: "destructive",
+        onPress: async () => {
+          try {
+            await adminApi.deleteAccount(id);
+            await fetchAccounts();
+          } catch (err) {
+            Alert.alert("Error", err.message);
+          }
+        },
+      },
     ]);
   };
+
+  if (isLoading) {
+    return <View style={styles.centerBox}><ActivityIndicator size="large" color="#2554e8" /></View>;
+  }
 
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-
-        {/* HEADER */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Accounts</Text>
           <View style={styles.headerBtns}>
@@ -76,52 +114,53 @@ export default function AccountManagement() {
           </View>
         </View>
 
-        {/* TABS */}
         <View style={styles.tabs}>
           <TouchableOpacity style={[styles.tabBtn, tab === "student" && styles.tabBtnActive]} onPress={() => setTab("student")}>
             <Text style={[styles.tabBtnText, tab === "student" && styles.tabBtnTextActive]}>
-              Students ({accounts.filter(a => a.type === "student").length})
+              Students ({students.length})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tabBtn, tab === "admin" && styles.tabBtnActive]} onPress={() => setTab("admin")}>
             <Text style={[styles.tabBtnText, tab === "admin" && styles.tabBtnTextActive]}>
-              Admins ({accounts.filter(a => a.type === "admin").length})
+              Admins ({admins.length})
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* ACCOUNT LIST */}
-        {filtered.map((account) => (
-          <View key={account.id} style={styles.accountCard}>
-            <View style={styles.accountLeft}>
-              <View style={[styles.accountAvatar, { backgroundColor: account.type === "admin" ? "#8b5cf620" : "#2554e820" }]}>
-                <Text style={styles.accountAvatarText}>
-                  {account.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                </Text>
+        {filtered.length === 0 ? (
+          <Text style={styles.emptyText}>No {tab === "student" ? "students" : "admins"} found</Text>
+        ) : (
+          filtered.map((account) => (
+            <View key={account._id} style={styles.accountCard}>
+              <View style={styles.accountLeft}>
+                <View style={[styles.accountAvatar, { backgroundColor: account.role === "superadmin" ? "#8b5cf620" : "#2554e820" }]}>
+                  <Text style={styles.accountAvatarText}>
+                    {account.fullName?.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.accountName}>{account.fullName}</Text>
+                  <Text style={styles.accountEmail}>{account.email}</Text>
+                  {account.role === "student" && (
+                    <Text style={styles.accountMeta}>{account.universityId} • Level {account.level}</Text>
+                  )}
+                  {account.role === "superadmin" && (
+                    <View style={styles.roleBadge}>
+                      <Text style={styles.roleBadgeText}>🛡️ Admin</Text>
+                    </View>
+                  )}
+                </View>
               </View>
-              <View>
-                <Text style={styles.accountName}>{account.name}</Text>
-                <Text style={styles.accountEmail}>{account.email}</Text>
-                {account.type === "student" && (
-                  <Text style={styles.accountMeta}>{account.studentId} • {account.level}</Text>
-                )}
-                {account.type === "admin" && (
-                  <View style={styles.roleBadge}>
-                    <Text style={styles.roleBadgeText}>🛡️ Admin</Text>
-                  </View>
-                )}
-              </View>
+              <TouchableOpacity onPress={() => deleteAccount(account._id, account.fullName)}>
+                <Text style={styles.deleteIcon}>🗑️</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={() => deleteAccount(account.id)}>
-              <Text style={styles.deleteIcon}>🗑️</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
+          ))
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* ADD ACCOUNT MODAL */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <ScrollView>
@@ -135,9 +174,10 @@ export default function AccountManagement() {
                 { label: "Email *", key: "email", placeholder: "e.g. ahmed@sci.com" },
                 { label: "Password *", key: "password", placeholder: "Set a password", secure: true },
                 ...(accountType === "student" ? [
-                  { label: "Student ID", key: "studentId", placeholder: "Auto-generated if empty" },
-                  { label: "Level", key: "level", placeholder: "e.g. Year 1" },
+                  { label: "University ID", key: "studentId", placeholder: "Auto-generated if empty" },
+                  { label: "Academic Year", key: "level", placeholder: "e.g. 1st Year" },
                   { label: "Major", key: "major", placeholder: "e.g. Computer Science" },
+                  { label: "Semester", key: "currentSemester", placeholder: "e.g. Fall" },
                 ] : []),
               ].map((field) => (
                 <View key={field.key}>
@@ -157,8 +197,8 @@ export default function AccountManagement() {
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                   <Text style={styles.cancelBtnText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.saveBtn} onPress={saveAccount}>
-                  <Text style={styles.saveBtnText}>Create Account</Text>
+                <TouchableOpacity style={styles.saveBtn} onPress={saveAccount} disabled={saving}>
+                  {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Create Account</Text>}
                 </TouchableOpacity>
               </View>
             </View>
@@ -171,6 +211,8 @@ export default function AccountManagement() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f0f2f5" },
+  centerBox: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyText: { textAlign: "center", color: "#888", marginTop: 40, fontSize: 15 },
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: "#fff",

@@ -7,22 +7,50 @@ import {
   Text, TextInput, TouchableOpacity,
   View,
 } from "react-native";
-import ForgotPasswordScreen from "./ForgotPasswordScreen";
+import { authApi } from "../utils/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { height } = Dimensions.get("window");
 
-export default function LoginScreen({ onLogin, errorMessage }) {
+export default function LoginScreen({ onLogin, onNavigateRegister }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
   const isFormValid = email.length > 0 && password.length > 0;
 
   if (showForgotPassword) {
     return <ForgotPasswordScreen onBack={() => setShowForgotPassword(false)} />;
   }
+
+  const handleSignIn = async () => {
+    try {
+      setErrorMessage("");
+      setIsLoading(true);
+
+      const response = await authApi.login({
+        email,
+        password,
+        rememberMe
+      });
+
+      // Save to AsyncStorage
+      await AsyncStorage.setItem("authToken", response.token);
+      await AsyncStorage.setItem("student", JSON.stringify(response.student));
+
+      // Update parent state
+      onLogin(response.student);
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to sign in. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -116,12 +144,19 @@ export default function LoginScreen({ onLogin, errorMessage }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.signInBtn, !isFormValid && styles.signInBtnDisabled]}
-            disabled={!isFormValid}
-            onPress={() => onLogin(email, password)}
+            style={[styles.signInBtn, (!isFormValid || isLoading) && styles.signInBtnDisabled]}
+            disabled={!isFormValid || isLoading}
+            onPress={handleSignIn}
           >
-            <Text style={styles.signInBtnText}>Sign In</Text>
+            <Text style={styles.signInBtnText}>{isLoading ? "Signing In..." : "Sign In"}</Text>
           </TouchableOpacity>
+
+          <View style={styles.bottomNavContainer}>
+            <Text style={styles.bottomNavText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={onNavigateRegister}>
+              <Text style={styles.bottomNavTextLink}>Sign up</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -192,4 +227,8 @@ const styles = StyleSheet.create({
   },
   signInBtnDisabled: { backgroundColor: "#9ab0f0" },
   signInBtnText: { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.4 },
+
+  bottomNavContainer: { flexDirection: "row", justifyContent: "center", marginTop: 10 },
+  bottomNavText: { fontSize: 13, color: "#777" },
+  bottomNavTextLink: { fontSize: 13, color: "#2554e8", fontWeight: "700" },
 });

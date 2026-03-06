@@ -1,38 +1,65 @@
 import {
-    Dimensions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
 } from "react-native";
+import { useState, useEffect } from "react";
+import { authApi } from "../utils/api";
 
 const { width } = Dimensions.get("window");
 
-const student = {
-  name: "Ahmed Al-Rashidi",
-  id: "2021-CS-0342",
-  major: "Computer Science",
-  level: "Year 3",
-  gpa: "3.75",
-  semester: "Spring 2025",
-  enrolledCourses: 5,
-  creditHours: 15,
-  completedHours: 87,
-  totalHours: 120,
-};
+export default function DashboardScreen({ onNavigateCourses }) {
+  const [student, setStudent] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-const courses = [
-  { code: "CS303", name: "Software Engineering", instructor: "Dr. Khalid Nasser", day: "Sunday", time: "08:00 – 09:30", room: "B-201", credits: 3, dayColor: "#ef4444" },
-  { code: "CS311", name: "Database Systems", instructor: "Dr. Sara Ahmed", day: "Monday", time: "10:00 – 11:30", room: "A-104", credits: 3, dayColor: "#3b82f6" },
-  { code: "CS321", name: "Computer Networks", instructor: "Dr. Omar Farouk", day: "Tuesday", time: "12:00 – 13:30", room: "C-305", credits: 3, dayColor: "#22c55e" },
-  { code: "CS341", name: "Operating Systems", instructor: "Dr. Layla Hassan", day: "Wednesday", time: "14:00 – 15:30", room: "A-201", credits: 3, dayColor: "#f59e0b" },
-  { code: "CS351", name: "AI Fundamentals", instructor: "Dr. Nour Ali", day: "Thursday", time: "09:00 – 10:30", room: "B-102", credits: 3, dayColor: "#8b5cf6" },
-];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await authApi.home();
+        setStudent({
+          ...response.student,
+          totalHours: 146,
+        });
+        setCourses(response.student?.courses || []);
+      } catch (err) {
+        setError(err.message || "Failed to load dashboard data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-const progress = Math.round((student.completedHours / student.totalHours) * 100);
+    fetchDashboardData();
+  }, []);
 
-export default function DashboardScreen() {
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color="#2554e8" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center", padding: 20 }]}>
+        <Text style={{ color: "#ef4444", fontSize: 16 }}>{error}</Text>
+      </View>
+    );
+  }
+
+  const completedHours = student?.completedHours || 0;
+  const totalHours = student?.totalHours || 146;
+  const progress = Math.round((completedHours / totalHours) * 100) || 0;
+  const enrolledCount = courses.length;
+  const currentCreditHours = courses.reduce((sum, c) => sum + (c.credits || 0), 0);
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
@@ -40,7 +67,7 @@ export default function DashboardScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Dashboard</Text>
-          <Text style={styles.headerSub}>Spring 2025 — Computer Science</Text>
+          <Text style={styles.headerSub}>{student.semester} — {student.major}</Text>
         </View>
         <View style={styles.bellWrapper}>
           <Text style={styles.bellIcon}>🔔</Text>
@@ -50,7 +77,7 @@ export default function DashboardScreen() {
       {/* USER CARD */}
       <View style={styles.userCard}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>AA</Text>
+          <Text style={styles.avatarText}>{student.name?.substring(0, 2).toUpperCase() || "🧑‍🎓"}</Text>
         </View>
         <View>
           <Text style={styles.userName}>{student.name}</Text>
@@ -62,22 +89,22 @@ export default function DashboardScreen() {
       <View style={styles.statsGrid}>
         <View style={[styles.statCard, { borderLeftColor: "#3b82f6" }]}>
           <Text style={styles.statIcon}>📚</Text>
-          <Text style={styles.statNumber}>{student.enrolledCourses}</Text>
+          <Text style={styles.statNumber}>{enrolledCount}</Text>
           <Text style={styles.statLabel}>Enrolled Courses</Text>
         </View>
         <View style={[styles.statCard, { borderLeftColor: "#f59e0b" }]}>
           <Text style={styles.statIcon}>⚡</Text>
-          <Text style={styles.statNumber}>{student.creditHours}</Text>
+          <Text style={styles.statNumber}>{currentCreditHours}</Text>
           <Text style={styles.statLabel}>Credit Hours</Text>
         </View>
         <View style={[styles.statCard, { borderLeftColor: "#8b5cf6" }]}>
           <Text style={styles.statIcon}>🎓</Text>
-          <Text style={styles.statNumber}>{student.gpa}</Text>
+          <Text style={styles.statNumber}>{student.gpa || "N/A"}</Text>
           <Text style={styles.statLabel}>GPA</Text>
         </View>
         <View style={[styles.statCard, { borderLeftColor: "#22c55e" }]}>
           <Text style={styles.statIcon}>✅</Text>
-          <Text style={styles.statNumber}>{student.completedHours}</Text>
+          <Text style={styles.statNumber}>{completedHours}</Text>
           <Text style={styles.statLabel}>Completed Hours</Text>
         </View>
       </View>
@@ -86,15 +113,15 @@ export default function DashboardScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Degree Progress</Text>
         <View style={styles.progressHeader}>
-          <Text style={styles.progressHours}>{student.completedHours} / {student.totalHours} hours</Text>
+          <Text style={styles.progressHours}>{completedHours} / {totalHours} hours</Text>
           <Text style={styles.progressPercent}>{progress}%</Text>
         </View>
         <View style={styles.progressBarBg}>
           <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
         </View>
         <View style={styles.progressFooter}>
-          <Text style={styles.progressSub}>Year 3 — Level 3</Text>
-          <Text style={styles.progressSub}>{student.totalHours - student.completedHours} hrs remaining</Text>
+          <Text style={styles.progressSub}>{student.academicYear} — Level {student.level || 1}</Text>
+          <Text style={styles.progressSub}>{totalHours - completedHours} hrs remaining</Text>
         </View>
       </View>
 
@@ -103,8 +130,8 @@ export default function DashboardScreen() {
         <Text style={styles.cardTitle}>Student Info</Text>
         {[
           { label: "Major", value: student.major },
-          { label: "Level", value: student.level },
-          { label: "GPA", value: student.gpa },
+          { label: "Level", value: student.level || 1 },
+          { label: "GPA", value: student.gpa || "N/A" },
           { label: "Semester", value: student.semester },
           { label: "Student ID", value: student.id },
         ].map((item, i) => (
@@ -119,7 +146,7 @@ export default function DashboardScreen() {
       <View style={styles.card}>
         <View style={styles.coursesHeader}>
           <Text style={styles.cardTitle}>Registered Courses</Text>
-          <TouchableOpacity style={styles.addBtn}>
+          <TouchableOpacity style={styles.addBtn} onPress={onNavigateCourses}>
             <Text style={styles.addBtnText}>+ Add Course</Text>
           </TouchableOpacity>
         </View>
@@ -128,9 +155,11 @@ export default function DashboardScreen() {
           <View key={i} style={[styles.courseCard, i !== courses.length - 1 && styles.courseCardBorder]}>
             <View style={styles.courseTop}>
               <Text style={styles.courseCode}>{course.code}</Text>
-              <View style={[styles.dayBadge, { backgroundColor: course.dayColor + "20", borderColor: course.dayColor }]}>
-                <Text style={[styles.dayText, { color: course.dayColor }]}>{course.day}</Text>
-              </View>
+              {course.day && (
+                <View style={[styles.dayBadge, { backgroundColor: (course.dayColor || "#4f46e5") + "20", borderColor: course.dayColor || "#4f46e5" }]}>
+                  <Text style={[styles.dayText, { color: course.dayColor || "#4f46e5" }]}>{course.day}</Text>
+                </View>
+              )}
               <View style={styles.creditBadge}>
                 <Text style={styles.creditText}>{course.credits} cr</Text>
               </View>
@@ -156,7 +185,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f2f5",
   },
 
-  // HEADER
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -186,7 +214,6 @@ const styles = StyleSheet.create({
   },
   bellIcon: { fontSize: 18 },
 
-  // USER CARD
   userCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -209,7 +236,6 @@ const styles = StyleSheet.create({
   userName: { color: "#fff", fontWeight: "700", fontSize: 16 },
   userId: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 2 },
 
-  // STATS
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -233,7 +259,6 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 26, fontWeight: "800", color: "#111" },
   statLabel: { fontSize: 12, color: "#888", marginTop: 2 },
 
-  // CARD
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -253,7 +278,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  // PROGRESS
   progressHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -279,7 +303,6 @@ const styles = StyleSheet.create({
   },
   progressSub: { fontSize: 12, color: "#aaa" },
 
-  // STUDENT INFO
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -292,7 +315,6 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 13, color: "#888" },
   infoValue: { fontSize: 13, color: "#111", fontWeight: "600" },
 
-  // COURSES
   coursesHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

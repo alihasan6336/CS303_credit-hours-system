@@ -1,20 +1,15 @@
 import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { authApi } from "../utils/api";
 import AccountManagement from "../components/AccountManagement";
 import CourseManagement from "../components/CourseManagement";
+import RegisterScreen from "../components/RegisterScreen";
 import DashboardScreen from "../components/DashboardScreen";
 import EnrollmentManagement from "../components/EnrollmentManagement";
 import LoginScreen from "../components/LoginScreen";
 import SuperAdminDashboard from "../components/SuperAdminDashboard";
-
-const SUPER_ADMIN_EMAIL = "superadmin@sci.com";
-const SUPER_ADMIN_PASSWORD = "SuperMan1";
-
-const initialStudentAccounts = [
-  { email: "ahmed@sci.com", password: "Ahmed123", name: "Ahmed Al-Rashidi" },
-  { email: "sara.m@sci.com", password: "Sara123", name: "Sara Mohammed" },
-  { email: "omar@sci.com", password: "Omar123", name: "Omar Hassan" },
-];
+import StudentCoursesScreen from "../components/StudentCoursesScreen";
+import StudentScheduleScreen from "../components/StudentScheduleScreen";
 
 function BottomTab({ active, onPress, icon, label }) {
   return (
@@ -28,29 +23,44 @@ function BottomTab({ active, onPress, icon, label }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [loginError, setLoginError] = useState("");
-  const [studentAccounts, setStudentAccounts] = useState(initialStudentAccounts);
+  const [authScreen, setAuthScreen] = useState("login");
 
-  const handleLogin = (email, password) => {
-    setLoginError("");
-    if (email === SUPER_ADMIN_EMAIL && password === SUPER_ADMIN_PASSWORD) {
-      setUser({ role: "superadmin", email });
-      setActiveTab("dashboard");
-      return;
-    }
-    const studentAccount = studentAccounts.find(
-      (a) => a.email === email && a.password === password
-    );
-    if (studentAccount) {
-      setUser({ role: "student", email, name: studentAccount.name });
-      setActiveTab("dashboard");
-      return;
-    }
-    setLoginError("Invalid email or password. Please try again.");
+  const handleLogin = (loggedInUser) => {
+    setUser({ ...loggedInUser, role: loggedInUser.role || "student" });
+    setActiveTab("dashboard");
+  };
+
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await authApi.logout();
+          setUser(null);
+          setActiveTab("dashboard");
+          setAuthScreen("login");
+        },
+      },
+    ]);
   };
 
   if (!user) {
-    return <LoginScreen onLogin={handleLogin} errorMessage={loginError} />;
+    if (authScreen === "register") {
+      return (
+        <RegisterScreen
+          onNavigateLogin={() => setAuthScreen("login")}
+          onRegister={(data) => handleLogin(data)}
+        />
+      );
+    }
+    return (
+      <LoginScreen
+        onLogin={handleLogin}
+        onNavigateRegister={() => setAuthScreen("register")}
+      />
+    );
   }
 
   if (user.role === "superadmin") {
@@ -58,7 +68,8 @@ export default function App() {
       switch (activeTab) {
         case "dashboard": return <SuperAdminDashboard />;
         case "courses": return <CourseManagement />;
-        case "accounts": return <AccountManagement onAccountCreated={(acc) => setStudentAccounts([...studentAccounts, acc])} />;
+        case "accounts": return <AccountManagement />;
+        case "register": return <RegisterScreen />;
         case "enrollment": return <EnrollmentManagement />;
         default: return <SuperAdminDashboard />;
       }
@@ -71,6 +82,7 @@ export default function App() {
           <BottomTab active={activeTab === "courses"} onPress={() => setActiveTab("courses")} icon="📚" label="Courses" />
           <BottomTab active={activeTab === "accounts"} onPress={() => setActiveTab("accounts")} icon="👥" label="Accounts" />
           <BottomTab active={activeTab === "enrollment"} onPress={() => setActiveTab("enrollment")} icon="✅" label="Enroll" />
+          <BottomTab active={false} onPress={handleLogout} icon="🚪" label="Logout" />
         </View>
       </View>
     );
@@ -78,13 +90,18 @@ export default function App() {
 
   const renderStudentScreen = () => {
     switch (activeTab) {
-      case "dashboard": return <DashboardScreen />;
-      case "courses":
-        return <View style={styles.placeholder}><Text style={styles.placeholderText}>📚 My Courses</Text><Text style={styles.placeholderSub}>Coming soon</Text></View>;
-      case "schedule":
-        return <View style={styles.placeholder}><Text style={styles.placeholderText}>📅 Schedule</Text><Text style={styles.placeholderSub}>Coming soon</Text></View>;
+      case "dashboard": return <DashboardScreen onNavigateCourses={() => setActiveTab("courses")} />;
+      case "courses": return <StudentCoursesScreen />;
+      case "schedule": return <StudentScheduleScreen />;
       case "settings":
-        return <View style={styles.placeholder}><Text style={styles.placeholderText}>⚙️ Settings</Text><Text style={styles.placeholderSub}>Coming soon</Text></View>;
+        return (
+          <View style={styles.settingsScreen}>
+            <Text style={styles.settingsTitle}>⚙️ Settings</Text>
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+              <Text style={styles.logoutBtnText}>🚪 Logout</Text>
+            </TouchableOpacity>
+          </View>
+        );
       default: return <DashboardScreen />;
     }
   };
@@ -120,4 +137,12 @@ const styles = StyleSheet.create({
   placeholder: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#f0f2f5" },
   placeholderText: { fontSize: 28, marginBottom: 8 },
   placeholderSub: { fontSize: 14, color: "#aaa" },
+  settingsScreen: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#f0f2f5", padding: 20 },
+  settingsTitle: { fontSize: 28, fontWeight: "800", marginBottom: 40 },
+  logoutBtn: {
+    backgroundColor: "#ef4444", paddingHorizontal: 40, paddingVertical: 14,
+    borderRadius: 12, shadowColor: "#ef4444", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+  },
+  logoutBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

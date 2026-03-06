@@ -10,17 +10,18 @@ import { signToken } from '../utils/jwt';
 
 // Matches every field that Login.tsx and Home.tsx read from the response
 const buildStudentPayload = (student: InstanceType<typeof Student>) => ({
-  id:                   student._id,
-  fullName:             student.fullName,
-  universityId:         student.universityId,
-  email:                student.email,
-  major:                student.major,
-  academicYear:         student.academicYear,
-  currentSemester:      student.currentSemester,
+  id: student._id,
+  fullName: student.fullName,
+  universityId: student.universityId,
+  email: student.email,
+  major: student.major,
+  academicYear: student.academicYear,
+  currentSemester: student.currentSemester,
   completedCreditHours: student.completedCreditHours,
-  phoneNumber:          student.phoneNumber,
-  gpa:                  student.gpa,
-  level:                student.level,
+  phoneNumber: student.phoneNumber,
+  gpa: student.gpa,
+  level: student.level,
+  role: student.role || 'student',
 });
 
 // POST /api/auth/register
@@ -47,7 +48,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     if (duplicate) {
       res.status(409).json({
         success: false,
-        field:   duplicate.email === email ? 'email' : 'universityId',
+        field: duplicate.email === email ? 'email' : 'universityId',
         message:
           duplicate.email === email
             ? 'This email is already registered'
@@ -180,8 +181,8 @@ export const resetPassword = async (
       .digest('hex');
 
     const student = await Student.findOne({
-      resetPasswordToken:   hashedToken,
-      resetPasswordExpires: { $gt: Date.now() },   
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
     }).select('+password');
 
     if (!student) {
@@ -192,9 +193,9 @@ export const resetPassword = async (
       return;
     }
 
-    student.password              = password;
-    student.resetPasswordToken    = undefined;
-    student.resetPasswordExpires  = undefined;
+    student.password = password;
+    student.resetPasswordToken = undefined;
+    student.resetPasswordExpires = undefined;
     await student.save();
 
     const newToken = signToken(student._id.toString(), student.email, false);

@@ -18,10 +18,16 @@ export interface IStudent extends Document {
   resetPasswordExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
+  role: string;
 }
 
 const StudentSchema: Schema = new Schema(
   {
+    role: {
+      type: String,
+      enum: ['student', 'superadmin'],
+      default: 'student',
+    },
     fullName: {
       type: String,
       required: [true, 'Full name is required'],
