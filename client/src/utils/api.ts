@@ -13,6 +13,7 @@ interface StudentFromApi {
   phoneNumber: string;
   gpa: number;
   level: number;
+  role: string;
 }
 
 interface AuthResponse {
@@ -128,6 +129,190 @@ export const authApi = {
   logout(): void {
     localStorage.removeItem("authToken");
     localStorage.removeItem("student");
+  },
+};
+
+interface AdminStatsResponse {
+  success: boolean;
+  stats: {
+    totalStudents: number;
+    totalCourses: number;
+    totalAdmins: number;
+    totalEnrollments: number;
+  };
+  studentsByLevel: { level: number; count: number }[];
+  courses: { code: string; name: string; enrolled: number; capacity: number }[];
+}
+
+interface StudentAccount {
+  id: string;
+  fullName: string;
+  email: string;
+  universityId: string;
+  major: string;
+  academicYear: string;
+  level: number;
+  role: string;
+  gpa: number;
+  completedCreditHours: number;
+  currentSemester: string;
+}
+
+interface StudentsListResponse {
+  success: boolean;
+  students: StudentAccount[];
+}
+
+interface CreateAccountResponse {
+  success: boolean;
+  student: { id: string; fullName: string; email: string; role: string };
+  message?: string;
+}
+
+interface EnrollmentData {
+  _id: string;
+  student: { _id: string; fullName: string; universityId: string; email: string; level: number };
+  course: { _id: string; code: string; name: string; credits: number };
+  semester: string;
+  academicYear: string;
+  enrolledAt: string;
+}
+
+interface EnrollmentsResponse {
+  success: boolean;
+  enrollments: EnrollmentData[];
+}
+
+export const adminApi = {
+  getStats(): Promise<AdminStatsResponse> {
+    return request<AdminStatsResponse>("/api/admin/stats");
+  },
+
+  getStudents(role?: string): Promise<StudentsListResponse> {
+    const query = role ? `?role=${role}` : "";
+    return request<StudentsListResponse>(`/api/admin/students${query}`);
+  },
+
+  createAccount(body: {
+    fullName: string;
+    email: string;
+    password: string;
+    universityId?: string;
+    major?: string;
+    academicYear?: string;
+    currentSemester?: string;
+    completedCreditHours?: number;
+    phoneNumber?: string;
+    role: string;
+  }): Promise<CreateAccountResponse> {
+    return request<CreateAccountResponse>("/api/admin/accounts", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  deleteAccount(id: string): Promise<{ success: boolean; message: string }> {
+    return request(`/api/admin/accounts/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  getEnrollments(): Promise<EnrollmentsResponse> {
+    return request<EnrollmentsResponse>("/api/admin/enrollments");
+  },
+
+  enrollStudent(studentId: string, courseId: string): Promise<{ success: boolean; message: string }> {
+    return request("/api/admin/enrollments", {
+      method: "POST",
+      body: JSON.stringify({ studentId, courseId }),
+    });
+  },
+
+  unenrollStudent(enrollmentId: string): Promise<{ success: boolean; message: string }> {
+    return request(`/api/admin/enrollments/${enrollmentId}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+interface CourseAssignmentData {
+  _id: string;
+  course: {
+    _id: string;
+    code: string;
+    name: string;
+    day: string;
+    time: string;
+    room: string;
+    credits: number;
+    instructor: string;
+    capacity: number;
+    enrolledCount: number;
+  };
+  level: number;
+  semester: string;
+  academicYear: string;
+  isActive: boolean;
+}
+
+interface AssignmentsResponse {
+  success: boolean;
+  assignments: CourseAssignmentData[];
+}
+
+interface AssignmentsByLevelResponse {
+  success: boolean;
+  byLevel: Record<string, CourseAssignmentData[]>;
+}
+
+interface AvailableCoursesResponse {
+  success: boolean;
+  courses: { _id: string; code: string; name: string; credits: number }[];
+}
+
+export const courseAssignmentApi = {
+  getAssignments(filters?: { level?: number; semester?: string; academicYear?: string }): Promise<AssignmentsResponse> {
+    const params = new URLSearchParams();
+    if (filters?.level) params.append("level", String(filters.level));
+    if (filters?.semester) params.append("semester", filters.semester);
+    if (filters?.academicYear) params.append("academicYear", filters.academicYear);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return request<AssignmentsResponse>(`/api/course-assignments${query}`);
+  },
+
+  getAssignmentsByLevel(filters?: { semester?: string; academicYear?: string }): Promise<AssignmentsByLevelResponse> {
+    const params = new URLSearchParams();
+    if (filters?.semester) params.append("semester", filters.semester);
+    if (filters?.academicYear) params.append("academicYear", filters.academicYear);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return request<AssignmentsByLevelResponse>(`/api/course-assignments/by-level${query}`);
+  },
+
+  getAvailableCourses(filters?: { level?: number; semester?: string; academicYear?: string }): Promise<AvailableCoursesResponse> {
+    const params = new URLSearchParams();
+    if (filters?.level) params.append("level", String(filters.level));
+    if (filters?.semester) params.append("semester", filters.semester);
+    if (filters?.academicYear) params.append("academicYear", filters.academicYear);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return request<AvailableCoursesResponse>(`/api/course-assignments/available-courses${query}`);
+  },
+
+  assignCourse(body: {
+    courseId: string;
+    level: number;
+    semester: string;
+    academicYear: string;
+  }): Promise<{ success: boolean; assignment: CourseAssignmentData }> {
+    return request("/api/course-assignments", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  removeAssignment(id: string): Promise<{ success: boolean; message: string }> {
+    return request(`/api/course-assignments/${id}`, {
+      method: "DELETE",
+    });
   },
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
 import { Mail } from "lucide-react";
 import AuthLayout from "../components/auth/AuthLayout";
@@ -21,9 +21,20 @@ interface FormErrors {
 }
 
 const Login: React.FC = () => {
-  // Redirect already logged-in users to home
-  if (localStorage.getItem("authToken")) {
-    return <Navigate to="/home" replace />;
+  // Redirect already logged-in users based on role
+  const storedUser = localStorage.getItem("student");
+  const token = localStorage.getItem("authToken");
+  
+  if (token && storedUser) {
+    try {
+      const user = JSON.parse(storedUser);
+      if (user.role === "admin" || user.role === "superadmin") {
+        return <Navigate to="/admin" replace />;
+      }
+      return <Navigate to="/home" replace />;
+    } catch {
+      // Invalid stored data, continue to login
+    }
   }
 
   const navigate = useNavigate();
@@ -119,7 +130,13 @@ const Login: React.FC = () => {
       localStorage.setItem("authToken", response.token);
       localStorage.setItem("student", JSON.stringify(response.student));
 
-      navigate("/home");
+      // Redirect based on role
+      const role = response.student.role;
+      if (role === "admin" || role === "superadmin") {
+        navigate("/admin");
+      } else {
+        navigate("/home");
+      }
     } catch (error: any) {
       setErrors((prev) => ({
         ...prev,
@@ -219,17 +236,6 @@ const Login: React.FC = () => {
         </SubmitButton>
       </form>
 
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
-          Don't have an account?{" "}
-          <Link
-            to="/register"
-            className="text-indigo-600 hover:text-indigo-700 font-semibold transition-colors"
-          >
-            Sign up
-          </Link>
-        </p>
-      </div>
     </AuthLayout>
   );
 };

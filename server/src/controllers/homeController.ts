@@ -8,6 +8,7 @@
 import { Request, Response } from 'express';
 import Student from '../models/Student';
 import Enrollment from '../models/Enrollment';
+import CourseAssignment from '../models/CourseAssignment';
 import { ICourse } from '../models/Course';
 
 export const getHomeData = async (
@@ -23,38 +24,51 @@ export const getHomeData = async (
       return;
     }
 
-    const enrollments = await Enrollment.find({
-      student:  studentId,
+    // Get courses assigned to student's level
+    const currentYear = new Date().getFullYear();
+    const assignments = await CourseAssignment.find({
+      level: student.level,
       semester: student.currentSemester,
-    }).populate<{ course: ICourse }>(
-      'course',
-      'code name day time room credits instructor'   
-    );
+      academicYear: `${currentYear}-${currentYear + 1}`,
+      isActive: true,
+    }).populate<{
+      course: ICourse
+    }>('course', 'code name day time room credits instructor');
 
-    const courses = enrollments
-      .filter((e) => e.course)
-      .map((e) => ({
-        code:       e.course.code,
-        name:       e.course.name,
-        day:        e.course.day,
-        time:       e.course.time,
-        room:       e.course.room,
-        credits:    e.course.credits,
-        instructor: e.course.instructor,
+    // Get student's enrollments to check which courses they're enrolled in
+    const enrollments = await Enrollment.find({
+      student: studentId,
+      semester: student.currentSemester,
+    }).select('course');
+
+    const enrolledCourseIds = enrollments.map(e => e.course.toString());
+
+    // Map assigned courses, marking which ones student is enrolled in
+    const courses = assignments
+      .filter((a) => a.course)
+      .map((a) => ({
+        code: a.course.code,
+        name: a.course.name,
+        day: a.course.day,
+        time: a.course.time,
+        room: a.course.room,
+        credits: a.course.credits,
+        instructor: a.course.instructor,
+        isEnrolled: enrolledCourseIds.includes(a.course._id.toString()),
       }));
 
-    const semesterLabel = `${student.currentSemester} ${new Date().getFullYear()}`;
+    const semesterLabel = `${student.currentSemester} ${currentYear}`;
 
     res.status(200).json({
       success: true,
       student: {
-        name:           student.fullName,       
-        id:             student.universityId,   
-        level:          student.level,
-        gpa:            student.gpa,
+        name: student.fullName,
+        id: student.universityId,
+        level: student.level,
+        gpa: student.gpa,
         completedHours: student.completedCreditHours,
-        major:          student.major,
-        semester:       semesterLabel,
+        major: student.major,
+        semester: semesterLabel,
         courses,
       },
     });

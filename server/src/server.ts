@@ -6,6 +6,7 @@ import authRoutes from './routes/authRoutes';
 import homeRoutes from './routes/homeRoutes';
 import courseRoutes from './routes/courseRoutes';
 import adminRoutes from './routes/adminRoutes';
+import courseAssignmentRoutes from './routes/courseAssignmentRoutes';
 
 dotenv.config();
 connectDB();
@@ -40,6 +41,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/course-assignments', courseAssignmentRoutes);
 
 // Start server
 const server = app.listen(PORT, () => {
