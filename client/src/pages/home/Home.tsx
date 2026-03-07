@@ -105,6 +105,10 @@ const Home: React.FC<HomeProps> = () => {
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [currentStudent, setCurrentStudent] = useState(defaultStudent);
 
+  // Check if user is admin
+  const user = JSON.parse(localStorage.getItem("student") || "{}");
+  const isAdmin = user.role === "admin" || user.role === "superadmin";
+
   const handleSignOut = () => {
     authApi.logout();
     navigate("/login");
@@ -207,7 +211,18 @@ const Home: React.FC<HomeProps> = () => {
             </p>
           </div>
           <div className={styles.topBarRight}>
-            <div className={styles.semesterBadge}>{currentStudent.semester}</div>
+            <div className={styles.semesterBadge}>
+              {currentStudent.semester}
+            </div>
+            {isAdmin && (
+              <button
+                onClick={() => navigate("/admin/manage-courses")}
+                className={styles.adminBtn}
+                title="Manage Courses"
+              >
+                📚 Admin Panel
+              </button>
+            )}
             <div className={styles.notifBtn}>🔔</div>
           </div>
         </header>
@@ -331,7 +346,10 @@ const Home: React.FC<HomeProps> = () => {
               <tbody>
                 {currentStudent.courses.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: "center", padding: "20px" }}>
+                    <td
+                      colSpan={7}
+                      style={{ textAlign: "center", padding: "20px" }}
+                    >
                       No courses enrolled yet.
                     </td>
                   </tr>

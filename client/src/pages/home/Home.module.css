@@ -248,6 +248,28 @@
 
 .notifBtn:hover { box-shadow: var(--shadow-md); }
 
+.adminBtn {
+  background: var(--blue-mid);
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: var(--shadow);
+}
+
+.adminBtn:hover { 
+  background: var(--blue-dark); 
+  box-shadow: var(--shadow-md); 
+  transform: translateY(-1px);
+}
+
 /* ── Stats Row ── */
 .statsRow {
   display: grid;

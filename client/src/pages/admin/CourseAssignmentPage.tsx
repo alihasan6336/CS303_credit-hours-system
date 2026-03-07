@@ -26,7 +26,12 @@ interface Assignment {
 
 const CourseAssignmentPage: React.FC = () => {
   const navigate = useNavigate();
-  const [byLevel, setByLevel] = useState<Record<string, Assignment[]>>({ "1": [], "2": [], "3": [], "4": [] });
+  const [byLevel, setByLevel] = useState<Record<string, Assignment[]>>({
+    "1": [],
+    "2": [],
+    "3": [],
+    "4": [],
+  });
   const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -106,7 +111,10 @@ const CourseAssignmentPage: React.FC = () => {
     }
   };
 
-  const handleRemoveAssignment = async (assignmentId: string, courseName: string) => {
+  const handleRemoveAssignment = async (
+    assignmentId: string,
+    courseName: string,
+  ) => {
     if (!window.confirm(`Remove ${courseName} from this level?`)) {
       return;
     }
@@ -141,7 +149,11 @@ const CourseAssignmentPage: React.FC = () => {
         <div className="px-4 py-3 mx-4 bg-indigo-700/50 rounded-lg">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-semibold">
-              {user.fullName?.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+              {user.fullName
+                ?.split(" ")
+                .map((n: string) => n[0])
+                .join("")
+                .slice(0, 2)}
             </div>
             <div>
               <p className="font-medium">{user.fullName}</p>
@@ -164,15 +176,13 @@ const CourseAssignmentPage: React.FC = () => {
             <span>👥</span> Manage Accounts
           </button>
           <button
-            className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 rounded-lg text-left"
-          >
-            <span>📚</span> Course Assignments
-          </button>
-          <button
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
-            onClick={() => navigate("/admin/enrollments")}
+            onClick={() => navigate("/admin/manage-courses")}
           >
-            <span>✅</span> Enrollments
+            <span>📚</span> Manage Courses
+          </button>
+          <button className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 rounded-lg text-left">
+            <span>📋</span> Course Assignments
           </button>
         </nav>
 
@@ -190,8 +200,12 @@ const CourseAssignmentPage: React.FC = () => {
       <main className="flex-1 p-8">
         <header className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Course Assignments</h1>
-            <p className="text-gray-500 mt-1">Assign courses to academic levels</p>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Course Assignments
+            </h1>
+            <p className="text-gray-500 mt-1">
+              Assign courses to academic levels
+            </p>
           </div>
         </header>
 
@@ -199,23 +213,33 @@ const CourseAssignmentPage: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
           <div className="flex items-center gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Semester
+              </label>
               <select
                 value={filters.semester}
-                onChange={(e) => setFilters({ ...filters, semester: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, semester: e.target.value })
+                }
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 {semesters.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Academic Year
+              </label>
               <input
                 type="text"
                 value={filters.academicYear}
-                onChange={(e) => setFilters({ ...filters, academicYear: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, academicYear: e.target.value })
+                }
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="2024-2025"
               />
@@ -232,10 +256,15 @@ const CourseAssignmentPage: React.FC = () => {
         {/* Level Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {[1, 2, 3, 4].map((level) => (
-            <div key={level} className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div
+              key={level}
+              className="bg-white rounded-xl shadow-sm overflow-hidden"
+            >
               <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-white">Level {level}</h2>
+                  <h2 className="text-xl font-bold text-white">
+                    Level {level}
+                  </h2>
                   <p className="text-indigo-200 text-sm">
                     {byLevel[level]?.length || 0} courses assigned
                   </p>
@@ -250,7 +279,9 @@ const CourseAssignmentPage: React.FC = () => {
 
               <div className="p-4">
                 {byLevel[level]?.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">No courses assigned to this level</p>
+                  <p className="text-gray-500 text-center py-4">
+                    No courses assigned to this level
+                  </p>
                 ) : (
                   <div className="space-y-3">
                     {byLevel[level]?.map((assignment) => (
@@ -263,17 +294,26 @@ const CourseAssignmentPage: React.FC = () => {
                             <span className="font-mono text-indigo-600 font-semibold">
                               {assignment.course.code}
                             </span>
-                            <span className="text-gray-700">{assignment.course.name}</span>
+                            <span className="text-gray-700">
+                              {assignment.course.name}
+                            </span>
                           </div>
                           <div className="text-sm text-gray-500 mt-1">
-                            {assignment.course.day} • {assignment.course.time} • Room {assignment.course.room}
+                            {assignment.course.day} • {assignment.course.time} •
+                            Room {assignment.course.room}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {assignment.course.instructor} • {assignment.course.credits} credits
+                            {assignment.course.instructor} •{" "}
+                            {assignment.course.credits} credits
                           </div>
                         </div>
                         <button
-                          onClick={() => handleRemoveAssignment(assignment._id, assignment.course.name)}
+                          onClick={() =>
+                            handleRemoveAssignment(
+                              assignment._id,
+                              assignment.course.name,
+                            )
+                          }
                           className="text-red-600 hover:text-red-800 text-sm ml-4"
                         >
                           Remove
@@ -298,7 +338,9 @@ const CourseAssignmentPage: React.FC = () => {
 
             <form onSubmit={handleAssignCourse} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select Course</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Course
+                </label>
                 <select
                   value={selectedCourseId}
                   onChange={(e) => setSelectedCourseId(e.target.value)}
@@ -313,20 +355,25 @@ const CourseAssignmentPage: React.FC = () => {
                 </select>
                 {availableCourses.length === 0 && (
                   <p className="text-sm text-gray-500 mt-1">
-                    No courses available. All courses are already assigned to this level/semester.
+                    No courses available. All courses are already assigned to
+                    this level/semester.
                   </p>
                 )}
               </div>
 
               <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                <p><strong>Semester:</strong> {filters.semester}</p>
-                <p><strong>Academic Year:</strong> {filters.academicYear}</p>
-                <p><strong>Level:</strong> {modalLevel}</p>
+                <p>
+                  <strong>Semester:</strong> {filters.semester}
+                </p>
+                <p>
+                  <strong>Academic Year:</strong> {filters.academicYear}
+                </p>
+                <p>
+                  <strong>Level:</strong> {modalLevel}
+                </p>
               </div>
 
-              {error && (
-                <p className="text-sm text-red-600">{error}</p>
-              )}
+              {error && <p className="text-sm text-red-600">{error}</p>}
 
               <div className="flex gap-3 pt-4">
                 <button
