@@ -187,7 +187,13 @@ const Home: React.FC<HomeProps> = () => {
             <button
               key={item.label}
               className={`${styles.navItem} ${activeNav === item.label ? styles.navActive : ""}`}
-              onClick={() => setActiveNav(item.label)}
+              onClick={() => {
+                if (item.label === "Register Course") {
+                  navigate("/courses");
+                } else {
+                  setActiveNav(item.label);
+                }
+              }}
             >
               <span className={styles.navIcon}>{item.icon}</span>
               <span>{item.label}</span>

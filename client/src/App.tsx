@@ -7,20 +7,26 @@ import Home from "./pages/home/Home";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AccountManagement from "./pages/admin/AccountManagement";
 import CourseAssignmentPage from "./pages/admin/CourseAssignmentPage";
+import AvailableCourses from "./pages/student/AvailableCourses";
 import ManageCourses from "./pages/admin/ManageCourses";
 
 function ProtectedRoute() {
+  // TEMPORARY: Authentication bypassed for testing
+  return <Outlet />;
+
+  /* Original authentication code - uncomment when done testing
   const token = localStorage.getItem("authToken");
   if (!token) {
     return <Navigate to="/login" replace />;
   }
   return <Outlet />;
+  */
 }
 
 function AdminRoute() {
   // TEMPORARY: Authentication bypassed for testing
   return <Outlet />;
-  
+
   /* Original authentication code - uncomment when done testing
   const token = localStorage.getItem("authToken");
   const userStr = localStorage.getItem("student");
@@ -45,18 +51,15 @@ function AdminRoute() {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route element={<ProtectedRoute />}>
-        <Route path="/home" element={<Home />} />
-      </Route>
-      <Route element={<AdminRoute />}>
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/accounts" element={<AccountManagement />} />
-        <Route path="/admin/manage-courses" element={<ManageCourses />} />
-        <Route path="/admin/courses" element={<CourseAssignmentPage />} />
-      </Route>
+      <Route path="/home" element={<Home />} />
+      <Route path="/courses" element={<AvailableCourses />} />
+      <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/admin/accounts" element={<AccountManagement />} />
+      <Route path="/admin/courses" element={<CourseAssignmentPage />} />
+      <Route path="/admin/manage-courses" element={<ManageCourses />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
