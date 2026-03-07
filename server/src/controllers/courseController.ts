@@ -162,6 +162,118 @@ export const deleteCourse = async (req: Request, res: Response): Promise<void> =
   }
 };
 
+// PUT /api/courses/:id - Update single course
+export const updateCourse = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisite } = req.body;
+
+    const course = await Course.findByIdAndUpdate(
+      req.params.id,
+      {
+        code,
+        name,
+        day,
+        time,
+        room,
+        credits,
+        instructor,
+        capacity,
+        major,
+        studentYear,
+        prerequisite,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!course) {
+      res.status(404).json({ success: false, message: 'Course not found' });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      course: {
+        _id: course._id,
+        code: course.code,
+        name: course.name,
+        day: course.day,
+        time: course.time,
+        room: course.room,
+        credits: course.credits,
+        instructor: course.instructor,
+        capacity: course.capacity,
+        enrolledCount: course.enrolledCount,
+        major: course.major,
+        studentYear: course.studentYear,
+        prerequisite: course.prerequisite,
+      }
+    });
+  } catch (error: any) {
+    if (error.code === 11000) {
+      res.status(409).json({
+        success: false,
+        message: `Course with code "${req.body.code}" already exists`,
+      });
+      return;
+    }
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// PUT /api/courses/bulk - Bulk update courses
+export const bulkUpdateCourses = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { courses } = req.body;
+
+    if (!Array.isArray(courses) || courses.length === 0) {
+      res.status(400).json({ success: false, message: 'Courses array is required' });
+      return;
+    }
+
+    const updatePromises = courses.map(async (courseUpdate) => {
+      const { _id, ...updateData } = courseUpdate;
+      return Course.findByIdAndUpdate(
+        _id,
+        updateData,
+        { new: true, runValidators: true }
+      );
+    });
+
+    const updatedCourses = await Promise.all(updatePromises);
+
+    const failedUpdates = updatedCourses.filter(c => c === null);
+    if (failedUpdates.length > 0) {
+      res.status(404).json({
+        success: false,
+        message: `${failedUpdates.length} course(s) not found`,
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `${updatedCourses.length} course(s) updated successfully`,
+      courses: updatedCourses.map(c => ({
+        _id: c!._id,
+        code: c!.code,
+        name: c!.name,
+        day: c!.day,
+        time: c!.time,
+        room: c!.room,
+        credits: c!.credits,
+        instructor: c!.instructor,
+        capacity: c!.capacity,
+        enrolledCount: c!.enrolledCount,
+        major: c!.major,
+        studentYear: c!.studentYear,
+        prerequisite: c!.prerequisite,
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // POST /api/courses/:id/enroll
 // Triggered by Home.tsx "+ Add Course" button
 export const enrollCourse = async (req: Request, res: Response): Promise<void> => {

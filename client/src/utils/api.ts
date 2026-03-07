@@ -368,6 +368,45 @@ export const courseApi = {
     });
   },
 
+  updateCourse(id: string, body: {
+    code: string;
+    name: string;
+    day: string;
+    time: string;
+    room: string;
+    credits: number;
+    instructor: string;
+    capacity?: number;
+    major?: string;
+    studentYear?: number;
+    prerequisite?: string;
+  }): Promise<CreateCourseResponse> {
+    return request<CreateCourseResponse>(`/api/courses/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
+
+  bulkUpdateCourses(courses: Array<{
+    _id: string;
+    code?: string;
+    name?: string;
+    day?: string;
+    time?: string;
+    room?: string;
+    credits?: number;
+    instructor?: string;
+    capacity?: number;
+    major?: string;
+    studentYear?: number;
+    prerequisite?: string;
+  }>): Promise<{ success: boolean; message: string; courses: CourseData[] }> {
+    return request("/api/courses/bulk", {
+      method: "PUT",
+      body: JSON.stringify({ courses }),
+    });
+  },
+
   deleteCourse(id: string): Promise<{ success: boolean; message: string }> {
     return request(`/api/courses/${id}`, {
       method: "DELETE",
