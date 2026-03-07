@@ -3,6 +3,8 @@
 // GET    /api/courses            → list available courses
 // GET    /api/courses/:id        → single course
 // POST   /api/courses            → create course (admin)
+// PUT    /api/courses/:id        → update course (admin)
+// DELETE /api/courses/:id        → delete course (admin)
 // POST   /api/courses/:id/enroll → enroll (Home.tsx "+ Add Course" button)
 // DELETE /api/courses/:id/enroll → drop a course
 
@@ -14,10 +16,27 @@ import Enrollment from '../models/Enrollment';
 export const getCourses = async (req: Request, res: Response): Promise<void> => {
   try {
     const courses = await Course.find({ isActive: true }).select(
-      'code name day time room credits instructor capacity enrolledCount'
+      'code name day time room credits instructor capacity enrolledCount major studentYear prerequisite'
     );
 
-    res.status(200).json({ success: true, courses });
+    res.status(200).json({ 
+      success: true, 
+      courses: courses.map(c => ({
+        _id: c._id,
+        code: c.code,
+        name: c.name,
+        day: c.day,
+        time: c.time,
+        room: c.room,
+        credits: c.credits,
+        instructor: c.instructor,
+        capacity: c.capacity,
+        enrolledCount: c.enrolledCount,
+        major: c.major,
+        studentYear: c.studentYear,
+        prerequisite: c.prerequisite,
+      }))
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -56,7 +75,7 @@ export const getMyCourses = async ( req: Request,res: Response): Promise<void> =
     const enrollments = await Enrollment.find(filter)
       .populate({
         path: "course",
-        select: "code name day time room credits instructor capacity enrolledCount",
+        select: "code name day time room credits instructor capacity enrolledCount major studentYear prerequisite",
       })
       .sort({ enrolledAt: -1 });
 
@@ -74,14 +93,43 @@ export const getMyCourses = async ( req: Request,res: Response): Promise<void> =
 };
 
 // POST /api/courses
-// Course interface: code, name, day, time, room, credits, instructor
+// Course interface: code, name, day, time, room, credits, instructor, major, studentYear, prerequisite
 export const createCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { code, name, day, time, room, credits, instructor, capacity } = req.body;
+    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisite } = req.body;
 
-    const course = await Course.create({ code, name, day, time, room, credits, instructor, capacity });
+    const course = await Course.create({ 
+      code, 
+      name, 
+      day, 
+      time, 
+      room, 
+      credits, 
+      instructor, 
+      capacity,
+      major,
+      studentYear,
+      prerequisite,
+    });
 
-    res.status(201).json({ success: true, course });
+    res.status(201).json({ 
+      success: true, 
+      course: {
+        _id: course._id,
+        code: course.code,
+        name: course.name,
+        day: course.day,
+        time: course.time,
+        room: course.room,
+        credits: course.credits,
+        instructor: course.instructor,
+        capacity: course.capacity,
+        enrolledCount: course.enrolledCount,
+        major: course.major,
+        studentYear: course.studentYear,
+        prerequisite: course.prerequisite,
+      }
+    });
   } catch (error: any) {
     if (error.code === 11000) {
       res.status(409).json({
@@ -90,6 +138,26 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
       });
       return;
     }
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// DELETE /api/courses/:id
+export const deleteCourse = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const course = await Course.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
+
+    if (!course) {
+      res.status(404).json({ success: false, message: 'Course not found' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'Course deleted successfully' });
+  } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 };

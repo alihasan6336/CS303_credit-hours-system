@@ -1,6 +1,6 @@
 
 import { Router } from 'express';
-import {getCourses,getCourseByID, createCourse,enrollCourse,dropCourse,getMyCourses} from '../controllers/courseController';
+import {getCourses,getCourseByID, createCourse, deleteCourse, enrollCourse, dropCourse, getMyCourses} from '../controllers/courseController';
 import { protect } from '../middleware/protect';
 
 const router = Router();
@@ -14,6 +14,8 @@ router.get("/my-courses", getMyCourses);
 router.get("/:id", getCourseByID);
 
 router.post("/", protect, createCourse); //admin
+
+router.delete("/:id", protect, deleteCourse); //admin
 
 router.post('/:id/enroll',   enrollCourse);  
 router.delete('/:id/enroll', dropCourse);    

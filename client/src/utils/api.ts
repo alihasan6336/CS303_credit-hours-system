@@ -316,5 +316,64 @@ export const courseAssignmentApi = {
   },
 };
 
+// Course API for ManageCourses page
+interface CourseData {
+  _id: string;
+  code: string;
+  name: string;
+  day: string;
+  time: string;
+  room: string;
+  credits: number;
+  instructor: string;
+  capacity: number;
+  enrolledCount: number;
+  major?: string;
+  studentYear?: number;
+  prerequisite?: string;
+}
+
+interface CoursesListResponse {
+  success: boolean;
+  courses: CourseData[];
+}
+
+interface CreateCourseResponse {
+  success: boolean;
+  course: CourseData;
+  message?: string;
+}
+
+export const courseApi = {
+  getAllCourses(): Promise<CoursesListResponse> {
+    return request<CoursesListResponse>("/api/courses");
+  },
+
+  createCourse(body: {
+    code: string;
+    name: string;
+    day: string;
+    time: string;
+    room: string;
+    credits: number;
+    instructor: string;
+    capacity?: number;
+    major?: string;
+    studentYear?: number;
+    prerequisite?: string;
+  }): Promise<CreateCourseResponse> {
+    return request<CreateCourseResponse>("/api/courses", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  deleteCourse(id: string): Promise<{ success: boolean; message: string }> {
+    return request(`/api/courses/${id}`, {
+      method: "DELETE",
+    });
+  },
+};
+
 export type { StudentFromApi, AuthResponse, MeResponse, HomeResponse, CourseFromApi };
 

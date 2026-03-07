@@ -1,8 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi } from "../../utils/api";
+import { authApi, courseApi } from "../../utils/api";
 import type { Course, CourseFormData } from "../../types/course";
 import { MAJORS, STUDENT_YEARS } from "../../types/course";
+
+// API returns different field names, we map them to frontend Course type
+interface CourseFromApi {
+  _id: string;
+  code: string;
+  name: string;
+  day: string;
+  time: string;
+  room: string;
+  credits: number;
+  instructor: string;
+  capacity: number;
+  enrolledCount: number;
+  major?: string;
+  studentYear?: number;
+  prerequisite?: string;
+}
 
 const ManageCourses: React.FC = () => {
   const navigate = useNavigate();
@@ -28,47 +45,25 @@ const ManageCourses: React.FC = () => {
     fetchCourses();
   }, []);
 
+  // Map API response to frontend Course type
+  const mapApiToCourse = (apiCourse: CourseFromApi): Course => ({
+    _id: apiCourse._id,
+    courseName: apiCourse.name,
+    courseCode: apiCourse.code,
+    major: apiCourse.major || "",
+    studentYear: apiCourse.studentYear || 1,
+    creditHours: apiCourse.credits,
+    instructorName: apiCourse.instructor,
+    prerequisite: apiCourse.prerequisite || "",
+  });
+
   const fetchCourses = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const response = await courseApi.getAllCourses();
-      // if (response.success) {
-      //   setCourses(response.courses);
-      // }
-
-      // Mock data for now
-      setCourses([
-        {
-          _id: "1",
-          courseName: "Introduction to Programming",
-          courseCode: "CS101",
-          major: "Computer Science",
-          studentYear: 1,
-          creditHours: 3,
-          instructorName: "Dr. Ahmed Hassan",
-        },
-        {
-          _id: "2",
-          courseName: "Data Structures",
-          courseCode: "CS201",
-          major: "Computer Science",
-          studentYear: 2,
-          creditHours: 4,
-          instructorName: "Dr. Sara Ali",
-          prerequisite: "CS101",
-        },
-        {
-          _id: "3",
-          courseName: "Database Systems",
-          courseCode: "CS301",
-          major: "Computer Science",
-          studentYear: 3,
-          creditHours: 3,
-          instructorName: "Dr. Mohamed Khalil",
-          prerequisite: "CS201",
-        },
-      ]);
+      const response = await courseApi.getAllCourses();
+      if (response.success) {
+        setCourses(response.courses.map(mapApiToCourse));
+      }
     } catch (err: unknown) {
       const error = err as Error;
       setError(error.message || "Failed to load courses");
@@ -101,22 +96,25 @@ const ManageCourses: React.FC = () => {
     setError("");
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await courseApi.createCourse(formData);
-      // if (response.success) {
-      //   await fetchCourses();
-      //   setShowModal(false);
-      //   resetForm();
-      // }
+      const response = await courseApi.createCourse({
+        code: formData.courseCode,
+        name: formData.courseName,
+        day: "Sunday", // Default values for required fields
+        time: "08:00 - 09:30",
+        room: "TBA",
+        credits: formData.creditHours,
+        instructor: formData.instructorName || "TBA",
+        capacity: 30,
+        major: formData.major,
+        studentYear: formData.studentYear,
+        prerequisite: formData.prerequisite || undefined,
+      });
 
-      // Mock success for now
-      const newCourse: Course = {
-        _id: Date.now().toString(),
-        ...formData,
-      };
-      setCourses((prev) => [...prev, newCourse]);
-      setShowModal(false);
-      resetForm();
+      if (response.success) {
+        await fetchCourses();
+        setShowModal(false);
+        resetForm();
+      }
     } catch (err: unknown) {
       const error = err as Error;
       setError(error.message || "Failed to add course");
@@ -129,9 +127,10 @@ const ManageCourses: React.FC = () => {
     if (!confirm("Are you sure you want to delete this course?")) return;
 
     try {
-      // TODO: Replace with actual API call
-      // await courseApi.deleteCourse(courseId);
-      setCourses((prev) => prev.filter((c) => c._id !== courseId));
+      const response = await courseApi.deleteCourse(courseId);
+      if (response.success) {
+        setCourses((prev) => prev.filter((c) => c._id !== courseId));
+      }
     } catch (err: unknown) {
       const error = err as Error;
       setError(error.message || "Failed to delete course");

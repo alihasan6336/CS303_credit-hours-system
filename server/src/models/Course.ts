@@ -1,4 +1,3 @@
-
 import mongoose, { Document, Schema } from 'mongoose';
                        
 export interface ICourse extends Document {
@@ -11,6 +10,9 @@ export interface ICourse extends Document {
   instructor: string;
   capacity:      number;
   enrolledCount: number;
+  major?:        string;
+  studentYear?:  number;
+  prerequisite?: string;
   isActive:      boolean;
   createdAt:     Date;
   updatedAt:     Date;
@@ -74,6 +76,22 @@ const CourseSchema = new Schema<ICourse>(
       type: Number,
       default: 0,
       min: 0,
+    },
+
+    major: {
+      type: String,
+      enum: ['Computer Science', 'Information Technology', 'Software Engineering', 'Cybersecurity', 'Data Science', 'Computer Engineering'],
+    },
+
+    studentYear: {
+      type: Number,
+      min: 1,
+      max: 4,
+    },
+
+    prerequisite: {
+      type: String,
+      trim: true,
     },
 
     isActive: {
