@@ -1,11 +1,14 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
-                               // main fields // all has 1-1 map 
+// main fields // all has 1-1 map 
+export type UserRole = 'superadmin' | 'admin' | 'student';
+
 export interface IStudent extends Document {
   fullName: string;
   universityId: string;
   email: string;
   password: string;
+  role: UserRole;
   major: string;
   academicYear: '1st Year' | '2nd Year' | '3rd Year' | '4th Year';
   currentSemester: 'Fall' | 'Spring' | 'Summer';
@@ -48,7 +51,13 @@ const StudentSchema: Schema = new Schema(
       type: String,
       required: [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters'],
-      select: false, 
+      select: false,
+    },
+
+    role: {
+      type: String,
+      enum: ['superadmin', 'admin', 'student'],
+      default: 'student',
     },
 
     major: {
@@ -106,7 +115,7 @@ const StudentSchema: Schema = new Schema(
       min: 1,
       max: 4,
     },
-               //  for password mis //
+    //  for password mis //
     resetPasswordToken: {
       type: String,
       select: false,
@@ -118,16 +127,16 @@ const StudentSchema: Schema = new Schema(
     },
   },
   {
-    timestamps: true, 
+    timestamps: true,
   }
 );
-                         // hash pass // 
+// hash pass // 
 StudentSchema.pre<IStudent>('save', async function () {
-  if (!this.isModified('password')) return ;
+  if (!this.isModified('password')) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
-                           // compare pass //
+// compare pass //
 StudentSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
