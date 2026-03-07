@@ -82,7 +82,11 @@ const AdminDashboard: React.FC = () => {
         <div className="px-4 py-3 mx-4 bg-indigo-700/50 rounded-lg">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-semibold">
-              {user.fullName?.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+              {user.fullName
+                ?.split(" ")
+                .map((n: string) => n[0])
+                .join("")
+                .slice(0, 2)}
             </div>
             <div>
               <p className="font-medium">{user.fullName}</p>
@@ -106,9 +110,15 @@ const AdminDashboard: React.FC = () => {
           </button>
           <button
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
-            onClick={() => navigate("/admin/enrollments")}
+            onClick={() => navigate("/admin/manage-courses")}
           >
-            <span>📚</span> Enrollments
+            <span>📚</span> Manage Courses
+          </button>
+          <button
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
+            onClick={() => navigate("/admin/courses")}
+          >
+            <span>📋</span> Course Assignments
           </button>
         </nav>
 
@@ -135,7 +145,9 @@ const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm">Total Students</p>
-                <p className="text-3xl font-bold text-gray-800">{stats?.totalStudents || 0}</p>
+                <p className="text-3xl font-bold text-gray-800">
+                  {stats?.totalStudents || 0}
+                </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-2xl">
                 🎓
@@ -147,7 +159,9 @@ const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm">Total Courses</p>
-                <p className="text-3xl font-bold text-gray-800">{stats?.totalCourses || 0}</p>
+                <p className="text-3xl font-bold text-gray-800">
+                  {stats?.totalCourses || 0}
+                </p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-2xl">
                 📚
@@ -159,7 +173,9 @@ const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm">Total Enrollments</p>
-                <p className="text-3xl font-bold text-gray-800">{stats?.totalEnrollments || 0}</p>
+                <p className="text-3xl font-bold text-gray-800">
+                  {stats?.totalEnrollments || 0}
+                </p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl">
                 ✅
@@ -171,7 +187,9 @@ const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm">Total Admins</p>
-                <p className="text-3xl font-bold text-gray-800">{stats?.totalAdmins || 0}</p>
+                <p className="text-3xl font-bold text-gray-800">
+                  {stats?.totalAdmins || 0}
+                </p>
               </div>
               <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-2xl">
                 👤
@@ -184,34 +202,44 @@ const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Students by Level */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Students by Level</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Students by Level
+            </h3>
             <div className="space-y-3">
               {studentsByLevel.map((item) => (
                 <div key={item.level} className="flex items-center gap-4">
-                  <span className="w-20 text-sm text-gray-600">Level {item.level}</span>
+                  <span className="w-20 text-sm text-gray-600">
+                    Level {item.level}
+                  </span>
                   <div className="flex-1 bg-gray-200 rounded-full h-4">
                     <div
                       className="bg-indigo-500 h-4 rounded-full"
                       style={{
                         width: `${Math.min(
                           100,
-                          ((item.count / (stats?.totalStudents || 1)) * 100)
+                          (item.count / (stats?.totalStudents || 1)) * 100,
                         )}%`,
                       }}
                     />
                   </div>
-                  <span className="w-12 text-sm font-medium text-gray-700">{item.count}</span>
+                  <span className="w-12 text-sm font-medium text-gray-700">
+                    {item.count}
+                  </span>
                 </div>
               ))}
               {studentsByLevel.length === 0 && (
-                <p className="text-gray-500 text-center py-4">No data available</p>
+                <p className="text-gray-500 text-center py-4">
+                  No data available
+                </p>
               )}
             </div>
           </div>
 
           {/* Popular Courses */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Popular Courses</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Popular Courses
+            </h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -225,15 +253,22 @@ const AdminDashboard: React.FC = () => {
                 <tbody>
                   {courses.map((course) => (
                     <tr key={course.code} className="border-b last:border-0">
-                      <td className="py-3 font-mono text-sm text-indigo-600">{course.code}</td>
+                      <td className="py-3 font-mono text-sm text-indigo-600">
+                        {course.code}
+                      </td>
                       <td className="py-3 text-sm">{course.name}</td>
                       <td className="py-3 text-sm">{course.enrolled}</td>
-                      <td className="py-3 text-sm text-gray-500">{course.capacity}</td>
+                      <td className="py-3 text-sm text-gray-500">
+                        {course.capacity}
+                      </td>
                     </tr>
                   ))}
                   {courses.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-4 text-center text-gray-500">
+                      <td
+                        colSpan={4}
+                        className="py-4 text-center text-gray-500"
+                      >
                         No courses available
                       </td>
                     </tr>

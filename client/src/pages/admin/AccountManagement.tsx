@@ -20,7 +20,9 @@ const AccountManagement: React.FC = () => {
   const navigate = useNavigate();
   const [students, setStudents] = useState<StudentAccount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"student" | "admin" | "superadmin">("student");
+  const [activeTab, setActiveTab] = useState<
+    "student" | "admin" | "superadmin"
+  >("student");
   const [showModal, setShowModal] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
@@ -74,9 +76,14 @@ const AccountManagement: React.FC = () => {
         password: formData.password,
         universityId: formData.universityId || undefined,
         major: formData.role === "student" ? formData.major : undefined,
-        academicYear: formData.role === "student" ? formData.academicYear : undefined,
-        currentSemester: formData.role === "student" ? formData.currentSemester : undefined,
-        completedCreditHours: formData.role === "student" ? formData.completedCreditHours : undefined,
+        academicYear:
+          formData.role === "student" ? formData.academicYear : undefined,
+        currentSemester:
+          formData.role === "student" ? formData.currentSemester : undefined,
+        completedCreditHours:
+          formData.role === "student"
+            ? formData.completedCreditHours
+            : undefined,
         role: formData.role,
       });
 
@@ -150,7 +157,11 @@ const AccountManagement: React.FC = () => {
         <div className="px-4 py-3 mx-4 bg-indigo-700/50 rounded-lg">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-semibold">
-              {user.fullName?.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+              {user.fullName
+                ?.split(" ")
+                .map((n: string) => n[0])
+                .join("")
+                .slice(0, 2)}
             </div>
             <div>
               <p className="font-medium">{user.fullName}</p>
@@ -174,9 +185,15 @@ const AccountManagement: React.FC = () => {
           </button>
           <button
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
-            onClick={() => navigate("/admin/enrollments")}
+            onClick={() => navigate("/admin/manage-courses")}
           >
-            <span>📚</span> Enrollments
+            <span>📚</span> Manage Courses
+          </button>
+          <button
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
+            onClick={() => navigate("/admin/courses")}
+          >
+            <span>📋</span> Course Assignments
           </button>
         </nav>
 
@@ -194,8 +211,12 @@ const AccountManagement: React.FC = () => {
       <main className="flex-1 p-8">
         <header className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Manage Accounts</h1>
-            <p className="text-gray-500 mt-1">Create and manage user accounts</p>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Manage Accounts
+            </h1>
+            <p className="text-gray-500 mt-1">
+              Create and manage user accounts
+            </p>
           </div>
           {isSuperAdmin && (
             <button
@@ -235,44 +256,72 @@ const AccountManagement: React.FC = () => {
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 border-b">
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Name</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Email</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">ID</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                  Name
+                </th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                  Email
+                </th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                  ID
+                </th>
                 {activeTab === "student" && (
                   <>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Major</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Level</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                      Major
+                    </th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                      Level
+                    </th>
                   </>
                 )}
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Role</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                  Role
+                </th>
                 {isSuperAdmin && (
-                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                    Actions
+                  </th>
                 )}
               </tr>
             </thead>
             <tbody>
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                  <td
+                    colSpan={7}
+                    className="px-6 py-8 text-center text-gray-500"
+                  >
                     No {activeTab}s found
                   </td>
                 </tr>
               ) : (
                 filteredStudents.map((student) => (
-                  <tr key={student.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <tr
+                    key={student.id}
+                    className="border-b last:border-0 hover:bg-gray-50"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold text-sm">
-                          {student.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                          {student.fullName
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .slice(0, 2)}
                         </div>
                         <span className="font-medium">{student.fullName}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">{student.email}</td>
-                    <td className="px-6 py-4 text-gray-600">{student.universityId}</td>
+                    <td className="px-6 py-4 text-gray-600">
+                      {student.universityId}
+                    </td>
                     {activeTab === "student" && (
                       <>
-                        <td className="px-6 py-4 text-gray-600">{student.major}</td>
+                        <td className="px-6 py-4 text-gray-600">
+                          {student.major}
+                        </td>
                         <td className="px-6 py-4">
                           <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm">
                             Level {student.level}
@@ -286,8 +335,8 @@ const AccountManagement: React.FC = () => {
                           student.role === "superadmin"
                             ? "bg-purple-100 text-purple-700"
                             : student.role === "admin"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-700"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-700"
                         }`}
                       >
                         {student.role}
@@ -296,7 +345,9 @@ const AccountManagement: React.FC = () => {
                     {isSuperAdmin && (
                       <td className="px-6 py-4">
                         <button
-                          onClick={() => handleDeleteAccount(student.id, student.fullName)}
+                          onClick={() =>
+                            handleDeleteAccount(student.id, student.fullName)
+                          }
                           className="text-red-600 hover:text-red-800 text-sm"
                         >
                           Delete
@@ -315,37 +366,51 @@ const AccountManagement: React.FC = () => {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Create New Account</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">
+              Create New Account
+            </h2>
 
             <form onSubmit={handleCreateAccount} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name *
+                </label>
                 <input
                   type="text"
                   value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fullName: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email *
+                </label>
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Password *
+                </label>
                 <input
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   required
                   minLength={6}
@@ -353,10 +418,14 @@ const AccountManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Role *
+                </label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, role: e.target.value as any })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   <option value="student">Student</option>
@@ -368,20 +437,31 @@ const AccountManagement: React.FC = () => {
               {formData.role === "student" && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">University ID</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      University ID
+                    </label>
                     <input
                       type="text"
                       value={formData.universityId}
-                      onChange={(e) => setFormData({ ...formData, universityId: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          universityId: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Major</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Major
+                    </label>
                     <select
                       value={formData.major}
-                      onChange={(e) => setFormData({ ...formData, major: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, major: e.target.value })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
                       {majors.map((m) => (
@@ -393,10 +473,17 @@ const AccountManagement: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Academic Year
+                    </label>
                     <select
                       value={formData.academicYear}
-                      onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          academicYear: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
                       <option value="1st Year">1st Year</option>
@@ -407,10 +494,17 @@ const AccountManagement: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Semester</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Current Semester
+                    </label>
                     <select
                       value={formData.currentSemester}
-                      onChange={(e) => setFormData({ ...formData, currentSemester: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          currentSemester: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
                       <option value="Fall">Fall</option>
@@ -421,9 +515,7 @@ const AccountManagement: React.FC = () => {
                 </>
               )}
 
-              {error && (
-                <p className="text-sm text-red-600">{error}</p>
-              )}
+              {error && <p className="text-sm text-red-600">{error}</p>}
 
               <div className="flex gap-3 pt-4">
                 <button
