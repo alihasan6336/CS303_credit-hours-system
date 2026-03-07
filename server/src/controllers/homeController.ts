@@ -62,15 +62,20 @@ export const getHomeData = async (
     res.status(200).json({
       success: true,
       student: {
-        name: student.fullName,
-        id: student.universityId,
-        level: student.level,
-        gpa: student.gpa,
-        completedHours: student.completedCreditHours,
+        id: student._id,
+        fullName: student.fullName,
+        universityId: student.universityId,
+        email: student.email,
         major: student.major,
-        semester: semesterLabel,
-        courses,
+        academicYear: student.academicYear,
+        currentSemester: student.currentSemester,
+        completedCreditHours: student.completedCreditHours,
+        phoneNumber: student.phoneNumber,
+        gpa: student.gpa,
+        level: student.level,
+        role: student.role,
       },
+      courses,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

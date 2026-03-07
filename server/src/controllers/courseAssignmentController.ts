@@ -95,8 +95,24 @@ export const getAvailableCourses = async (req: Request, res: Response): Promise<
     const { level, semester, academicYear } = req.query;
 
     if (!level || !semester || !academicYear) {
-      const courses = await Course.find({ isActive: true }).sort({ code: 1 });
-      res.status(200).json({ success: true, courses });
+      const courses = await Course.find({ isActive: true })
+        .select('code name credits day time room instructor capacity enrolledCount')
+        .sort({ code: 1 });
+      res.status(200).json({ 
+        success: true, 
+        courses: courses.map(c => ({
+          _id: c._id,
+          code: c.code,
+          name: c.name,
+          credits: c.credits,
+          day: c.day,
+          time: c.time,
+          room: c.room,
+          instructor: c.instructor,
+          capacity: c.capacity,
+          enrolledCount: c.enrolledCount,
+        }))
+      });
       return;
     }
 
@@ -113,9 +129,25 @@ export const getAvailableCourses = async (req: Request, res: Response): Promise<
     const courses = await Course.find({
       isActive: true,
       _id: { $nin: assignedIds },
-    }).sort({ code: 1 });
+    })
+      .select('code name credits day time room instructor capacity enrolledCount')
+      .sort({ code: 1 });
 
-    res.status(200).json({ success: true, courses });
+    res.status(200).json({ 
+      success: true, 
+      courses: courses.map(c => ({
+        _id: c._id,
+        code: c.code,
+        name: c.name,
+        credits: c.credits,
+        day: c.day,
+        time: c.time,
+        room: c.room,
+        instructor: c.instructor,
+        capacity: c.capacity,
+        enrolledCount: c.enrolledCount,
+      }))
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -134,11 +166,29 @@ export const getAssignmentsByLevel = async (req: Request, res: Response): Promis
       .populate('course', 'code name day time room credits instructor capacity enrolledCount')
       .sort({ level: 1, 'course.code': 1 });
 
-    // Group by level
+    // Group by level and transform for frontend
     const byLevel: Record<number, any[]> = { 1: [], 2: [], 3: [], 4: [] };
     assignments.forEach(a => {
       if (byLevel[a.level]) {
-        byLevel[a.level].push(a);
+        byLevel[a.level].push({
+          _id: a._id,
+          course: {
+            _id: (a.course as any)._id,
+            code: (a.course as any).code,
+            name: (a.course as any).name,
+            day: (a.course as any).day,
+            time: (a.course as any).time,
+            room: (a.course as any).room,
+            credits: (a.course as any).credits,
+            instructor: (a.course as any).instructor,
+            capacity: (a.course as any).capacity,
+            enrolledCount: (a.course as any).enrolledCount,
+          },
+          level: a.level,
+          semester: a.semester,
+          academicYear: a.academicYear,
+          isActive: a.isActive,
+        });
       }
     });
 

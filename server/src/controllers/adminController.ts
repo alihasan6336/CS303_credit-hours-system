@@ -42,7 +42,22 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
             .select('fullName email universityId major academicYear level role gpa completedCreditHours currentSemester')
             .sort({ createdAt: -1 });
 
-        res.status(200).json({ success: true, students });
+        res.status(200).json({ 
+            success: true, 
+            students: students.map(s => ({
+                id: s._id,
+                fullName: s.fullName,
+                email: s.email,
+                universityId: s.universityId,
+                major: s.major,
+                academicYear: s.academicYear,
+                level: s.level,
+                role: s.role,
+                gpa: s.gpa,
+                completedCreditHours: s.completedCreditHours,
+                currentSemester: s.currentSemester,
+            }))
+        });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -104,7 +119,28 @@ export const getAllEnrollments = async (req: Request, res: Response): Promise<vo
             .populate('course', 'code name credits')
             .sort({ enrolledAt: -1 });
 
-        res.status(200).json({ success: true, enrollments });
+        res.status(200).json({ 
+            success: true, 
+            enrollments: enrollments.map(e => ({
+                _id: e._id,
+                student: {
+                    _id: (e.student as any)._id,
+                    fullName: (e.student as any).fullName,
+                    universityId: (e.student as any).universityId,
+                    email: (e.student as any).email,
+                    level: (e.student as any).level,
+                },
+                course: {
+                    _id: (e.course as any)._id,
+                    code: (e.course as any).code,
+                    name: (e.course as any).name,
+                    credits: (e.course as any).credits,
+                },
+                semester: e.semester,
+                academicYear: e.academicYear,
+                enrolledAt: e.enrolledAt,
+            }))
+        });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }
