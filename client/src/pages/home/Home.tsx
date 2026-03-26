@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import styles from "./Home.module.css";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../utils/api";
+import { Home as HomeIcon, BookOpen, PlusCircle, BarChart2, Calendar, Settings} from "lucide-react";
 
 interface Course {
   code: string;
@@ -84,12 +85,12 @@ const defaultStudent = {
 };
 
 const navItems = [
-  { icon: "🏠", label: "Dashboard", active: true },
-  { icon: "📚", label: "My Courses", active: false },
-  { icon: "➕", label: "Register Course", active: false },
-  { icon: "📊", label: "Academic Record", active: false },
-  { icon: "🗓️", label: "Schedule", active: false },
-  { icon: "⚙️", label: "Settings", active: false },
+  { icon: <HomeIcon size={20} />, label: "Dashboard", path: "/home" },
+  { icon: <BookOpen size={20} />, label: "My Courses", path: "/home" },
+  { icon: <PlusCircle size={20} />, label: "Register Course", path: "/courses" },
+  { icon: <BarChart2 size={20} />, label: "Academic Record", path: "#" },
+  { icon: <Calendar size={20} />, label: "Schedule", path: "#" },
+  { icon: <Settings size={20} />, label: "Settings", path: "#" },
 ];
 
 const dayColors: Record<string, string> = {
@@ -183,23 +184,20 @@ const Home: React.FC<HomeProps> = () => {
         </div>
 
         <nav className={styles.sidebarNav}>
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              className={`${styles.navItem} ${activeNav === item.label ? styles.navActive : ""}`}
-              onClick={() => {
-                if (item.label === "Register Course") {
-                  navigate("/courses");
-                } else {
-                  setActiveNav(item.label);
-                }
-              }}
-            >
-              <span className={styles.navIcon}>{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
+  {navItems.map((item) => (
+    <button
+      key={item.label}
+      className={`${styles.navItem} ${activeNav === item.label ? styles.navActive : ""}`}
+      onClick={() => {
+        setActiveNav(item.label);
+        if (item.path !== "#") navigate(item.path);
+      }}
+    >
+      <span className={styles.navIcon}>{item.icon}</span>
+      <span>{item.label}</span>
+    </button>
+  ))}
+</nav>
 
         <button className={styles.logoutBtn} onClick={handleSignOut}>
           <span>🚪</span> Sign Out
