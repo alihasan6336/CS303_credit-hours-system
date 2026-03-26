@@ -73,6 +73,15 @@ async function request<T>(
   }
 
   if (!res.ok) {
+    // Handle 401 Unauthorized - auto redirect to login
+    if (res.status === 401) {
+      // Clear auth data
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("student");
+      // Redirect to login page
+      window.location.href = "/login";
+      throw new Error("Session expired. Redirecting to login...");
+    }
     const message =
       data?.message ||
       (typeof data === "string" ? data : "Something went wrong");
