@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import styles from "./Home.module.css";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../utils/api";
-import { Home as HomeIcon, BookOpen, PlusCircle, BarChart2, Calendar, Settings} from "lucide-react";
+
 
 interface Course {
   code: string;
@@ -84,14 +84,7 @@ const defaultStudent = {
   ],
 };
 
-const navItems = [
-  { icon: <HomeIcon size={20} />, label: "Dashboard", path: "/home" },
-  { icon: <BookOpen size={20} />, label: "My Courses", path: "/home" },
-  { icon: <PlusCircle size={20} />, label: "Register Course", path: "/courses" },
-  { icon: <BarChart2 size={20} />, label: "Academic Record", path: "#" },
-  { icon: <Calendar size={20} />, label: "Schedule", path: "#" },
-  { icon: <Settings size={20} />, label: "Settings", path: "#" },
-];
+
 
 const dayColors: Record<string, string> = {
   Sunday: styles.daySunday,
@@ -103,17 +96,14 @@ const dayColors: Record<string, string> = {
 
 const Home: React.FC<HomeProps> = () => {
   const navigate = useNavigate();
-  const [activeNav, setActiveNav] = useState("Dashboard");
+
   const [currentStudent, setCurrentStudent] = useState(defaultStudent);
 
   // Check if user is admin
   const user = JSON.parse(localStorage.getItem("student") || "{}");
   const isAdmin = user.role === "admin" || user.role === "superadmin";
 
-  const handleSignOut = () => {
-    authApi.logout();
-    navigate("/login");
-  };
+
 
   const totalCredits = currentStudent.courses.reduce(
     (sum, c) => sum + c.credits,
@@ -158,51 +148,7 @@ const Home: React.FC<HomeProps> = () => {
 
   return (
     <div className={styles.homeContainer}>
-      {/* ── Blue Sidebar ── */}
-      <aside className={styles.blueSidebar}>
-        <div className={styles.sidebarHeader}>
-          <div className={styles.gradCapIcon}>🎓</div>
-          <h2>
-            Credit Hours
-            <br />
-            System
-          </h2>
-        </div>
 
-        <div className={styles.studentCard}>
-          <div className={styles.avatar}>
-            {currentStudent.name
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .slice(0, 2)}
-          </div>
-          <div className={styles.studentInfo}>
-            <p className={styles.studentName}>{currentStudent.name}</p>
-            <p className={styles.studentId}>{currentStudent.id}</p>
-          </div>
-        </div>
-
-        <nav className={styles.sidebarNav}>
-  {navItems.map((item) => (
-    <button
-      key={item.label}
-      className={`${styles.navItem} ${activeNav === item.label ? styles.navActive : ""}`}
-      onClick={() => {
-        setActiveNav(item.label);
-        if (item.path !== "#") navigate(item.path);
-      }}
-    >
-      <span className={styles.navIcon}>{item.icon}</span>
-      <span>{item.label}</span>
-    </button>
-  ))}
-</nav>
-
-        <button className={styles.logoutBtn} onClick={handleSignOut}>
-          <span>🚪</span> Sign Out
-        </button>
-      </aside>
 
       {/* ── Main Content ── */}
       <main className={styles.mainContent}>
@@ -227,7 +173,12 @@ const Home: React.FC<HomeProps> = () => {
                 📚 Admin Panel
               </button>
             )}
-            <div className={styles.notifBtn}>🔔</div>
+            <button
+  className={styles.notifBtn}
+  onClick={() => navigate("/notifications")}
+>
+  🔔
+</button>
           </div>
         </header>
 
@@ -332,7 +283,12 @@ const Home: React.FC<HomeProps> = () => {
         <section className={styles.coursesSection}>
           <div className={styles.sectionHeader}>
             <h3 className={styles.cardTitle}>Registered Courses</h3>
-            <button className={styles.addCourseBtn}>+ Add Course</button>
+            <button
+  className={styles.addCourseBtn}
+  onClick={() => navigate("/courses")}
+>
+  + Add Course
+</button>
           </div>
           <div className={styles.tableWrapper}>
             <table className={styles.coursesTable}>
