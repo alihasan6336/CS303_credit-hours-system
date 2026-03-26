@@ -9,18 +9,22 @@
 // DELETE /api/courses/:id/enroll → drop a course
 
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Course from '../models/Course';
 import Enrollment from '../models/Enrollment';
+import AuditLog from '../models/AuditLog';
+import { AppError } from '../middleware/errorHandler';
 
 // GET /api/courses
 export const getCourses = async (req: Request, res: Response): Promise<void> => {
   try {
-    const courses = await Course.find({ isActive: true }).select(
-      'code name day time room credits instructor capacity enrolledCount major studentYear prerequisite'
-    );
+    const courses = await Course.find({ isActive: true })
+      .select('code name day time room credits instructor capacity enrolledCount major studentYear prerequisite')
+      .lean();
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
+      count: courses.length,
       courses: courses.map(c => ({
         _id: c._id,
         code: c.code,
@@ -45,7 +49,13 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
 // GET /api/courses/:id
 export const getCourseByID = async (req: Request, res: Response): Promise<void> => {
   try {
-    const course = await Course.findById(req.params.id);
+    const id = req.params.id as string;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ success: false, message: 'Invalid course ID format' });
+      return;
+    }
+
+    const course = await Course.findById(id).lean();
     if (!course) {
       res.status(404).json({ success: false, message: 'Course not found' });
       return;
@@ -58,26 +68,22 @@ export const getCourseByID = async (req: Request, res: Response): Promise<void> 
 
 
 // GET /api/courses/my-courses
-export const getMyCourses = async ( req: Request,res: Response): Promise<void> => {
+export const getMyCourses = async (req: Request, res: Response): Promise<void> => {
   try {
     const student = req.student!;
-
     const { semester, academicYear } = req.query;
 
-    const filter: any = {
-      student: student._id,
-    };
-
-    // Optional filtering
+    const filter: any = { student: student._id };
     if (semester) filter.semester = semester;
     if (academicYear) filter.academicYear = academicYear;
 
     const enrollments = await Enrollment.find(filter)
       .populate({
-        path: "course",
-        select: "code name day time room credits instructor capacity enrolledCount major studentYear prerequisite",
+        path: 'course',
+        select: 'code name day time room credits instructor capacity enrolledCount major studentYear prerequisite',
       })
-      .sort({ enrolledAt: -1 });
+      .sort({ enrolledAt: -1 })
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -85,35 +91,43 @@ export const getMyCourses = async ( req: Request,res: Response): Promise<void> =
       data: enrollments,
     });
   } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // POST /api/courses
-// Course interface: code, name, day, time, room, credits, instructor, major, studentYear, prerequisite
 export const createCourse = async (req: Request, res: Response): Promise<void> => {
   try {
     const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisite } = req.body;
+    const creator = req.adminUser;
 
-    const course = await Course.create({ 
-      code, 
-      name, 
-      day, 
-      time, 
-      room, 
-      credits, 
-      instructor, 
-      capacity,
+    const course = await Course.create({
+      code,
+      name,
+      day: day || 'Sunday',
+      time: time || '08:00 - 09:30',
+      room: room || 'TBA',
+      credits,
+      instructor,
+      capacity: capacity || 30,
       major,
       studentYear,
       prerequisite,
     });
 
-    res.status(201).json({ 
-      success: true, 
+    // Audit log
+    if (creator) {
+      await AuditLog.create({
+        actor: creator._id,
+        action: 'course:create',
+        targetCourse: course._id,
+        details: { code, name, major, studentYear },
+        ipAddress: req.ip,
+      });
+    }
+
+    res.status(201).json({
+      success: true,
       course: {
         _id: course._id,
         code: course.code,
@@ -142,11 +156,17 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-// DELETE /api/courses/:id
+// DELETE /api/courses/:id - Soft delete
 export const deleteCourse = async (req: Request, res: Response): Promise<void> => {
   try {
+    const id = req.params.id as string;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ success: false, message: 'Invalid course ID format' });
+      return;
+    }
+
     const course = await Course.findByIdAndUpdate(
-      req.params.id,
+      id,
       { isActive: false },
       { new: true }
     );
@@ -156,7 +176,21 @@ export const deleteCourse = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    res.status(200).json({ success: true, message: 'Course deleted successfully' });
+    // Audit log
+    if (req.adminUser) {
+      await AuditLog.create({
+        actor: req.adminUser._id,
+        action: 'course:delete',
+        targetCourse: course._id,
+        details: { code: course.code, softDelete: true },
+        ipAddress: req.ip,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Course "${course.code}" deactivated (soft delete). Enrollment history preserved.`,
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -165,29 +199,50 @@ export const deleteCourse = async (req: Request, res: Response): Promise<void> =
 // PUT /api/courses/:id - Update single course
 export const updateCourse = async (req: Request, res: Response): Promise<void> => {
   try {
+    const id = req.params.id as string;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ success: false, message: 'Invalid course ID format' });
+      return;
+    }
+
     const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisite } = req.body;
 
+    // Guard: cannot reduce capacity below current enrollment
+    if (capacity !== undefined) {
+      const existingCourse = await Course.findById(id).select('enrolledCount').lean();
+      if (!existingCourse) {
+        res.status(404).json({ success: false, message: 'Course not found' });
+        return;
+      }
+      if (capacity < existingCourse.enrolledCount) {
+        res.status(400).json({
+          success: false,
+          message: `Cannot set capacity to ${capacity} — ${existingCourse.enrolledCount} students are enrolled.`,
+        });
+        return;
+      }
+    }
+
     const course = await Course.findByIdAndUpdate(
-      req.params.id,
-      {
-        code,
-        name,
-        day,
-        time,
-        room,
-        credits,
-        instructor,
-        capacity,
-        major,
-        studentYear,
-        prerequisite,
-      },
+      id,
+      { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisite },
       { new: true, runValidators: true }
     );
 
     if (!course) {
       res.status(404).json({ success: false, message: 'Course not found' });
       return;
+    }
+
+    // Audit log
+    if (req.adminUser) {
+      await AuditLog.create({
+        actor: req.adminUser._id,
+        action: 'course:update',
+        targetCourse: course._id,
+        details: { code, name, major, studentYear, capacity },
+        ipAddress: req.ip,
+      });
     }
 
     res.status(200).json({
@@ -232,41 +287,31 @@ export const bulkUpdateCourses = async (req: Request, res: Response): Promise<vo
 
     const updatePromises = courses.map(async (courseUpdate) => {
       const { _id, ...updateData } = courseUpdate;
-      return Course.findByIdAndUpdate(
-        _id,
-        updateData,
-        { new: true, runValidators: true }
-      );
+      return Course.findByIdAndUpdate(_id, updateData, { new: true, runValidators: true });
     });
 
     const updatedCourses = await Promise.all(updatePromises);
 
-    const failedUpdates = updatedCourses.filter(c => c === null);
-    if (failedUpdates.length > 0) {
-      res.status(404).json({
-        success: false,
-        message: `${failedUpdates.length} course(s) not found`,
+    // Audit log
+    if (req.adminUser) {
+      await AuditLog.create({
+        actor: req.adminUser._id,
+        action: 'course:update',
+        details: { bulkUpdate: true, count: updatedCourses.filter(c => c).length },
+        ipAddress: req.ip,
       });
-      return;
     }
 
     res.status(200).json({
       success: true,
-      message: `${updatedCourses.length} course(s) updated successfully`,
-      courses: updatedCourses.map(c => ({
+      message: `${updatedCourses.filter(c => c).length} course(s) updated successfully`,
+      courses: updatedCourses.filter(c => c).map(c => ({
         _id: c!._id,
         code: c!.code,
         name: c!.name,
-        day: c!.day,
-        time: c!.time,
-        room: c!.room,
-        credits: c!.credits,
-        instructor: c!.instructor,
-        capacity: c!.capacity,
-        enrolledCount: c!.enrolledCount,
         major: c!.major,
         studentYear: c!.studentYear,
-        prerequisite: c!.prerequisite,
+        credits: c!.credits,
       })),
     });
   } catch (error: any) {
@@ -274,52 +319,110 @@ export const bulkUpdateCourses = async (req: Request, res: Response): Promise<vo
   }
 };
 
-// POST /api/courses/:id/enroll
-// Triggered by Home.tsx "+ Add Course" button
+// GET /api/courses/:id/enrollments - Get students enrolled in a course
+export const getCourseEnrollments = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ success: false, message: 'Invalid course ID format' });
+      return;
+    }
+
+    const enrollments = await Enrollment.find({ course: id })
+      .populate('student', 'fullName universityId email major academicYear')
+      .sort({ enrolledAt: -1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      count: enrollments.length,
+      enrollments: enrollments.map(e => ({
+        _id: e._id,
+        student: e.student,
+        semester: e.semester,
+        academicYear: e.academicYear,
+        enrolledAt: e.enrolledAt,
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// POST /api/courses/:id/enroll - ATOMIC enrollment (race condition safe)
 export const enrollCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const student  = req.student!;
-    const courseId = req.params.id;
+    const student = req.student!;
+    const courseId = req.params.id as string;
 
-    const course = await Course.findById(courseId);
-    if (!course) {
-      res.status(404).json({ success: false, message: 'Course not found' });
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      res.status(400).json({ success: false, message: 'Invalid course ID format' });
       return;
     }
 
-    if (course.enrolledCount >= course.capacity) {
-      res.status(400).json({ success: false, message: 'Course is full' });
+    // ATOMIC: increment enrolledCount ONLY IF a seat is available
+    const updatedCourse = await Course.findOneAndUpdate(
+      {
+        _id: courseId,
+        isActive: true,
+        $expr: { $lt: ['$enrolledCount', '$capacity'] },
+      },
+      { $inc: { enrolledCount: 1 } },
+      { new: true, runValidators: false }
+    );
+
+    if (!updatedCourse) {
+      const course = await Course.findById(courseId).select('isActive enrolledCount capacity').lean();
+      if (!course) {
+        res.status(404).json({ success: false, message: 'Course not found' });
+        return;
+      }
+      if (!course.isActive) {
+        res.status(400).json({ success: false, message: 'This course is no longer available.' });
+        return;
+      }
+      res.status(400).json({ success: false, message: 'This course is full. No seats are available.' });
       return;
     }
 
-    // Prevent duplicate
-    const exists = await Enrollment.findOne({
-      student:  student._id,
-      course:   courseId,
-      semester: student.currentSemester,
-    });
-
-    if (exists) {
-      res.status(409).json({
-        success: false,
-        message: 'Already enrolled in this course this semester',
-      });
-      return;
-    }
-
+    // Create Enrollment document
     const year = new Date().getFullYear();
+    try {
+      await Enrollment.create({
+        student: student._id,
+        course: courseId,
+        semester: student.currentSemester,
+        academicYear: `${year}-${year + 1}`,
+      });
+    } catch (err: any) {
+      if (err.code === 11000) {
+        // Duplicate: rollback the increment
+        await Course.findByIdAndUpdate(courseId, { $inc: { enrolledCount: -1 } });
+        res.status(409).json({
+          success: false,
+          message: 'You are already enrolled in this course this semester.',
+        });
+        return;
+      }
+      // Unknown error: rollback and rethrow
+      await Course.findByIdAndUpdate(courseId, { $inc: { enrolledCount: -1 } });
+      throw err;
+    }
 
-    await Enrollment.create({
-      student:      student._id,
-      course:       courseId,
-      semester:     student.currentSemester,
-      academicYear: `${year}-${year + 1}`,
+    // Audit log
+    await AuditLog.create({
+      actor: student._id,
+      action: 'enroll',
+      targetCourse: courseId,
+      details: { semester: student.currentSemester, academicYear: `${year}-${year + 1}` },
+      ipAddress: req.ip,
     });
 
-    course.enrolledCount += 1;
-    await course.save();
-
-    res.status(201).json({ success: true, message: 'Successfully enrolled' });
+    res.status(201).json({
+      success: true,
+      message: `Successfully enrolled in ${updatedCourse.code}.`,
+      seatsRemaining: updatedCourse.capacity - updatedCourse.enrolledCount,
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -328,12 +431,12 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
 // DELETE /api/courses/:id/enroll
 export const dropCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const student  = req.student!;
+    const student = req.student!;
     const courseId = req.params.id;
 
     const enrollment = await Enrollment.findOneAndDelete({
-      student:  student._id,
-      course:   courseId,
+      student: student._id,
+      course: courseId,
       semester: student.currentSemester,
     });
 
@@ -343,6 +446,15 @@ export const dropCourse = async (req: Request, res: Response): Promise<void> => 
     }
 
     await Course.findByIdAndUpdate(courseId, { $inc: { enrolledCount: -1 } });
+
+    // Audit log
+    await AuditLog.create({
+      actor: student._id,
+      action: 'drop',
+      targetCourse: courseId,
+      details: { semester: student.currentSemester },
+      ipAddress: req.ip,
+    });
 
     res.status(200).json({ success: true, message: 'Course dropped successfully' });
   } catch (error: any) {

@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
-                               // main fields // all has 1-1 map 
+
+// main fields // all has 1-1 map 
 export interface IStudent extends Document {
   fullName: string;
   universityId: string;
@@ -13,6 +14,8 @@ export interface IStudent extends Document {
   phoneNumber?: string;
   gpa: number;
   level: number;
+  isActive: boolean;
+  lastLogin?: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
@@ -112,7 +115,16 @@ const StudentSchema: Schema = new Schema(
       min: 1,
       max: 4,
     },
-               //  for password mis //
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
+    lastLogin: {
+      type: Date,
+    },
+
     resetPasswordToken: {
       type: String,
       select: false,
