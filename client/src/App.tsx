@@ -9,6 +9,7 @@ import AccountManagement from "./pages/admin/AccountManagement";
 import CourseAssignmentPage from "./pages/admin/CourseAssignmentPage";
 import AvailableCourses from "./pages/student/AvailableCourses";
 import ManageCourses from "./pages/admin/ManageCourses";
+import Layout from "./layout/layout";
 
 // function ProtectedRoute() {
 //   // TEMPORARY: Authentication bypassed for testing
@@ -51,18 +52,29 @@ import ManageCourses from "./pages/admin/ManageCourses";
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/home" replace />} />
+      {/* Public Pages */}
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/home" element={<Home />} />
-      <Route path="/courses" element={<AvailableCourses />} />
-      <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="/admin/accounts" element={<AccountManagement />} />
-      <Route path="/admin/courses" element={<CourseAssignmentPage />} />
-      <Route path="/admin/manage-courses" element={<ManageCourses />} />
+
+      {/* Pages with Sidebar */}
+      <Route element={<Layout />}>
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/courses" element={<AvailableCourses />} />
+
+        {/* Admin Pages */}
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/accounts" element={<AccountManagement />} />
+        <Route path="/admin/manage-courses" element={<ManageCourses />} />
+        <Route path="/admin/courses" element={<CourseAssignmentPage />} />
+      </Route>
+
+      {/* Redirect unknown routes to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
+
+
 
 export default App;
