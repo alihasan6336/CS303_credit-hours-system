@@ -73,6 +73,15 @@ async function request<T>(
   }
 
   if (!res.ok) {
+    // Handle 401 Unauthorized - auto redirect to login
+    if (res.status === 401) {
+      // Clear auth data
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("student");
+      // Redirect to login page
+      window.location.href = "/login";
+      throw new Error("Session expired. Redirecting to login...");
+    }
     const message =
       data?.message ||
       (typeof data === "string" ? data : "Something went wrong");
@@ -311,6 +320,104 @@ export const courseAssignmentApi = {
 
   removeAssignment(id: string): Promise<{ success: boolean; message: string }> {
     return request(`/api/course-assignments/${id}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+// Course API for ManageCourses page
+interface CourseData {
+  _id: string;
+  code: string;
+  name: string;
+  day: string;
+  time: string;
+  room: string;
+  credits: number;
+  instructor: string;
+  capacity: number;
+  enrolledCount: number;
+  major?: string;
+  studentYear?: number;
+  prerequisite?: string;
+}
+
+interface CoursesListResponse {
+  success: boolean;
+  courses: CourseData[];
+}
+
+interface CreateCourseResponse {
+  success: boolean;
+  course: CourseData;
+  message?: string;
+}
+
+export const courseApi = {
+  getAllCourses(): Promise<CoursesListResponse> {
+    return request<CoursesListResponse>("/api/courses");
+  },
+
+  createCourse(body: {
+    code: string;
+    name: string;
+    day: string;
+    time: string;
+    room: string;
+    credits: number;
+    instructor: string;
+    capacity?: number;
+    major?: string;
+    studentYear?: number;
+    prerequisite?: string;
+  }): Promise<CreateCourseResponse> {
+    return request<CreateCourseResponse>("/api/courses", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  updateCourse(id: string, body: {
+    code: string;
+    name: string;
+    day: string;
+    time: string;
+    room: string;
+    credits: number;
+    instructor: string;
+    capacity?: number;
+    major?: string;
+    studentYear?: number;
+    prerequisite?: string;
+  }): Promise<CreateCourseResponse> {
+    return request<CreateCourseResponse>(`/api/courses/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
+
+  bulkUpdateCourses(courses: Array<{
+    _id: string;
+    code?: string;
+    name?: string;
+    day?: string;
+    time?: string;
+    room?: string;
+    credits?: number;
+    instructor?: string;
+    capacity?: number;
+    major?: string;
+    studentYear?: number;
+    prerequisite?: string;
+  }>): Promise<{ success: boolean; message: string; courses: CourseData[] }> {
+    return request("/api/courses/bulk", {
+      method: "PUT",
+      body: JSON.stringify({ courses }),
+    });
+  },
+
+  deleteCourse(id: string): Promise<{ success: boolean; message: string }> {
+    return request(`/api/courses/${id}`, {
       method: "DELETE",
     });
   },

@@ -46,13 +46,25 @@ const AdminUserSchema = new Schema<IAdminUser>(
       type: Date,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
+
+// Virtual: populate the AdminPermission document for this user
+AdminUserSchema.virtual('permissionsDoc', {
+  ref: 'AdminPermission',
+  localField: '_id',
+  foreignField: 'admin',
+  justOne: true,
+});
 
 // Hash password before saving
 AdminUserSchema.pre<IAdminUser>('save', async function () {
   if (!this.isModified('password')) return;
-  const salt = await bcrypt.genSalt(10);
+  const salt = await bcrypt.genSalt(12); // stronger for admin accounts
   this.password = await bcrypt.hash(this.password, salt);
 });
 
@@ -62,5 +74,9 @@ AdminUserSchema.methods.comparePassword = async function (
 ): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password);
 };
+
+// Indexes for fast queries
+AdminUserSchema.index({ role: 1, isActive: 1 });
+AdminUserSchema.index({ createdBy: 1 });
 
 export default mongoose.model<IAdminUser>('AdminUser', AdminUserSchema);
