@@ -29,3 +29,6 @@ coverage/
 # Temporary files
 *.tmp
 .cache/
+
+assist/
+cs303 oop/
