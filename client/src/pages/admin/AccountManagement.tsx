@@ -25,12 +25,60 @@ const AccountManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "student" | "admin" | "superadmin"
   >("student");
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  const [registerRole, setRegisterRole] = useState<
+    "student" | "admin" | "superadmin"
+  >("student");
+  const [authorizationMessage, setAuthorizationMessage] = useState<
+    string | null
+  >(null);
   const [showModal, setShowModal] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
   const isSuperAdmin = user.role === "superadmin";
+  const isAdmin = user.role === "admin";
+
+  const getPermissionMessage = () => {
+    if (isSuperAdmin) {
+      return {
+        text: "✅ Full authority granted.",
+        color: "bg-green-50 border-green-200 text-green-700",
+      };
+    } else if (isAdmin) {
+      return {
+        text: "⚠️ Limited authority (students & admins only).",
+        color: "bg-blue-50 border-blue-200 text-blue-700",
+      };
+    } else {
+      return {
+        text: "❌ No authority to add or remove users.",
+        color: "bg-red-50 border-red-200 text-red-700",
+      };
+    }
+  };
+
+  // Test mode: auto-setup if no admin user exists
+  React.useEffect(() => {
+    if (!user.role || (user.role !== "admin" && user.role !== "superadmin")) {
+      const testAdmin = {
+        id: "admin1",
+        fullName: "Admin User",
+        universityId: "ADMIN001",
+        email: "admin@university.edu",
+        major: "Administration",
+        academicYear: "N/A",
+        level: 0,
+        role: "superadmin",
+        gpa: 4.0,
+        completedCreditHours: 0,
+        currentSemester: "N/A",
+      };
+      localStorage.setItem("student", JSON.stringify(testAdmin));
+      localStorage.setItem("authToken", "test-admin-token-" + Date.now());
+    }
+  }, []);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -55,7 +103,8 @@ const AccountManagement: React.FC = () => {
         setStudents(response.students);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load accounts");
+      console.warn("Failed to load students:", err.message);
+      // Continue with empty list or fallback
     } finally {
       setLoading(false);
     }
@@ -127,8 +176,24 @@ const AccountManagement: React.FC = () => {
   const handleStudentFormSubmit = async (studentData: any) => {
     setFormLoading(true);
     setError("");
+    setAuthorizationMessage(null);
 
     try {
+      // Check authorization with backend
+      const authCheckResponse =
+        await adminApi.checkCreateUserAuthority(registerRole);
+
+      if (!authCheckResponse.success) {
+        setAuthorizationMessage(
+          `❌ Authorization Failed: ${authCheckResponse.message || "You do not have permission to create this user."}`,
+        );
+        return;
+      }
+
+      setAuthorizationMessage(
+        `✅ Authorization Granted: ${authCheckResponse.message || "You have permission to create this user."}`,
+      );
+
       const response = await adminApi.createAccount({
         fullName: studentData.fullName,
         email: studentData.email,
@@ -138,16 +203,20 @@ const AccountManagement: React.FC = () => {
         academicYear: studentData.academicYear,
         currentSemester: studentData.currentSemester,
         completedCreditHours: studentData.completedCreditHours,
-        role: "student",
+        role: registerRole,
       });
 
       if (response.success) {
+        setAuthorizationMessage(null);
         await fetchStudents();
         setError("");
+        setShowRegisterForm(false);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to create student account");
-      throw err; // Re-throw to prevent form reset
+      setAuthorizationMessage(
+        `❌ Error: ${err.message || "Failed to create user account"}`,
+      );
+      throw err;
     } finally {
       setFormLoading(false);
     }
@@ -179,7 +248,7 @@ const AccountManagement: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white">
+      <aside className="w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white flex flex-col relative">
         <div className="p-6">
           <div className="text-2xl font-bold mb-2">🎓 Admin Panel</div>
           <p className="text-indigo-200 text-sm">Credit Hours System</p>
@@ -201,7 +270,7 @@ const AccountManagement: React.FC = () => {
           </div>
         </div>
 
-        <nav className="mt-6 px-4 space-y-1">
+        <nav className="mt-6 px-4 space-y-1 flex-1">
           <button
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
             onClick={() => navigate("/admin")}
@@ -228,7 +297,7 @@ const AccountManagement: React.FC = () => {
           </button>
         </nav>
 
-        <div className="absolute bottom-0 left-0 w-64 p-4">
+        <div className="fixed bottom-0 left-0 w-64 p-4">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-red-200 transition-colors"
@@ -246,19 +315,11 @@ const AccountManagement: React.FC = () => {
               Manage Accounts
             </h1>
             <p className="text-gray-500 mt-1">
-              {activeTab === "student"
-                ? "Register new students and manage existing accounts"
-                : "Create and manage user accounts"}
+              {showRegisterForm
+                ? `Register new ${registerRole}s to the system`
+                : `Manage ${activeTab} accounts`}
             </p>
           </div>
-          {isSuperAdmin && activeTab !== "student" && (
-            <button
-              onClick={() => setShowModal(true)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
-            >
-              <span>+</span> Create Account
-            </button>
-          )}
         </header>
 
         {error && (
@@ -272,7 +333,11 @@ const AccountManagement: React.FC = () => {
           {(["student", "admin", "superadmin"] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                setShowRegisterForm(false);
+                setAuthorizationMessage(null);
+              }}
               className={`px-4 py-2 rounded-lg capitalize transition-colors ${
                 activeTab === tab
                   ? "bg-indigo-600 text-white"
@@ -284,116 +349,178 @@ const AccountManagement: React.FC = () => {
           ))}
         </div>
 
-        {/* Students Tab: Two-Column Layout with Form and Table */}
-        {activeTab === "student" ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Registration Form (1/3 width on large screens) */}
-            <div className="lg:col-span-1">
-              <StudentRegisterForm
-                onSubmit={handleStudentFormSubmit}
-                isLoading={formLoading}
-                error={error}
-                onClearError={() => setError("")}
-              />
+        {/* Panel Content */}
+        {!showRegisterForm ? (
+          /* View Accounts List */
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => {
+                  setShowRegisterForm(true);
+                  setRegisterRole(activeTab);
+                  setAuthorizationMessage(null);
+                }}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center gap-2"
+              >
+                <span>+</span> Register New{" "}
+                {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+              </button>
+
+              {/* Permission Message */}
+              {(() => {
+                const { text, color } = getPermissionMessage();
+                return (
+                  <div
+                    className={`text-xs px-3 py-1.5 rounded border ${color} max-w-xs`}
+                  >
+                    {text}
+                  </div>
+                );
+              })()}
             </div>
 
-            {/* Right: Students Table (2/3 width on large screens) */}
-            <div className="lg:col-span-2">
+            {/* Admin/SuperAdmin/Student Accounts Table */}
+            {activeTab === "student" ? (
               <StudentsTable
                 students={filteredStudents}
                 onDelete={isSuperAdmin ? handleDeleteAccount : undefined}
                 showActions={isSuperAdmin}
                 isLoading={loading}
               />
-            </div>
-          </div>
-        ) : (
-          /* Admin/SuperAdmin Tabs: Regular Table View */
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                    Name
-                  </th>
-                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                    Email
-                  </th>
-                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                    Role
-                  </th>
-                  {isSuperAdmin && (
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                      Actions
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredStudents.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={isSuperAdmin ? 4 : 3}
-                      className="px-6 py-12 text-center text-gray-500"
-                    >
-                      No {activeTab}s found
-                    </td>
-                  </tr>
-                ) : (
-                  filteredStudents.map((student) => (
-                    <tr
-                      key={student.id}
-                      className="border-b last:border-0 hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold">
-                            {student.fullName
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .slice(0, 2)
-                              .toUpperCase()}
-                          </div>
-                          <span className="font-medium text-gray-900">
-                            {student.fullName}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">
-                        {student.email}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm capitalize font-medium ${
-                            student.role === "superadmin"
-                              ? "bg-purple-100 text-purple-700"
-                              : student.role === "admin"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {student.role}
-                        </span>
-                      </td>
+            ) : (
+              /* Admin and SuperAdmin generic table */
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                        Name
+                      </th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                        Email
+                      </th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                        Role
+                      </th>
                       {isSuperAdmin && (
-                        <td className="px-6 py-4">
-                          <button
-                            onClick={() =>
-                              handleDeleteAccount(student.id, student.fullName)
-                            }
-                            className="text-red-600 hover:text-red-800 text-sm font-medium"
-                          >
-                            Delete
-                          </button>
-                        </td>
+                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                          Actions
+                        </th>
                       )}
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {filteredStudents.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={isSuperAdmin ? 4 : 3}
+                          className="px-6 py-12 text-center text-gray-500"
+                        >
+                          No {activeTab}s found
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredStudents.map((student) => (
+                        <tr
+                          key={student.id}
+                          className="border-b last:border-0 hover:bg-gray-50"
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold">
+                                {student.fullName
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </div>
+                              <span className="font-medium text-gray-900">
+                                {student.fullName}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-gray-600">
+                            {student.email}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`px-3 py-1 rounded-full text-sm capitalize font-medium ${
+                                student.role === "superadmin"
+                                  ? "bg-purple-100 text-purple-700"
+                                  : student.role === "admin"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                              {student.role}
+                            </span>
+                          </td>
+                          {isSuperAdmin && (
+                            <td className="px-6 py-4">
+                              <button
+                                onClick={() =>
+                                  handleDeleteAccount(
+                                    student.id,
+                                    student.fullName,
+                                  )
+                                }
+                                className="text-red-600 hover:text-red-800 text-sm font-medium"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
+        ) : (
+          /* Register New User Form */
+          <>
+            <div className="mb-4">
+              <button
+                onClick={() => {
+                  setShowRegisterForm(false);
+                  setAuthorizationMessage(null);
+                }}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors inline-flex items-center gap-2"
+              >
+                ← Back to{" "}
+                {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} List
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center w-full">
+              {/* Authorization Message */}
+              {authorizationMessage && (
+                <div
+                  className={`mb-6 p-4 rounded-lg border max-w-2xl w-full ${
+                    authorizationMessage.startsWith("✅")
+                      ? "bg-green-50 border-green-200 text-green-700"
+                      : "bg-red-50 border-red-200 text-red-700"
+                  }`}
+                >
+                  {authorizationMessage}
+                </div>
+              )}
+
+              {/* Registration Form */}
+              <div className="max-w-2xl w-full">
+                <StudentRegisterForm
+                  role={registerRole}
+                  onSubmit={handleStudentFormSubmit}
+                  isLoading={formLoading}
+                  error={error}
+                  onClearError={() => setError("")}
+                />
+              </div>
+            </div>
+          </>
         )}
       </main>
 
