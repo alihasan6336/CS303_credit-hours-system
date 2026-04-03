@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
-const API_BASE_URL = Platform.OS === "android" ? "http://192.168.1.6:5000" : "http://localhost:5000";
+const API_BASE_URL = Platform.OS === "android" ? "http://192.168.8.129:8081" : "http://localhost:5000";
+
 
 async function request(path, options = {}) {
     const token = await AsyncStorage.getItem("authToken");
@@ -11,34 +12,38 @@ async function request(path, options = {}) {
         ...options.headers,
     };
 
-    const res = await fetch(`${API_BASE_URL}${path}`, {
-        ...options,
-        headers,
-    });
 
-    let data;
     try {
-        data = await res.json();
-    } catch (e) {
-        // If the server returns HTML (e.g. 404 or 500 error page), res.json() fails
-        const text = await res.text();
-        console.log("Server returned non-JSON response:", text.slice(0, 200));
-        throw new Error(`Server error (${res.status}): The server returned an unexpected response. Please check if the backend is running correctly.`);
-    }
+        const res = await fetch(`${API_BASE_URL}${path}`, {
+            ...options,
+            headers,
+        });
 
-    if (!res.ok) {
-        console.log("API Error Response:", JSON.stringify(data));
-        let errorMessage = data.message || "Something went wrong";
-        if (data.errors && typeof data.errors === "object") {
-            const firstKey = Object.keys(data.errors)[0];
-            if (firstKey) {
-                errorMessage = data.errors[firstKey];
-            }
+        let data;
+        try {
+            data = await res.json();
+        } catch (e) {
+            const text = await res.text();
+            console.log("Server returned non-JSON response:", text.slice(0, 200));
+            throw new Error(`Server error (${res.status}): The server returned an unexpected response. Please check if the backend is running correctly.`);
         }
-        throw new Error(errorMessage);
-    }
 
-    return data;
+        if (!res.ok) {
+            console.log("API Error Response:", JSON.stringify(data));
+            let errorMessage = data.message || "Something went wrong";
+            if (data.errors && typeof data.errors === "object") {
+                const firstKey = Object.keys(data.errors)[0];
+                if (firstKey) {
+                    errorMessage = data.errors[firstKey];
+                }
+            }
+            throw new Error(errorMessage);
+        }
+
+        return data;
+    } catch (err) {
+        throw err;
+    }
 }
 
 export const authApi = {

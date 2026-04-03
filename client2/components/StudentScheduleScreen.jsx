@@ -12,7 +12,7 @@ import { authApi } from "../utils/api";
 
 const { width } = Dimensions.get("window");
 
-const DAYS_OF_WEEK = ["saturday","Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Saturday"];
+const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Saturday"];
 
 const DAY_COLORS = {
     Sunday: "#ef4444",    
@@ -28,7 +28,7 @@ export default function StudentScheduleScreen() {
     const [courses, setCourses] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
-    const [activeDay, setActiveDay] = useState("All");
+    const [activeDay, setActiveDay] = useState("Sunday");
 
     const fetchSchedule = async () => {
         try {
@@ -50,7 +50,7 @@ export default function StudentScheduleScreen() {
     }, []);
 
     const filteredCourses = courses.filter(
-        (course) => activeDay === "All" || course.day === activeDay
+        (course) => course.day === activeDay
     );
 
     const groupedCourses = DAYS_OF_WEEK.map(day => ({
@@ -73,14 +73,6 @@ export default function StudentScheduleScreen() {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.filterScroll}
                 >
-                    <TouchableOpacity
-                        style={[styles.chip, activeDay === "All" && styles.chipActive]}
-                        onPress={() => setActiveDay("All")}
-                    >
-                        <Text style={[styles.chipText, activeDay === "All" && styles.chipTextActive]}>
-                            All Week
-                        </Text>
-                    </TouchableOpacity>
                     {DAYS_OF_WEEK.map((day) => (
                         <TouchableOpacity
                             key={day}
@@ -123,13 +115,6 @@ export default function StudentScheduleScreen() {
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                     {groupedCourses.map((group) => (
                         <View key={group.day} style={styles.dayGroup}>
-                            {activeDay === "All" && (
-                                <View style={styles.dayHeader}>
-                                    <View style={[styles.dayDot, { backgroundColor: DAY_COLORS[group.day] }]} />
-                                    <Text style={styles.dayTitle}>{group.day}</Text>
-                                </View>
-                            )}
-
                             {group.courses.map((course, index) => {
                                 const classColor = DAY_COLORS[course.day] || "#4f46e5";
 

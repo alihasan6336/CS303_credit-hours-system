@@ -66,11 +66,8 @@ export default function DashboardScreen({ onNavigateCourses }) {
       {/* HEADER */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Dashboard</Text>
+          <Text style={styles.headerTitle}>Hello, {student.name}</Text>
           <Text style={styles.headerSub}>{student.semester} — {student.major}</Text>
-        </View>
-        <View style={styles.bellWrapper}>
-          <Text style={styles.bellIcon}>🔔</Text>
         </View>
       </View>
 
@@ -89,23 +86,31 @@ export default function DashboardScreen({ onNavigateCourses }) {
       <View style={styles.statsGrid}>
         <View style={[styles.statCard, { borderLeftColor: "#3b82f6" }]}>
           <Text style={styles.statIcon}>📚</Text>
-          <Text style={styles.statNumber}>{enrolledCount}</Text>
-          <Text style={styles.statLabel}>Enrolled Courses</Text>
+          <View style={styles.statTextContainer}>
+            <Text style={styles.statLabel}>Enrolled</Text>
+            <Text style={styles.statNumber}>{enrolledCount}</Text>
+          </View>
         </View>
         <View style={[styles.statCard, { borderLeftColor: "#f59e0b" }]}>
           <Text style={styles.statIcon}>⚡</Text>
-          <Text style={styles.statNumber}>{currentCreditHours}</Text>
-          <Text style={styles.statLabel}>Credit Hours</Text>
+          <View style={styles.statTextContainer}>
+            <Text style={styles.statLabel}>Credits</Text>
+            <Text style={styles.statNumber}>{currentCreditHours}</Text>
+          </View>
         </View>
         <View style={[styles.statCard, { borderLeftColor: "#8b5cf6" }]}>
           <Text style={styles.statIcon}>🎓</Text>
-          <Text style={styles.statNumber}>{student.gpa || "N/A"}</Text>
-          <Text style={styles.statLabel}>GPA</Text>
+          <View style={styles.statTextContainer}>
+            <Text style={styles.statLabel}>GPA</Text>
+            <Text style={styles.statNumber}>{student.gpa || "N/A"}</Text>
+          </View>
         </View>
         <View style={[styles.statCard, { borderLeftColor: "#22c55e" }]}>
           <Text style={styles.statIcon}>✅</Text>
-          <Text style={styles.statNumber}>{completedHours}</Text>
-          <Text style={styles.statLabel}>Completed Hours</Text>
+          <View style={styles.statTextContainer}>
+            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={styles.statNumber}>{completedHours}</Text>
+          </View>
         </View>
       </View>
 
@@ -127,15 +132,14 @@ export default function DashboardScreen({ onNavigateCourses }) {
 
       {/* STUDENT INFO */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Student Info</Text>
+        <Text style={styles.cardTitle}>Student Information</Text>
         {[
+          { label: "Student ID", value: student.id },
           { label: "Major", value: student.major },
           { label: "Level", value: student.level || 1 },
-          { label: "GPA", value: student.gpa || "N/A" },
           { label: "Semester", value: student.semester },
-          { label: "Student ID", value: student.id },
-        ].map((item, i) => (
-          <View key={i} style={[styles.infoRow, i !== 4 && styles.infoRowBorder]}>
+        ].map((item, i, arr) => (
+          <View key={i} style={[styles.infoRow, i !== arr.length - 1 && styles.infoRowBorder]}>
             <Text style={styles.infoLabel}>{item.label}</Text>
             <Text style={styles.infoValue}>{item.value}</Text>
           </View>
@@ -146,9 +150,6 @@ export default function DashboardScreen({ onNavigateCourses }) {
       <View style={styles.card}>
         <View style={styles.coursesHeader}>
           <Text style={styles.cardTitle}>Registered Courses</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={onNavigateCourses}>
-            <Text style={styles.addBtnText}>+ Add Course</Text>
-          </TouchableOpacity>
         </View>
 
         {courses.map((course, i) => (
@@ -249,15 +250,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     borderLeftWidth: 4,
+    flexDirection: "row",
+    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 3,
   },
-  statIcon: { fontSize: 22, marginBottom: 8 },
-  statNumber: { fontSize: 26, fontWeight: "800", color: "#111" },
-  statLabel: { fontSize: 12, color: "#888", marginTop: 2 },
+  statIcon: { fontSize: 24, marginRight: 12 },
+  statTextContainer: { flex: 1 },
+  statNumber: { fontSize: 22, fontWeight: "800", color: "#111" },
+  statLabel: { fontSize: 12, color: "#888", marginBottom: 2, flexWrap: "wrap" },
 
   card: {
     backgroundColor: "#fff",

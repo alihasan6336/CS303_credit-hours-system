@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -110,31 +112,34 @@ export default function CourseManagement() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setModalVisible(false)} />
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Add New Course</Text>
-            {[
-              { label: "Course Code *", key: "code", placeholder: "e.g. CS303" },
-              { label: "Course Name *", key: "name", placeholder: "e.g. Software Engineering" },
-              { label: "Instructor *", key: "instructor", placeholder: "e.g. Dr. Khalid" },
-              { label: "Day", key: "day", placeholder: "e.g. Monday" },
-              { label: "Time", key: "time", placeholder: "e.g. 08:00 – 09:30" },
-              { label: "Room", key: "room", placeholder: "e.g. B-201" },
-              { label: "Credits", key: "credits", placeholder: "e.g. 3" },
-              { label: "Capacity", key: "capacity", placeholder: "e.g. 30" },
-            ].map((field) => (
-              <View key={field.key}>
-                <Text style={styles.fieldLabel}>{field.label}</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  placeholder={field.placeholder}
-                  placeholderTextColor="#aaa"
-                  value={form[field.key]}
-                  onChangeText={(v) => setForm({ ...form, [field.key]: v })}
-                />
-              </View>
-            ))}
+            <ScrollView showsVerticalScrollIndicator={false} style={{ width: "100%" }}>
+              {[
+                { label: "Course Code *", key: "code", placeholder: "e.g. CS303" },
+                { label: "Course Name *", key: "name", placeholder: "e.g. Software Engineering" },
+                { label: "Instructor *", key: "instructor", placeholder: "e.g. Dr. Khalid" },
+                { label: "Day", key: "day", placeholder: "e.g. Monday" },
+                { label: "Time", key: "time", placeholder: "e.g. 08:00 – 09:30" },
+                { label: "Room", key: "room", placeholder: "e.g. B-201" },
+                { label: "Credits", key: "credits", placeholder: "e.g. 3" },
+                { label: "Capacity", key: "capacity", placeholder: "e.g. 30" },
+              ].map((field) => (
+                <View key={field.key}>
+                  <Text style={styles.fieldLabel}>{field.label}</Text>
+                  <TextInput
+                    style={styles.fieldInput}
+                    placeholder={field.placeholder}
+                    placeholderTextColor="#aaa"
+                    value={form[field.key]}
+                    onChangeText={(v) => setForm({ ...form, [field.key]: v })}
+                  />
+                </View>
+              ))}
+            </ScrollView>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -144,7 +149,7 @@ export default function CourseManagement() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
