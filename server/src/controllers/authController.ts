@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import Student from '../models/Student';
+import AdminUser from '../models/AdminUser';
 import { signToken } from '../utils/jwt';
 
 // Matches every field that Login.tsx and Home.tsx read from the response
@@ -22,6 +23,15 @@ const buildStudentPayload = (student: InstanceType<typeof Student>) => ({
   gpa: student.gpa,
   level: student.level,
   role: student.role || 'student',
+});
+
+// Admin payload builder
+const buildAdminPayload = (admin: InstanceType<typeof AdminUser>) => ({
+  id: admin._id,
+  fullName: admin.fullName,
+  email: admin.email,
+  role: admin.role,
+  isActive: admin.isActive,
 });
 
 // POST /api/auth/register
@@ -82,14 +92,55 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 };
 
 // POST /api/auth/login
-
-
-// Returns: { success, token, student }
+// Unified login for both students and admins
+// Returns: { success, token, student } or { success, token, admin }
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, rememberMe } = req.body;
 
-    // Explicitly select password field (select: false in schema)
+    // 1. First check AdminUser collection (admins and superadmins)
+    const admin = await AdminUser.findOne({ email }).select('+password');
+    
+    if (admin) {
+      // Check if account is active
+      if (!admin.isActive) {
+        res.status(401).json({
+          success: false,
+          message: 'Your account has been deactivated. Contact super admin.',
+        });
+        return;
+      }
+
+      // Verify password
+      if (!(await admin.comparePassword(password))) {
+        res.status(401).json({
+          success: false,
+          message: 'Invalid email or password',
+        });
+        return;
+      }
+
+      // Update lastLogin
+      admin.lastLogin = new Date();
+      await admin.save({ validateBeforeSave: false });
+
+      // Sign JWT
+      const token = signToken(
+        admin._id.toString(),
+        admin.email,
+        Boolean(rememberMe)
+      );
+
+      res.status(200).json({
+        success: true,
+        token,
+        admin: buildAdminPayload(admin),
+        role: admin.role,
+      });
+      return;
+    }
+
+    // 2. If not admin, check Student collection
     const student = await Student.findOne({ email }).select('+password');
 
     // Unified error — don't reveal whether email or password was wrong
@@ -97,6 +148,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       res.status(401).json({
         success: false,
         message: 'Invalid email or password',
+      });
+      return;
+    }
+
+    // Check if student account is active
+    if (student.isActive === false) {
+      res.status(401).json({
+        success: false,
+        message: 'Your account has been deactivated. Please contact support.',
       });
       return;
     }
@@ -112,6 +172,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       success: true,
       token,
       student: buildStudentPayload(student),
+      role: student.role || 'student',
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

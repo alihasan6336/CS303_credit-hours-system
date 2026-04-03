@@ -149,6 +149,7 @@ const AvailableCourses: React.FC = () => {
       </div>
     );
   }
+  <button onClick={() => navigate("/home")}>Back to Dashboard</button>
 
   return (
     <div className="min-h-screen bg-gray-100">

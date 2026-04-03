@@ -40,6 +40,15 @@ export const protect = async (
       return;
     }
 
+    // ── 3.5 Check if account is active
+    if (student.isActive === false) {
+      res.status(401).json({
+        success: false,
+        message: 'Your account has been deactivated. Please contact support.',
+      });
+      return;
+    }
+
     // ── 4. Attach student to request (typed — no "as any" needed)
     req.student = student;
 

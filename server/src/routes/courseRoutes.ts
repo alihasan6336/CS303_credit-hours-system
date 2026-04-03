@@ -1,21 +1,36 @@
 
 import { Router } from 'express';
-import {getCourses,getCourseByID, createCourse,enrollCourse,dropCourse,getMyCourses} from '../controllers/courseController';
+import {
+  getCourses,
+  getCourseByID,
+  getMyCourses,
+  createCourse,
+  updateCourse,
+  bulkUpdateCourses,
+  deleteCourse,
+  enrollCourse,
+  dropCourse,
+  getCourseEnrollments,
+} from '../controllers/courseController';
 import { protect } from '../middleware/protect';
+import { adminProtect, requireRole, requirePermission } from '../middleware/adminProtect';
+import { asyncWrap } from '../middleware/errorHandler';
+import { enrollmentLimiter, adminActionLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
-router.use(protect);
+// Student routes (require student JWT)
+router.get('/', protect, asyncWrap(getCourses));
+router.get('/my-courses', protect, asyncWrap(getMyCourses));
+router.get('/:id', protect, asyncWrap(getCourseByID));
+router.post('/:id/enroll', protect, enrollmentLimiter, asyncWrap(enrollCourse));
+router.delete('/:id/enroll', protect, asyncWrap(dropCourse));
 
-router.get("/", getCourses);
-
-router.get("/my-courses", getMyCourses);
-
-router.get("/:id", getCourseByID);
-
-router.post("/", protect, createCourse); //admin
-
-router.post('/:id/enroll',   enrollCourse);  
-router.delete('/:id/enroll', dropCourse);    
+// Admin routes (require admin JWT + permissions)
+router.post('/', adminProtect, requirePermission('courses:create'), adminActionLimiter, asyncWrap(createCourse));
+router.put('/bulk', adminProtect, requirePermission('courses:update'), adminActionLimiter, asyncWrap(bulkUpdateCourses));
+router.put('/:id', adminProtect, requirePermission('courses:update'), adminActionLimiter, asyncWrap(updateCourse));
+router.delete('/:id', adminProtect, requireRole('superadmin'), requirePermission('courses:delete'), adminActionLimiter, asyncWrap(deleteCourse));
+router.get('/:id/enrollments', adminProtect, requirePermission('courses:enrollments'), asyncWrap(getCourseEnrollments));
 
 export default router;
