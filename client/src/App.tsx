@@ -1,52 +1,42 @@
 import "./App.css";
 
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
-import Home from "./pages/home/Home";
+import StudentDashboard from "./pages/home/StudentDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AccountManagement from "./pages/admin/AccountManagement";
 import CourseAssignmentPage from "./pages/admin/CourseAssignmentPage";
 import AvailableCourses from "./pages/student/AvailableCourses";
 import ManageCourses from "./pages/admin/ManageCourses";
 
-// function ProtectedRoute() {
-//   // TEMPORARY: Authentication bypassed for testing
-//   return <Outlet />;
+function ProtectedRoute() {
+  const token = localStorage.getItem("authToken");
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return <Outlet />;
+}
 
-//   /* Original authentication code - uncomment when done testing
-//   const token = localStorage.getItem("authToken");
-//   if (!token) {
-//     return <Navigate to="/login" replace />;
-//   }
-//   return <Outlet />;
-//   */
-// }
+function AdminRoute() {
+  const token = localStorage.getItem("authToken");
+  const userStr = localStorage.getItem("student");
 
-// function AdminRoute() {
-//   // TEMPORARY: Authentication bypassed for testing
-//   return <Outlet />;
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
 
-//   /* Original authentication code - uncomment when done testing
-//   const token = localStorage.getItem("authToken");
-//   const userStr = localStorage.getItem("student");
+  try {
+    const user = JSON.parse(userStr || "{}");
+    if (user.role !== "admin" && user.role !== "superadmin") {
+      return <Navigate to="/home" replace />;
+    }
+  } catch {
+    return <Navigate to="/login" replace />;
+  }
 
-//   if (!token) {
-//     return <Navigate to="/login" replace />;
-//   }
-
-//   try {
-//     const user = JSON.parse(userStr || "{}");
-//     if (user.role !== "admin" && user.role !== "superadmin") {
-//       return <Navigate to="/home" replace />;
-//     }
-//   } catch {
-//     return <Navigate to="/login" replace />;
-//   }
-
-//   return <Outlet />;
-//   */
-// }
+  return <Outlet />;
+}
 
 function App() {
   return (
@@ -54,12 +44,21 @@ function App() {
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/home" element={<Home />} />
-      <Route path="/courses" element={<AvailableCourses />} />
-      <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="/admin/accounts" element={<AccountManagement />} />
-      <Route path="/admin/courses" element={<CourseAssignmentPage />} />
-      <Route path="/admin/manage-courses" element={<ManageCourses />} />
+
+      {/* Protected student routes */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/home" element={<StudentDashboard />} />
+        <Route path="/courses" element={<AvailableCourses />} />
+      </Route>
+
+      {/* Protected admin routes */}
+      <Route element={<AdminRoute />}>
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/accounts" element={<AccountManagement />} />
+        <Route path="/admin/courses" element={<CourseAssignmentPage />} />
+        <Route path="/admin/manage-courses" element={<ManageCourses />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

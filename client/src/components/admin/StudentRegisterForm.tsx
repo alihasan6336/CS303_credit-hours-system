@@ -4,11 +4,13 @@ interface StudentFormData {
   fullName: string;
   email: string;
   password: string;
-  universityId: string;
-  major: string;
-  academicYear: string;
-  currentSemester: string;
-  completedCreditHours: number;
+  repeatPassword?: string;
+  universityId?: string;
+  major?: string;
+  academicYear?: string;
+  currentSemester?: string;
+  completedCreditHours?: number;
+  position?: string;
 }
 
 interface StudentRegisterFormProps {
@@ -16,6 +18,7 @@ interface StudentRegisterFormProps {
   isLoading?: boolean;
   error?: string;
   onClearError?: () => void;
+  role?: "student" | "admin" | "superadmin";
 }
 
 const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
@@ -23,17 +26,22 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
   isLoading = false,
   error,
   onClearError,
+  role = "student",
 }) => {
   const [formData, setFormData] = useState<StudentFormData>({
     fullName: "",
     email: "",
     password: "",
+    repeatPassword: "",
     universityId: "",
     major: "Computer Science",
     academicYear: "1st Year",
     currentSemester: "Fall",
     completedCreditHours: 0,
+    position: "Admin",
   });
+
+  const [passwordError, setPasswordError] = useState("");
 
   const majors = [
     "Computer Science",
@@ -42,26 +50,51 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
     "Computer Engineering",
     "Cybersecurity",
     "Data Science",
-    "Business Administration",
-    "Electrical Engineering",
-    "Mechanical Engineering",
-    "Civil Engineering",
   ];
+
+  const positions = ["Admin", "Manager", "Coordinator", "Director"];
+
+  const getTitleAndLabel = () => {
+    switch (role) {
+      case "admin":
+        return { title: "Create Admin Account", buttonText: "Create Admin" };
+      case "superadmin":
+        return {
+          title: "Create Super Admin Account",
+          buttonText: "Create Super Admin",
+        };
+      default:
+        return {
+          title: "Register New Student",
+          buttonText: "Register Student",
+        };
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPasswordError("");
+
+    if (formData.password !== formData.repeatPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+
     if (onClearError) onClearError();
+
     await onSubmit(formData);
-    // Reset form on success
+
     setFormData({
       fullName: "",
       email: "",
       password: "",
+      repeatPassword: "",
       universityId: "",
       major: "Computer Science",
       academicYear: "1st Year",
       currentSemester: "Fall",
       completedCreditHours: 0,
+      position: "Admin",
     });
   };
 
@@ -75,171 +108,251 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
     }));
   };
 
+  const { title, buttonText } = getTitleAndLabel();
+
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-800">
-          Register New Student
-        </h2>
-        <p className="text-sm text-gray-600 mt-1">
-          Add a new student account to the system
-        </p>
-      </div>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">{title}</h2>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Full Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Full Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            name="fullName"
-            value={formData.fullName}
-            onChange={handleChange}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-            placeholder="e.g., Ahmed Al-Rashidi"
-            required
-          />
-        </div>
+        {/* Full Name and Email Row */}
+        {role !== "superadmin" && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="Ahmed"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="user@uni.edu"
+                required
+              />
+            </div>
+          </div>
+        )}
 
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Email <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-            placeholder="student@university.edu"
-            required
-          />
-        </div>
+        {role === "superadmin" && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="Ahmed"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="user@uni.edu"
+                required
+              />
+            </div>
+          </>
+        )}
 
-        {/* Password */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Password <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-            placeholder="Minimum 6 characters"
-            required
-            minLength={6}
-          />
-        </div>
-
-        {/* University ID */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            University ID <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            name="universityId"
-            value={formData.universityId}
-            onChange={handleChange}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-            placeholder="e.g., 2021-CS-0342"
-            required
-          />
-        </div>
-
-        {/* Major */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Major <span className="text-red-500">*</span>
-          </label>
-          <select
-            name="major"
-            value={formData.major}
-            onChange={handleChange}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-            required
-          >
-            {majors.map((major) => (
-              <option key={major} value={major}>
-                {major}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Academic Year and Semester Row */}
+        {/* Password and Repeat Password Row */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Academic Year <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password
             </label>
-            <select
-              name="academicYear"
-              value={formData.academicYear}
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
               onChange={handleChange}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              placeholder="Min 6 characters"
               required
-            >
-              <option value="1st Year">1st Year</option>
-              <option value="2nd Year">2nd Year</option>
-              <option value="3rd Year">3rd Year</option>
-              <option value="4th Year">4th Year</option>
-            </select>
+              minLength={6}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Current Semester <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Repeat Password
             </label>
-            <select
-              name="currentSemester"
-              value={formData.currentSemester}
+            <input
+              type="password"
+              name="repeatPassword"
+              value={formData.repeatPassword}
               onChange={handleChange}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+              className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                passwordError ? "border-red-400" : "border-gray-300"
+              }`}
+              placeholder="Confirm password"
               required
-            >
-              <option value="Fall">Fall</option>
-              <option value="Spring">Spring</option>
-              <option value="Summer">Summer</option>
-            </select>
+              minLength={6}
+            />
+            {passwordError && (
+              <p className="text-sm text-red-600 mt-1">{passwordError}</p>
+            )}
           </div>
         </div>
 
-        {/* Completed Credit Hours */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Completed Credit Hours
-          </label>
-          <input
-            type="number"
-            name="completedCreditHours"
-            value={formData.completedCreditHours}
-            onChange={handleChange}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-            placeholder="0"
-            min="0"
-            max="200"
-          />
-        </div>
+        {/* Student-specific fields */}
+        {role === "student" && (
+          <>
+            {/* University ID and Major Row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  University ID
+                </label>
+                <input
+                  type="text"
+                  name="universityId"
+                  value={formData.universityId}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="2021-CS-0342"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Major
+                </label>
+                <select
+                  name="major"
+                  value={formData.major}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  required
+                >
+                  {majors.map((major) => (
+                    <option key={major} value={major}>
+                      {major}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Year, Semester, Credit Hours Row */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Year
+                </label>
+                <select
+                  name="academicYear"
+                  value={formData.academicYear}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  required
+                >
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                  <option value="4th Year">4th Year</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Semester
+                </label>
+                <select
+                  name="currentSemester"
+                  value={formData.currentSemester}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  required
+                >
+                  <option value="Fall">Fall</option>
+                  <option value="Spring">Spring</option>
+                  <option value="Summer">Summer</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Credit Hours
+                </label>
+                <input
+                  type="number"
+                  name="completedCreditHours"
+                  value={formData.completedCreditHours}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="0"
+                  min="0"
+                  max="200"
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Admin specific fields */}
+        {role === "admin" && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Position
+            </label>
+            <select
+              name="position"
+              value={formData.position}
+              onChange={handleChange}
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              required
+            >
+              {positions.map((pos) => (
+                <option key={pos} value={pos}>
+                  {pos}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Submit Button */}
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          className="w-full mt-5 py-2.5 bg-indigo-600 text-white text-base font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
         >
-          {isLoading ? "Creating Account..." : "Create Student Account"}
+          {buttonText}
         </button>
       </form>
     </div>

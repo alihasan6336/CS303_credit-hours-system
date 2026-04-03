@@ -161,7 +161,7 @@ const ManageCourses: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 bg-linear-to-b from-indigo-800 to-indigo-900 text-white">
+      <aside className="w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white flex flex-col relative">
         <div className="p-6">
           <div className="text-2xl font-bold mb-2">🎓 Admin Panel</div>
           <p className="text-indigo-200 text-sm">Credit Hours System</p>
@@ -183,18 +183,18 @@ const ManageCourses: React.FC = () => {
           </div>
         </div>
 
-        <nav className="mt-6 px-4 space-y-1">
+        <nav className="mt-6 px-4 space-y-1 flex-1">
           <button
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-white/10 transition"
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
             onClick={() => navigate("/admin")}
           >
             <span>📊</span> Dashboard
           </button>
           <button
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-white/10 transition"
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
             onClick={() => navigate("/admin/accounts")}
           >
-            <span>👥</span> Account Management
+            <span>👥</span> Manage Accounts
           </button>
           <button
             className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 rounded-lg text-left"
@@ -203,19 +203,19 @@ const ManageCourses: React.FC = () => {
             <span>📚</span> Manage Courses
           </button>
           <button
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-white/10 transition"
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
             onClick={() => navigate("/admin/courses")}
           >
             <span>📋</span> Course Assignments
           </button>
         </nav>
 
-        <div className="absolute bottom-0 w-64 p-4 border-t border-indigo-700">
+        <div className="fixed bottom-0 left-0 w-64 p-4">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg transition"
+            className="w-full flex items-center gap-3 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-red-200 transition-colors"
           >
-            <span>🚪</span> Logout
+            <span>🚪</span> Sign Out
           </button>
         </div>
       </aside>
@@ -252,30 +252,30 @@ const ManageCourses: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-indigo-600 border-b border-indigo-700">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Course Code
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Course Name
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Major
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Year
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Credits
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Instructor
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Prerequisite
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
