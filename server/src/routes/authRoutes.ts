@@ -12,6 +12,9 @@ import {
   forgotPassword,
   resetPassword,
   getMe,
+  refreshToken,
+  changePassword,
+  updateProfile,
 } from '../controllers/authController';
 import { protect } from '../middleware/protect';
 import {
@@ -40,5 +43,14 @@ router.post('/reset-password/:token', validateResetPassword, resetPassword);
 // Rehydrate logged-in student (call on app load / page refresh)
 // GET /api/auth/me  →  Authorization: Bearer <token>
 router.get('/me', protect, getMe);
+
+// Refresh token - POST /api/auth/refresh
+router.post('/refresh', refreshToken);
+
+// Change password while logged in - PATCH /api/auth/change-password
+router.patch('/change-password', protect, changePassword);
+
+// Update own profile - PUT /api/auth/profile
+router.put('/profile', protect, updateProfile);
 
 export default router;
