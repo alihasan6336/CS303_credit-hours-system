@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../utils/api";
+import StudentLayout from "../../layout/StudentLayout";
 
 interface Course {
   code: string;
@@ -81,18 +82,12 @@ const defaultStudent: StudentData = {
 };
 
 const StudentDashboard: React.FC = () => {
-  const navigate = useNavigate();
   const [currentStudent, setCurrentStudent] =
     useState<StudentData>(defaultStudent);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
-  const isAdmin = user.role === "admin" || user.role === "superadmin";
-
-  const handleLogout = () => {
-    authApi.logout();
-    navigate("/login");
-  };
 
   const totalCredits = currentStudent.courses.reduce(
     (sum, c) => sum + c.credits,
@@ -158,83 +153,16 @@ const StudentDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-lg">Loading dashboard...</div>
-      </div>
+      <StudentLayout user={user}>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-lg">Loading dashboard...</div>
+        </div>
+      </StudentLayout>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white">
-        <div className="p-6">
-          <div className="text-2xl font-bold mb-2">🎓 Student Portal</div>
-          <p className="text-indigo-200 text-sm">Credit Hours System</p>
-        </div>
-
-        <div className="px-4 py-3 mx-4 bg-indigo-700/50 rounded-lg">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-semibold">
-              {currentStudent.name
-                ?.split(" ")
-                .map((n: string) => n[0])
-                .join("")
-                .slice(0, 2)}
-            </div>
-            <div>
-              <p className="font-medium">{currentStudent.name}</p>
-              <p className="text-xs text-indigo-200">Student</p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="mt-6 px-4 space-y-1">
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 rounded-lg text-left"
-            onClick={() => navigate("/home")}
-          >
-            <span>📊</span> Dashboard
-          </button>
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
-            onClick={() => navigate("/courses")}
-          >
-            <span>📚</span> Available Courses
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors">
-            <span>📋</span> My Courses
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors">
-            <span>⚙️</span> Settings
-          </button>
-        </nav>
-
-        {isAdmin && (
-          <div className="mt-6 px-4 pt-6 border-t border-indigo-700">
-            <p className="text-xs text-indigo-200 uppercase tracking-wider mb-3">
-              Admin Access
-            </p>
-            <button
-              onClick={() => navigate("/admin")}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-indigo-600/50 hover:bg-indigo-600/70 rounded-lg text-left transition-colors"
-            >
-              <span>🔧</span> Admin Panel
-            </button>
-          </div>
-        )}
-
-        <div className="absolute bottom-0 left-0 w-64 p-4">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-red-200 transition-colors"
-          >
-            <span>🚪</span> Sign Out
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
+    <StudentLayout user={user}>
       <main className="flex-1 p-8">
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800">
@@ -438,7 +366,7 @@ const StudentDashboard: React.FC = () => {
           </div>
         </div>
       </main>
-    </div>
+    </StudentLayout>
   );
 };
 

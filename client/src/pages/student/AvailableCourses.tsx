@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Course } from "../../types/course";
 import { authApi } from "../../utils/api";
+import StudentLayout from "../../layout/StudentLayout";
 
 const AvailableCourses: React.FC = () => {
   const navigate = useNavigate();
@@ -141,41 +142,24 @@ const AvailableCourses: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading courses...</p>
+      <StudentLayout user={user}>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading courses...</p>
+          </div>
         </div>
-      </div>
+      </StudentLayout>
     );
   }
-  <button onClick={() => navigate("/home")}>Back to Dashboard</button>
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleGoBack}
-                className="p-2 hover:bg-gray-100 rounded-lg transition"
-              >
-                <svg
-                  className="w-6 h-6 text-gray-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
+    <StudentLayout user={user}>
+      <div className="min-h-screen bg-gray-100">
+        {/* Header */}
+        <header className="bg-white shadow-sm sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">
                   Available Courses
@@ -185,32 +169,8 @@ const AvailableCourses: React.FC = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-lg">
-                <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                  {user.fullName
-                    ?.split(" ")
-                    .map((n: string) => n[0])
-                    .join("")
-                    .slice(0, 2) || "ST"}
-                </div>
-                <div className="text-sm">
-                  <div className="font-medium text-gray-900">
-                    {user.fullName}
-                  </div>
-                  <div className="text-gray-600">{user.major}</div>
-                </div>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition"
-              >
-                Sign Out
-              </button>
-            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -360,6 +320,7 @@ const AvailableCourses: React.FC = () => {
         </div>
       </main>
     </div>
+    </StudentLayout>
   );
 };
 
