@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { adminApi, authApi } from "../../utils/api";
 import StudentRegisterForm from "../../components/admin/StudentRegisterForm";
@@ -10,12 +10,15 @@ interface StudentAccount {
   email: string;
   universityId: string;
   major: string;
-  academicYear: string;
-  level: number;
+  academicYear?: string;
+  level?: number;
   role: string;
-  gpa: number;
-  completedCreditHours: number;
-  currentSemester: string;
+  gpa?: number;
+  completedCreditHours?: number;
+  currentSemester?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  createdBy?: any;
 }
 
 const AccountManagement: React.FC = () => {
@@ -59,27 +62,6 @@ const AccountManagement: React.FC = () => {
     }
   };
 
-  // Test mode: auto-setup if no admin user exists
-  React.useEffect(() => {
-    if (!user.role || (user.role !== "admin" && user.role !== "superadmin")) {
-      const testAdmin = {
-        id: "admin1",
-        fullName: "Admin User",
-        universityId: "ADMIN001",
-        email: "admin@university.edu",
-        major: "Administration",
-        academicYear: "N/A",
-        level: 0,
-        role: "superadmin",
-        gpa: 4.0,
-        completedCreditHours: 0,
-        currentSemester: "N/A",
-      };
-      localStorage.setItem("student", JSON.stringify(testAdmin));
-      localStorage.setItem("authToken", "test-admin-token-" + Date.now());
-    }
-  }, []);
-
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -92,13 +74,9 @@ const AccountManagement: React.FC = () => {
     role: "student" as "student" | "admin" | "superadmin",
   });
 
-  useEffect(() => {
-    fetchStudents();
-  }, []);
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
-      const response = await adminApi.getStudents();
+      const response = await adminApi.getStudents(activeTab);
       if (response.success) {
         setStudents(response.students);
       }
@@ -108,7 +86,11 @@ const AccountManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
+
+  useEffect(() => {
+    fetchStudents();
+  }, [activeTab, fetchStudents]);
 
   const handleLogout = () => {
     authApi.logout();
