@@ -134,8 +134,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       res.status(200).json({
         success: true,
         token,
-        admin: buildAdminPayload(admin),
-        role: admin.role,
+        student: buildAdminPayload(admin),
       });
       return;
     }
@@ -275,17 +274,28 @@ export const resetPassword = async (
 //  returns the currently logged-in student's profile.
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
-    // req.student is set by the protect middleware
-    const student = await Student.findById(req.student!._id);
+    const userId = req.student?._id || req.adminUser?._id;
+    const isAdmin = !!req.adminUser;
 
-    if (!student) {
-      res.status(404).json({ success: false, message: 'Student not found' });
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Not authenticated' });
+      return;
+    }
+
+    const user = isAdmin
+      ? await AdminUser.findById(userId)
+      : await Student.findById(userId);
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
       return;
     }
 
     res.status(200).json({
       success: true,
-      student: buildStudentPayload(student),
+      student: isAdmin 
+        ? buildAdminPayload(user as InstanceType<typeof AdminUser>)
+        : buildStudentPayload(user as InstanceType<typeof Student>),
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -340,10 +350,9 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     res.status(200).json({
       success: true,
       token: newToken,
-      ...(isAdmin 
-        ? { admin: buildAdminPayload(user as InstanceType<typeof AdminUser>) }
-        : { student: buildStudentPayload(user as InstanceType<typeof Student>) }
-      ),
+      student: isAdmin 
+        ? buildAdminPayload(user as InstanceType<typeof AdminUser>)
+        : buildStudentPayload(user as InstanceType<typeof Student>),
     });
   } catch (error: any) {
     res.status(401).json({

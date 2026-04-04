@@ -3,6 +3,7 @@ import Student from '../models/Student';
 import Course from '../models/Course';
 import Enrollment from '../models/Enrollment';
 import AuditLog from '../models/AuditLog';
+import { recalculateStudentGPA } from '../utils/gpaCalculator';
 import AdminUser from '../models/AdminUser';
 
 // Helper to format student response
@@ -47,8 +48,8 @@ export const getAdminStats = async (req: Request, res: Response): Promise<void> 
         res.status(200).json({
             success: true,
             stats: { totalStudents, totalCourses, totalAdmins, totalEnrollments, recentLogins },
-            studentsByLevel: studentsByLevel.map((s) => ({ level: s._id, count: s.count })),
-            courses: courses.map((c) => ({ code: c.code, name: c.name, enrolled: c.enrolledCount, capacity: c.capacity })),
+            studentsByLevel: studentsByLevel.map((s: { _id: number; count: number }) => ({ level: s._id, count: s.count })),
+            courses: courses.map((c: any) => ({ code: c.code, name: c.name, enrolled: c.enrolledCount, capacity: c.capacity })),
         });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -285,7 +286,7 @@ export const getAllEnrollments = async (req: Request, res: Response): Promise<vo
             total,
             pages: Math.ceil(total / limit),
             count: enrollments.length,
-            enrollments: enrollments.map(e => ({
+            enrollments: enrollments.map((e: any) => ({
                 _id: e._id,
                 student: {
                     _id: (e.student as any)._id,
@@ -418,7 +419,12 @@ export const updateGrade = async (req: Request, res: Response): Promise<void> =>
 
         const oldGrade = enrollment.grade;
         enrollment.grade = numericGrade;
+        enrollment.status = 'completed'; // Ensure status is updated to completed
         await enrollment.save();
+
+        // Recalculate student GPA after grade update
+        const studentId = (enrollment.student as any)._id || enrollment.student;
+        await recalculateStudentGPA(studentId.toString());
 
         // Audit log
         if (caller) {

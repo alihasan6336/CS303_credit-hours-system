@@ -11,6 +11,7 @@ import courseAssignmentRoutes from './routes/courseAssignmentRoutes';
 import permissionRoutes from './routes/permissionRoutes';
 import auditRoutes from './routes/auditRoutes';
 import enrollmentRoutes from './routes/enrollmentRoutes';
+import gpaRoutes from './routes/gpaRoutes';
 import { apiLimiter, authLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -71,6 +72,7 @@ app.use('/api/course-assignments', courseAssignmentRoutes);
 app.use('/api/admin/permissions', permissionRoutes);
 app.use('/api/admin/audit', auditRoutes);
 app.use('/api/admin/enrollments', enrollmentRoutes);
+app.use('/api/gpa', gpaRoutes);
 
 // Request logging
 app.use((req, res, next) => {

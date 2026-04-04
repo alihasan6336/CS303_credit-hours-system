@@ -19,7 +19,7 @@ import { AppError } from '../middleware/errorHandler';
 export const getCourses = async (req: Request, res: Response): Promise<void> => {
   try {
     const courses = await Course.find({ isActive: true })
-      .select('code name day time room credits instructor capacity enrolledCount major studentYear prerequisite')
+      .select('code name day time room credits instructor capacity enrolledCount major studentYear prerequisites')
       .lean();
 
     res.status(200).json({
@@ -38,7 +38,7 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
         enrolledCount: c.enrolledCount,
         major: c.major,
         studentYear: c.studentYear,
-        prerequisite: c.prerequisite,
+        prerequisites: c.prerequisites,
       }))
     });
   } catch (error: any) {
@@ -80,7 +80,7 @@ export const getMyCourses = async (req: Request, res: Response): Promise<void> =
     const enrollments = await Enrollment.find(filter)
       .populate({
         path: 'course',
-        select: 'code name day time room credits instructor capacity enrolledCount major studentYear prerequisite',
+        select: 'code name day time room credits instructor capacity enrolledCount major studentYear prerequisites',
       })
       .sort({ enrolledAt: -1 })
       .lean();
@@ -98,7 +98,7 @@ export const getMyCourses = async (req: Request, res: Response): Promise<void> =
 // POST /api/courses
 export const createCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisite } = req.body;
+    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites } = req.body;
     const creator = req.adminUser;
 
     const course = await Course.create({
@@ -112,7 +112,7 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
       capacity: capacity || 30,
       major,
       studentYear,
-      prerequisite,
+      prerequisites,
     });
 
     // Audit log
@@ -141,7 +141,7 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
         enrolledCount: course.enrolledCount,
         major: course.major,
         studentYear: course.studentYear,
-        prerequisite: course.prerequisite,
+        prerequisites: course.prerequisites,
       }
     });
   } catch (error: any) {
@@ -205,7 +205,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisite } = req.body;
+    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites } = req.body;
 
     // Guard: cannot reduce capacity below current enrollment
     if (capacity !== undefined) {
@@ -225,7 +225,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
 
     const course = await Course.findByIdAndUpdate(
       id,
-      { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisite },
+      { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites },
       { new: true, runValidators: true }
     );
 
@@ -260,7 +260,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
         enrolledCount: course.enrolledCount,
         major: course.major,
         studentYear: course.studentYear,
-        prerequisite: course.prerequisite,
+        prerequisites: course.prerequisites,
       }
     });
   } catch (error: any) {

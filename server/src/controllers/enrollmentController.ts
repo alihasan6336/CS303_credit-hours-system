@@ -3,6 +3,7 @@ import Enrollment from '../models/Enrollment';
 import Student from '../models/Student';
 import Course from '../models/Course';
 import AuditLog from '../models/AuditLog';
+import { recalculateStudentGPA } from '../utils/gpaCalculator';
 
 // GET /api/admin/enrollments - List all enrollments (admin)
 export const listEnrollments = async (req: Request, res: Response): Promise<void> => {
@@ -210,7 +211,7 @@ export const updateGrade = async (req: Request, res: Response): Promise<void> =>
     enrollment.status = 'completed';
     await enrollment.save();
 
-    // Recalculate student GPA
+    // Recalculate student GPA using the utility
     await recalculateStudentGPA(studentId);
 
     // Audit log
@@ -250,59 +251,3 @@ export const updateGrade = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// Helper function to recalculate student GPA
-async function recalculateStudentGPA(studentId: string): Promise<void> {
-  const student = await Student.findById(studentId);
-  if (!student) return;
-
-  // Get all completed enrollments with course credits
-  const completedEnrollments = await Enrollment.find({
-    student: studentId,
-    status: 'completed',
-    grade: { $ne: null },
-  }).populate('course', 'credits');
-
-  if (completedEnrollments.length === 0) {
-    student.gpa = 0;
-    student.completedCreditHours = 0;
-    await student.save();
-    return;
-  }
-
-  // Calculate weighted GPA
-  let totalQualityPoints = 0;
-  let totalCredits = 0;
-  let completedHours = 0;
-
-  for (const enrollment of completedEnrollments) {
-    const course = enrollment.course as any;
-    const credits = course.credits || 0;
-    const grade = enrollment.grade || 0;
-
-    // Convert percentage to 4.0 scale
-    const gradePoints = percentageToGradePoints(grade);
-
-    totalQualityPoints += gradePoints * credits;
-    totalCredits += credits;
-    completedHours += credits;
-  }
-
-  // Update student
-  student.gpa = totalCredits > 0 ? totalQualityPoints / totalCredits : 0;
-  student.completedCreditHours = completedHours;
-  await student.save();
-}
-
-// Helper: Convert percentage grade to 4.0 scale
-function percentageToGradePoints(percentage: number): number {
-  if (percentage >= 90) return 4.0;
-  if (percentage >= 85) return 3.7;
-  if (percentage >= 80) return 3.3;
-  if (percentage >= 75) return 3.0;
-  if (percentage >= 70) return 2.7;
-  if (percentage >= 65) return 2.3;
-  if (percentage >= 60) return 2.0;
-  if (percentage >= 55) return 1.7;
-  if (percentage >= 50) return 1.0;
-  return 0.0;
-}

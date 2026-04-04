@@ -3,15 +3,6 @@ import { verifyToken } from '../utils/jwt';
 import AdminUser, { IAdminUser } from '../models/AdminUser';
 import AdminPermission, { PermissionKey, ALL_PERMISSIONS } from '../models/AdminPermission';
 
-// Extend Express Request type
-declare global {
-  namespace Express {
-    interface Request {
-      adminUser?: IAdminUser;
-      adminPermissions?: PermissionKey[];
-    }
-  }
-}
 
 interface JwtPayload {
   id: string;

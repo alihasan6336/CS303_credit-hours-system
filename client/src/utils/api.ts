@@ -2,7 +2,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 // Test mode - set to true to use mock data when API fails
-const TEST_MODE = true;
+const TEST_MODE = false;
 
 interface StudentFromApi {
   id: string;
@@ -453,6 +453,25 @@ export const adminApi = {
   unenrollStudent(enrollmentId: string): Promise<{ success: boolean; message: string }> {
     return request(`/api/admin/enrollments/${enrollmentId}`, {
       method: "DELETE",
+    });
+  },
+};
+
+export const gpaApi = {
+  getBreakdown(): Promise<{ success: boolean; gpa: number; totalCredits: number; breakdown: any[] }> {
+    return request("/api/gpa/me");
+  },
+
+  recalculate(): Promise<{ success: boolean; message: string; data: { gpa: number; completedCreditHours: number } }> {
+    return request("/api/gpa/recalculate", {
+      method: "POST",
+    });
+  },
+
+  predict(potentialGrades: { courseId: string; grade: number }[]): Promise<{ success: boolean; currentGPA: number; predictedGPA: number; totalCreditsAfter: number }> {
+    return request("/api/gpa/predict", {
+      method: "POST",
+      body: JSON.stringify({ potentialGrades }),
     });
   },
 };
