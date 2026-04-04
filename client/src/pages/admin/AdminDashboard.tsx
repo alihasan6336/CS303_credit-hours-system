@@ -27,7 +27,7 @@ const AdminDashboard: React.FC = () => {
   const [studentsByLevel, setStudentsByLevel] = useState<StudentsByLevel[]>([]);
   const [courses, setCourses] = useState<CourseStat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error] = useState("");
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
 
