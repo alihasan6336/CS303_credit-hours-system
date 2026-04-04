@@ -7,7 +7,7 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import Student from '../models/Student';
 import AdminUser from '../models/AdminUser';
-import { signToken } from '../utils/jwt';
+import { signToken, verifyToken } from '../utils/jwt';
 
 // Matches every field that Login.tsx and Home.tsx read from the response
 const buildStudentPayload = (student: InstanceType<typeof Student>) => ({
@@ -285,6 +285,178 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 
     res.status(200).json({
       success: true,
+      student: buildStudentPayload(student),
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// POST /api/auth/refresh
+// Refresh access token using current valid token
+export const refreshToken = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({
+        success: false,
+        message: 'No token provided',
+      });
+      return;
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = verifyToken(token);
+
+    // Check if user still exists and is active
+    let user = await AdminUser.findById(decoded.id);
+    let isAdmin = true;
+
+    if (!user) {
+      user = await Student.findById(decoded.id);
+      isAdmin = false;
+    }
+
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        message: 'User not found',
+      });
+      return;
+    }
+
+    if (!user.isActive) {
+      res.status(403).json({
+        success: false,
+        message: 'Account has been deactivated',
+      });
+      return;
+    }
+
+    // Issue new token
+    const newToken = signToken(user._id.toString(), user.email, false);
+
+    res.status(200).json({
+      success: true,
+      token: newToken,
+      ...(isAdmin 
+        ? { admin: buildAdminPayload(user as InstanceType<typeof AdminUser>) }
+        : { student: buildStudentPayload(user as InstanceType<typeof Student>) }
+      ),
+    });
+  } catch (error: any) {
+    res.status(401).json({
+      success: false,
+      message: 'Invalid or expired token',
+    });
+  }
+};
+
+// PATCH /api/auth/change-password
+// Change password while logged in (requires current password)
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required',
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters',
+      });
+      return;
+    }
+
+    // Get user ID from token (set by protect middleware)
+    const userId = (req as any).student?._id || (req as any).adminUser?._id;
+    const isAdmin = !!(req as any).adminUser;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: 'Not authenticated',
+      });
+      return;
+    }
+
+    // Find user with password
+    const user = isAdmin
+      ? await AdminUser.findById(userId).select('+password')
+      : await Student.findById(userId).select('+password');
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+      return;
+    }
+
+    // Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect',
+      });
+      return;
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// PUT /api/auth/profile
+// Update own profile (students only)
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const studentId = req.student?._id;
+
+    if (!studentId) {
+      res.status(401).json({
+        success: false,
+        message: 'Not authenticated as student',
+      });
+      return;
+    }
+
+    const { fullName, phoneNumber, major, academicYear, currentSemester } = req.body;
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      res.status(404).json({ success: false, message: 'Student not found' });
+      return;
+    }
+
+    // Update allowed fields
+    if (fullName) student.fullName = fullName;
+    if (phoneNumber !== undefined) student.phoneNumber = phoneNumber;
+    if (major) student.major = major;
+    if (academicYear) student.academicYear = academicYear;
+    if (currentSemester) student.currentSemester = currentSemester;
+
+    await student.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
       student: buildStudentPayload(student),
     });
   } catch (error: any) {

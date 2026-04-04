@@ -388,3 +388,67 @@ export const adminUnenroll = async (req: Request, res: Response): Promise<void> 
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const updateGrade = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { grade } = req.body;
+        const caller = req.adminUser;
+
+        // Validate grade
+        if (grade === undefined || grade === null) {
+            res.status(400).json({ success: false, message: 'Grade is required' });
+            return;
+        }
+
+        const numericGrade = Number(grade);
+        if (isNaN(numericGrade) || numericGrade < 0 || numericGrade > 100) {
+            res.status(400).json({ success: false, message: 'Grade must be a number between 0 and 100' });
+            return;
+        }
+
+        const enrollment = await Enrollment.findById(id)
+            .populate('student', 'fullName universityId')
+            .populate('course', 'code name');
+
+        if (!enrollment) {
+            res.status(404).json({ success: false, message: 'Enrollment not found' });
+            return;
+        }
+
+        const oldGrade = enrollment.grade;
+        enrollment.grade = numericGrade;
+        await enrollment.save();
+
+        // Audit log
+        if (caller) {
+            await AuditLog.create({
+                actor: caller._id,
+                action: 'grade:update',
+                targetCourse: enrollment.course,
+                targetUser: enrollment.student,
+                details: { 
+                    enrollmentId: id,
+                    oldGrade, 
+                    newGrade: numericGrade 
+                },
+                ipAddress: req.ip,
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Grade updated successfully',
+            enrollment: {
+                _id: enrollment._id,
+                student: enrollment.student,
+                course: enrollment.course,
+                semester: enrollment.semester,
+                academicYear: enrollment.academicYear,
+                grade: enrollment.grade,
+            },
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

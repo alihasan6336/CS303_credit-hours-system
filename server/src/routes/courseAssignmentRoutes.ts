@@ -7,27 +7,28 @@ import {
   getAssignmentsByLevel,
 } from '../controllers/courseAssignmentController';
 import { protect } from '../middleware/protect';
-import { isAdmin } from '../middleware/adminAuth';
+import { adminProtect, requirePermission } from '../middleware/adminProtect';
+import { asyncWrap } from '../middleware/errorHandler';
+import { adminActionLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
-// All routes require authentication and admin role
-router.use(protect);
-router.use(isAdmin);
+// Get assignments by level - accessible to any authenticated user (for student dashboard)
+router.get('/by-level', protect, asyncWrap(getAssignmentsByLevel));
 
-// Get all assignments
-router.get('/', getAssignments);
+// Admin-only routes require authentication + admin role + specific permissions
+router.use(adminProtect);
 
-// Get assignments grouped by level
-router.get('/by-level', getAssignmentsByLevel);
+// Get all assignments (admin view)
+router.get('/', requirePermission('courses:list'), asyncWrap(getAssignments));
 
 // Get available courses for assignment
-router.get('/available-courses', getAvailableCourses);
+router.get('/available-courses', requirePermission('courses:list'), asyncWrap(getAvailableCourses));
 
-// Assign a course to a level
-router.post('/', assignCourse);
+// Assign a course to a level (create assignment)
+router.post('/', adminActionLimiter, requirePermission('courses:create'), asyncWrap(assignCourse));
 
-// Remove an assignment
-router.delete('/:id', removeAssignment);
+// Remove an assignment (soft delete)
+router.delete('/:id', adminActionLimiter, requirePermission('courses:delete'), asyncWrap(removeAssignment));
 
 export default router;

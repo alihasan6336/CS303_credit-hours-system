@@ -360,6 +360,76 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // Get course details including prerequisites and schedule
+    const course = await Course.findById(courseId).lean();
+    if (!course) {
+      res.status(404).json({ success: false, message: 'Course not found' });
+      return;
+    }
+
+    if (!course.isActive) {
+      res.status(400).json({ success: false, message: 'This course is no longer available.' });
+      return;
+    }
+
+    // === PREREQUISITE CHECK ===
+    // Check if student has completed all prerequisite courses
+    if (course.prerequisites && course.prerequisites.length > 0) {
+      const completedEnrollments = await Enrollment.find({
+        student: student._id,
+        status: { $in: ['completed'] },
+      }).populate('course', 'code');
+
+      const completedCourseCodes = completedEnrollments.map(
+        (e) => (e.course as any).code
+      );
+
+      const missingPrereqs = course.prerequisites.filter(
+        (prereq) => !completedCourseCodes.includes(prereq)
+      );
+
+      if (missingPrereqs.length > 0) {
+        res.status(403).json({
+          success: false,
+          message: `Prerequisites not met. Missing: ${missingPrereqs.join(', ')}`,
+          missingPrerequisites: missingPrereqs,
+        });
+        return;
+      }
+    }
+
+    // === SCHEDULE CONFLICT CHECK ===
+    // Check if student has time conflict with already enrolled courses
+    const currentEnrollments = await Enrollment.find({
+      student: student._id,
+      semester: student.currentSemester,
+      status: 'active',
+    }).populate('course', 'day time code name');
+
+    for (const enrollment of currentEnrollments) {
+      const enrolledCourse = enrollment.course as any;
+      if (enrolledCourse.day === course.day) {
+        // Check if times overlap (simple check for now)
+        // Format expected: "09:00 - 10:30"
+        const [existingStart, existingEnd] = enrolledCourse.time.split(' - ');
+        const [newStart, newEnd] = course.time.split(' - ');
+
+        if (timesOverlap(existingStart, existingEnd, newStart, newEnd)) {
+          res.status(409).json({
+            success: false,
+            message: `Schedule conflict with ${enrolledCourse.code} (${enrolledCourse.name}) on ${course.day} at ${course.time}`,
+            conflict: {
+              courseCode: enrolledCourse.code,
+              courseName: enrolledCourse.name,
+              day: enrolledCourse.day,
+              time: enrolledCourse.time,
+            },
+          });
+          return;
+        }
+      }
+    }
+
     // ATOMIC: increment enrolledCount ONLY IF a seat is available
     const updatedCourse = await Course.findOneAndUpdate(
       {
@@ -372,15 +442,6 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
     );
 
     if (!updatedCourse) {
-      const course = await Course.findById(courseId).select('isActive enrolledCount capacity').lean();
-      if (!course) {
-        res.status(404).json({ success: false, message: 'Course not found' });
-        return;
-      }
-      if (!course.isActive) {
-        res.status(400).json({ success: false, message: 'This course is no longer available.' });
-        return;
-      }
       res.status(400).json({ success: false, message: 'This course is full. No seats are available.' });
       return;
     }
@@ -393,6 +454,7 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
         course: courseId,
         semester: student.currentSemester,
         academicYear: `${year}-${year + 1}`,
+        status: 'active',
       });
     } catch (err: any) {
       if (err.code === 11000) {
@@ -427,6 +489,21 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Helper function to check if two time ranges overlap
+function timesOverlap(start1: string, end1: string, start2: string, end2: string): boolean {
+  const toMinutes = (time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const s1 = toMinutes(start1);
+  const e1 = toMinutes(end1);
+  const s2 = toMinutes(start2);
+  const e2 = toMinutes(end2);
+
+  return s1 < e2 && s2 < e1;
+}
 
 // DELETE /api/courses/:id/enroll
 export const dropCourse = async (req: Request, res: Response): Promise<void> => {

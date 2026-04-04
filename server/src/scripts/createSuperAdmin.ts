@@ -1,9 +1,20 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import Student from '../models/Student';
 import AdminUser from '../models/AdminUser';
+import AdminPermission, { ALL_PERMISSIONS } from '../models/AdminPermission';
 
 dotenv.config();
+
+/**
+ * Super Admin Creation Script
+ * 
+ * The Super Admin is the system owner with full control:
+ * - Only ONE superadmin can exist in the system
+ * - Has ALL permissions (create, read, update, delete everything)
+ * - Can create/manage other admins and users
+ * - Can manage all system settings
+ * - Admin users have less privileges than superadmin
+ */
 
 const createSuperAdmin = async () => {
   try {
@@ -14,58 +25,61 @@ const createSuperAdmin = async () => {
     }
 
     await mongoose.connect(mongoUri);
-    console.log('Connected to MongoDB');
+    console.log('✅ Connected to MongoDB');
 
-    // Check if superadmin already exists in AdminUser collection
-    const existingAdmin = await AdminUser.findOne({ email: 'sadmin@admin.edu' });
-    if (existingAdmin) {
-      console.log('Super admin already exists in AdminUser collection:', existingAdmin.email);
-    } else {
-      // Create in AdminUser collection
-      await AdminUser.create({
-        fullName: 'Super Admin',
-        email: 'sadmin@admin.edu',
-        password: 'sadmin123',
-        role: 'superadmin',
-        isActive: true,
-      });
-      console.log('✅ Super Admin created in AdminUser collection');
+    // Check if any superadmin already exists in the system
+    const existingSuperAdmin = await AdminUser.findOne({ role: 'superadmin' });
+    
+    if (existingSuperAdmin) {
+      console.log('⚠️  Super Admin already exists in the system:');
+      console.log(`   Name: ${existingSuperAdmin.fullName}`);
+      console.log(`   Email: ${existingSuperAdmin.email}`);
+      console.log(`   Created: ${existingSuperAdmin.createdAt}`);
+      console.log('\n❌ Cannot create another superadmin. Only ONE superadmin is allowed.');
+      
+      await mongoose.disconnect();
+      console.log('\nDisconnected from MongoDB');
+      return;
     }
 
-    // Check if superadmin already exists in Student collection
-    const existingStudent = await Student.findOne({ email: 'sadmin@admin.edu' });
-    if (existingStudent) {
-      console.log('Super admin already exists in Student collection:', existingStudent.email);
-    } else {
-      // Create in Student collection (for backward compatibility)
-      await Student.create({
-        fullName: 'Super Admin',
-        universityId: 'SUPER-ADMIN-001',
-        email: 'sadmin@admin.edu',
-        password: 'sadmin123',
-        major: 'Computer Science',
-        academicYear: '1st Year',
-        currentSemester: 'Fall',
-        completedCreditHours: 0,
-        phoneNumber: '',
-        gpa: 0,
-        level: 1,
-        role: 'superadmin',
-      });
-      console.log('✅ Super Admin created in Student collection');
-    }
+    // Create the Super Admin in AdminUser collection
+    const superAdmin = await AdminUser.create({
+      fullName: 'Super Admin',
+      email: 'sadmin@admin.edu',
+      password: 'sadmin123',
+      role: 'superadmin',
+      isActive: true,
+    });
 
-    console.log('\n📋 Super Admin Credentials:');
-    console.log('   Email: sadmin@admin.edu');
-    console.log('   Password: sadmin123');
-    console.log('   Role: superadmin');
+    console.log('✅ Super Admin created successfully');
+
+    // Grant ALL permissions to superadmin
+    // Superadmin has full access to everything in the system
+    await AdminPermission.create({
+      admin: superAdmin._id,
+      permissions: [...ALL_PERMISSIONS], // All system permissions
+      grantedBy: superAdmin._id, // Self-granted as system owner
+      note: 'System Super Admin - Full access to all system operations',
+    });
+
+    console.log('✅ Full permissions granted to Super Admin');
+
+    
 
     await mongoose.disconnect();
-    console.log('\nDisconnected from MongoDB');
+    console.log('\n✅ Disconnected from MongoDB');
+    console.log('Script completed successfully');
+    
   } catch (error: any) {
-    console.error('Error creating super admin:', error.message);
+    console.error('❌ Error creating super admin:', error.message);
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+    }
     process.exit(1);
   }
 };
 
-createSuperAdmin();
+// Run the script only if executed directly (not imported)
+if (require.main === module) {
+  createSuperAdmin();
+}

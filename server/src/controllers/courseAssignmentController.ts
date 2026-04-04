@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Course from '../models/Course';
 import CourseAssignment from '../models/CourseAssignment';
+import AuditLog from '../models/AuditLog';
 
 // Get all course assignments
 export const getAssignments = async (req: Request, res: Response): Promise<void> => {
@@ -61,6 +62,18 @@ export const assignCourse = async (req: Request, res: Response): Promise<void> =
 
     await assignment.populate('course', 'code name day time room credits instructor capacity enrolledCount');
 
+    // Audit log
+    const caller = (req as any).adminUser;
+    if (caller) {
+      await AuditLog.create({
+        actor: caller._id,
+        action: 'course:assign',
+        targetCourse: courseId,
+        details: { level, semester, academicYear },
+        ipAddress: req.ip,
+      });
+    }
+
     res.status(201).json({ success: true, assignment });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -81,6 +94,22 @@ export const removeAssignment = async (req: Request, res: Response): Promise<voi
     if (!assignment) {
       res.status(404).json({ success: false, message: 'Assignment not found' });
       return;
+    }
+
+    // Audit log
+    const caller = (req as any).adminUser;
+    if (caller) {
+      await AuditLog.create({
+        actor: caller._id,
+        action: 'course:unassign',
+        targetCourse: assignment.course,
+        details: { 
+          level: assignment.level, 
+          semester: assignment.semester, 
+          academicYear: assignment.academicYear 
+        },
+        ipAddress: req.ip,
+      });
     }
 
     res.status(200).json({ success: true, message: 'Assignment removed' });
