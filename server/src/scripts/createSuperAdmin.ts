@@ -64,24 +64,7 @@ const createSuperAdmin = async () => {
 
     console.log('✅ Full permissions granted to Super Admin');
 
-    console.log('\n' + '='.repeat(50));
-    console.log('📋 SUPER ADMIN CREDENTIALS');
-    console.log('='.repeat(50));
-    console.log('   Email:    sadmin@admin.edu');
-    console.log('   Password: sadmin123');
-    console.log('   Role:superadmin');
-    console.log('\n🔑 PERMISSIONS:');
-    console.log('   - Full system access');
-    console.log('   - Create/Read/Update/Delete all users');
-    console.log('   - Manage courses and enrollments');
-    console.log('   - Create and manage admin users');
-    console.log('   - All system settings and operations');
-    console.log('='.repeat(50));
-    console.log('\n⚠️  IMPORTANT:');
-    console.log('   - Keep these credentials secure');
-    console.log('   - Change password after first login');
-    console.log('   - Only ONE superadmin can exist in the system');
-    console.log('='.repeat(50));
+    
 
     await mongoose.disconnect();
     console.log('\n✅ Disconnected from MongoDB');
@@ -96,5 +79,7 @@ const createSuperAdmin = async () => {
   }
 };
 
-// Run the script
-createSuperAdmin();
+// Run the script only if executed directly (not imported)
+if (require.main === module) {
+  createSuperAdmin();
+}
