@@ -3,6 +3,7 @@ import {
   listEnrollments,
   createEnrollment,
   deleteEnrollment,
+  updateGrade,
 } from '../controllers/enrollmentController';
 import { adminProtect, requireRole, requirePermission } from '../middleware/adminProtect';
 import { asyncWrap } from '../middleware/errorHandler';
@@ -18,6 +19,9 @@ router.get('/', requireRole('admin', 'superadmin'), requirePermission('enrollmen
 
 // POST /api/admin/enrollments - Create enrollment for a student
 router.post('/', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('enrollments:create'), asyncWrap(createEnrollment));
+
+// PATCH /api/admin/enrollments/:id/grade - Update grade
+router.patch('/:id/grade', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('enrollments:update'), asyncWrap(updateGrade));
 
 // DELETE /api/admin/enrollments/:id - Delete enrollment
 router.delete('/:id', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('enrollments:delete'), asyncWrap(deleteEnrollment));

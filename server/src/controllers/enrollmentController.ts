@@ -112,7 +112,7 @@ export const createEnrollment = async (req: Request, res: Response): Promise<voi
       await AuditLog.create({
         actor: caller._id,
         action: 'admin:enroll',
-        targetStudent: studentId,
+        targetUser: studentId,
         targetCourse: courseId,
         details: { semester: enrollmentSemester, academicYear: enrollmentYear },
         ipAddress: req.ip,
@@ -157,7 +157,7 @@ export const deleteEnrollment = async (req: Request, res: Response): Promise<voi
       await AuditLog.create({
         actor: caller._id,
         action: 'admin:unenroll',
-        targetStudent: enrollment.student,
+        targetUser: enrollment.student,
         targetCourse: enrollment.course,
         details: { semester: enrollment.semester, academicYear: enrollment.academicYear },
         ipAddress: req.ip,
@@ -172,3 +172,137 @@ export const deleteEnrollment = async (req: Request, res: Response): Promise<voi
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// PATCH /api/admin/enrollments/:id/grade - Update grade and recalculate GPA
+export const updateGrade = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { grade } = req.body;
+    const caller = (req as any).adminUser;
+
+    // Validate grade
+    if (grade === undefined || grade === null) {
+      res.status(400).json({ success: false, message: 'Grade is required' });
+      return;
+    }
+
+    const numericGrade = Number(grade);
+    if (isNaN(numericGrade) || numericGrade < 0 || numericGrade > 100) {
+      res.status(400).json({ success: false, message: 'Grade must be a number between 0 and 100' });
+      return;
+    }
+
+    // Find enrollment with student and course populated
+    const enrollment = await Enrollment.findById(id)
+      .populate('student', '_id fullName')
+      .populate('course', 'code name credits');
+
+    if (!enrollment) {
+      res.status(404).json({ success: false, message: 'Enrollment not found' });
+      return;
+    }
+
+    const oldGrade = enrollment.grade;
+    const studentId = (enrollment.student as any)._id;
+
+    // Update grade and status
+    enrollment.grade = numericGrade;
+    enrollment.status = 'completed';
+    await enrollment.save();
+
+    // Recalculate student GPA
+    await recalculateStudentGPA(studentId);
+
+    // Audit log
+    if (caller) {
+      await AuditLog.create({
+        actor: caller._id,
+        action: 'grade:update',
+        targetUser: studentId,
+        targetCourse: enrollment.course,
+        details: {
+          enrollmentId: id,
+          oldGrade,
+          newGrade: numericGrade,
+          courseCode: (enrollment.course as any).code,
+        },
+        ipAddress: req.ip,
+      });
+    }
+
+    // Get updated student
+    const updatedStudent = await Student.findById(studentId).select('gpa completedCreditHours');
+
+    res.status(200).json({
+      success: true,
+      message: 'Grade updated successfully',
+      enrollment: {
+        _id: enrollment._id,
+        grade: enrollment.grade,
+        status: enrollment.status,
+        course: enrollment.course,
+      },
+      gpa: updatedStudent?.gpa,
+      completedCreditHours: updatedStudent?.completedCreditHours,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Helper function to recalculate student GPA
+async function recalculateStudentGPA(studentId: string): Promise<void> {
+  const student = await Student.findById(studentId);
+  if (!student) return;
+
+  // Get all completed enrollments with course credits
+  const completedEnrollments = await Enrollment.find({
+    student: studentId,
+    status: 'completed',
+    grade: { $ne: null },
+  }).populate('course', 'credits');
+
+  if (completedEnrollments.length === 0) {
+    student.gpa = 0;
+    student.completedCreditHours = 0;
+    await student.save();
+    return;
+  }
+
+  // Calculate weighted GPA
+  let totalQualityPoints = 0;
+  let totalCredits = 0;
+  let completedHours = 0;
+
+  for (const enrollment of completedEnrollments) {
+    const course = enrollment.course as any;
+    const credits = course.credits || 0;
+    const grade = enrollment.grade || 0;
+
+    // Convert percentage to 4.0 scale
+    const gradePoints = percentageToGradePoints(grade);
+
+    totalQualityPoints += gradePoints * credits;
+    totalCredits += credits;
+    completedHours += credits;
+  }
+
+  // Update student
+  student.gpa = totalCredits > 0 ? totalQualityPoints / totalCredits : 0;
+  student.completedCreditHours = completedHours;
+  await student.save();
+}
+
+// Helper: Convert percentage grade to 4.0 scale
+function percentageToGradePoints(percentage: number): number {
+  if (percentage >= 90) return 4.0;
+  if (percentage >= 85) return 3.7;
+  if (percentage >= 80) return 3.3;
+  if (percentage >= 75) return 3.0;
+  if (percentage >= 70) return 2.7;
+  if (percentage >= 65) return 2.3;
+  if (percentage >= 60) return 2.0;
+  if (percentage >= 55) return 1.7;
+  if (percentage >= 50) return 1.0;
+  return 0.0;
+}

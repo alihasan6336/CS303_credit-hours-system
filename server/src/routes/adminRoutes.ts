@@ -24,7 +24,15 @@ router.use(adminProtect);
 // Stats - super_admin only, requires users:stats permission
 router.get('/stats', requireRole('superadmin'), requirePermission('users:stats'), asyncWrap(getAdminStats));
 
-// User management
+// User management - /users aliases (RESTful)
+router.get('/users', requireRole('admin', 'superadmin'), requirePermission('users:list'), asyncWrap(getStudents));
+router.get('/users/:id', requireRole('admin', 'superadmin'), requirePermission('users:view'), asyncWrap(getStudentById));
+router.post('/users', requireRole('superadmin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createAccount));
+router.put('/users/:id', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:update'), asyncWrap(updateAccount));
+router.delete('/users/:id', requireRole('superadmin'), adminActionLimiter, requirePermission('users:delete'), asyncWrap(deleteAccount));
+router.patch('/users/:id/toggle', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:toggle'), asyncWrap(toggleAccountStatus));
+
+// Legacy path aliases (for backward compatibility)
 router.get('/students', requireRole('admin', 'superadmin'), requirePermission('users:list'), asyncWrap(getStudents));
 router.get('/students/:id', requireRole('admin', 'superadmin'), requirePermission('users:view'), asyncWrap(getStudentById));
 router.post('/accounts', requireRole('superadmin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createAccount));
