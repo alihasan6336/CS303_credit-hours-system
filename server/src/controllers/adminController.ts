@@ -7,19 +7,24 @@ import { recalculateStudentGPA } from '../utils/gpaCalculator';
 import AdminUser from '../models/AdminUser';
 
 // Helper to format student response
-const formatStudent = (s: any) => ({
-    id: s._id,
-    fullName: s.fullName,
-    email: s.email,
-    universityId: s.universityId,
-    major: s.major,
-    academicYear: s.academicYear,
-    level: s.level,
-    role: s.role,
-    gpa: s.gpa,
-    completedCreditHours: s.completedCreditHours,
-    currentSemester: s.currentSemester,
-});
+const formatStudent = (s: any) => {
+    const isAdmin = s.role === 'admin' || s.role === 'superadmin';
+    return {
+        id: s._id,
+        fullName: s.fullName,
+        email: s.email,
+        universityId: s.universityId,
+        major: s.major,
+        ...(isAdmin ? {} : {
+            academicYear: s.academicYear,
+            currentSemester: s.currentSemester,
+            completedCreditHours: s.completedCreditHours,
+        }),
+        level: s.level,
+        role: s.role,
+        gpa: s.gpa,
+    };
+};
 
 export const getAdminStats = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -121,7 +126,7 @@ export const getStudentById = async (req: Request, res: Response): Promise<void>
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { fullName, universityId, email, password, major, academicYear, currentSemester, completedCreditHours, phoneNumber, role } = req.body;
+        const { fullName, universityId, email, password, major, phoneNumber, role } = req.body;
         const creator = req.adminUser;
 
         if (!fullName || !email || !password) {
@@ -141,9 +146,9 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
             email,
             password,
             major: major || 'Computer Science',
-            academicYear: academicYear || '1st Year',
-            currentSemester: currentSemester || 'Fall',
-            completedCreditHours: Number(completedCreditHours) || 0,
+            academicYear: role === 'admin' ? 'N/A' : '1st Year',
+            currentSemester: role === 'admin' ? 'N/A' : 'Fall',
+            completedCreditHours: role === 'admin' ? 0 : 0,
             phoneNumber: phoneNumber || '',
             role: role || 'student',
         });
