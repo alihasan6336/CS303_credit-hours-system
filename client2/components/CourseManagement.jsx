@@ -122,7 +122,6 @@ export default function CourseManagement() {
                 { label: "Course Code *", key: "code", placeholder: "e.g. CS303" },
                 { label: "Course Name *", key: "name", placeholder: "e.g. Software Engineering" },
                 { label: "Instructor *", key: "instructor", placeholder: "e.g. Dr. Khalid" },
-                { label: "Day", key: "day", placeholder: "e.g. Monday" },
                 { label: "Time", key: "time", placeholder: "e.g. 08:00 – 09:30" },
                 { label: "Room", key: "room", placeholder: "e.g. B-201" },
                 { label: "Credits", key: "credits", placeholder: "e.g. 3" },
@@ -139,6 +138,22 @@ export default function CourseManagement() {
                   />
                 </View>
               ))}
+              <Text style={styles.fieldLabel}>Day</Text>
+              <View style={styles.dayRow}>
+                {["Saturday","Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"].map((d) => {
+                  const selected = form.day === d;
+                  const color = dayColors[d] || "#888";
+                  return (
+                    <TouchableOpacity
+                      key={d}
+                      style={[styles.dayPill, selected && { backgroundColor: color + "20", borderColor: color }]}
+                      onPress={() => setForm({ ...form, day: d })}
+                    >
+                      <Text style={[styles.dayPillText, selected && { color }]}>{d.slice(0, 3)}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </ScrollView>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
@@ -194,4 +209,10 @@ const styles = StyleSheet.create({
   cancelBtnText: { fontWeight: "700", color: "#555" },
   saveBtn: { flex: 1, backgroundColor: "#2554e8", paddingVertical: 13, borderRadius: 10, alignItems: "center" },
   saveBtnText: { fontWeight: "700", color: "#fff" },
+  dayRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
+  dayPill: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
+    borderWidth: 1.5, borderColor: "#e0e0e0", backgroundColor: "#fafafa",
+  },
+  dayPillText: { fontSize: 13, fontWeight: "700", color: "#888" },
 });

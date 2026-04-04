@@ -39,12 +39,17 @@ export default function LoginScreen({ onLogin, onNavigateRegister }) {
         rememberMe
       });
 
+      const user = response.student || response.admin;
+      if (response.role) {
+        user.role = response.role;
+      }
+
       // Save to AsyncStorage
       await AsyncStorage.setItem("authToken", response.token);
-      await AsyncStorage.setItem("student", JSON.stringify(response.student));
+      await AsyncStorage.setItem("student", JSON.stringify(user));
 
       // Update parent state
-      onLogin(response.student);
+      onLogin(user);
     } catch (error) {
       setErrorMessage(error.message || "Failed to sign in. Please try again.");
     } finally {

@@ -46,7 +46,7 @@ export default function EnrollmentManagement() {
     s.universityId?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const studentEnrollments = enrollments.filter(e => e.student?._id === selectedStudent?._id);
+  const studentEnrollments = enrollments.filter(e => e.student?._id === selectedStudent?.id);
 
   const isStudentEnrolledInCourse = (courseId) => {
     return studentEnrollments.some(e => e.course?._id === courseId);
@@ -59,7 +59,7 @@ export default function EnrollmentManagement() {
     }
     try {
       setEnrolling(true);
-      await adminApi.enroll(selectedStudent._id, selectedCourse._id);
+      await adminApi.enroll(selectedStudent.id, selectedCourse._id);
       Alert.alert("Success", `${selectedStudent.fullName} enrolled in ${selectedCourse.code}`);
       setSelectedCourse(null);
       await fetchData();
@@ -112,8 +112,8 @@ export default function EnrollmentManagement() {
         </View>
         {filteredStudents.slice(0, 10).map((student) => (
           <TouchableOpacity
-            key={student._id}
-            style={[styles.studentCard, selectedStudent?._id === student._id && styles.studentCardActive]}
+            key={student.id}
+            style={[styles.studentCard, selectedStudent?.id === student.id && styles.studentCardActive]}
             onPress={() => { setSelectedStudent(student); setSelectedCourse(null); }}
           >
             <View style={styles.studentAvatar}>
@@ -125,7 +125,7 @@ export default function EnrollmentManagement() {
               <Text style={styles.studentName}>{student.fullName}</Text>
               <Text style={styles.studentMeta}>{student.universityId} • Level {student.level}</Text>
             </View>
-            {selectedStudent?._id === student._id && <Text style={styles.selectedCheck}>✓</Text>}
+            {selectedStudent?.id === student.id && <Text style={styles.selectedCheck}>✓</Text>}
           </TouchableOpacity>
         ))}
       </View>

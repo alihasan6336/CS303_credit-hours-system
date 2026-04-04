@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useState, useEffect } from "react";
-import { authApi } from "../utils/api";
+import { authApi, courseApi } from "../utils/api";
 
 const { width } = Dimensions.get("window");
 
@@ -22,12 +22,25 @@ export default function DashboardScreen({ onNavigateCourses }) {
     const fetchDashboardData = async () => {
       try {
         setIsLoading(true);
-        const response = await authApi.home();
+        const [homeRes, enrolledRes] = await Promise.all([
+          authApi.home(),
+          courseApi.getMyCourses(),
+        ]);
         setStudent({
-          ...response.student,
+          ...homeRes.student,
           totalHours: 146,
         });
-        setCourses(response.student?.courses || []);
+        const enrolledData = (enrolledRes.data || []).map(e => ({
+          _id: e.course?._id,
+          code: e.course?.code,
+          name: e.course?.name,
+          day: e.course?.day,
+          time: e.course?.time,
+          room: e.course?.room,
+          credits: e.course?.credits,
+          instructor: e.course?.instructor,
+        }));
+        setCourses(enrolledData);
       } catch (err) {
         setError(err.message || "Failed to load dashboard data");
       } finally {
@@ -54,7 +67,7 @@ export default function DashboardScreen({ onNavigateCourses }) {
     );
   }
 
-  const completedHours = student?.completedHours || 0;
+  const completedHours = student?.completedCreditHours ?? 0;
   const totalHours = student?.totalHours || 146;
   const progress = Math.round((completedHours / totalHours) * 100) || 0;
   const enrolledCount = courses.length;
@@ -66,19 +79,19 @@ export default function DashboardScreen({ onNavigateCourses }) {
       {/* HEADER */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Hello, {student.name}</Text>
-          <Text style={styles.headerSub}>{student.semester} — {student.major}</Text>
+          <Text style={styles.headerTitle}>Hello, {student.fullName}</Text>
+          <Text style={styles.headerSub}>{student.currentSemester} — {student.major}</Text>
         </View>
       </View>
 
       {/* USER CARD */}
       <View style={styles.userCard}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{student.name?.substring(0, 2).toUpperCase() || "🧑‍🎓"}</Text>
+          <Text style={styles.avatarText}>{student.fullName?.substring(0, 2).toUpperCase() || "🧑‍🎓"}</Text>
         </View>
         <View>
-          <Text style={styles.userName}>{student.name}</Text>
-          <Text style={styles.userId}>{student.id}</Text>
+          <Text style={styles.userName}>{student.fullName}</Text>
+          <Text style={styles.userId}>{student.universityId || student.id}</Text>
         </View>
       </View>
 
@@ -102,7 +115,7 @@ export default function DashboardScreen({ onNavigateCourses }) {
           <Text style={styles.statIcon}>🎓</Text>
           <View style={styles.statTextContainer}>
             <Text style={styles.statLabel}>GPA</Text>
-            <Text style={styles.statNumber}>{student.gpa || "N/A"}</Text>
+            <Text style={styles.statNumber}>{student.gpa != null ? student.gpa.toFixed(1) : "N/A"}</Text>
           </View>
         </View>
         <View style={[styles.statCard, { borderLeftColor: "#22c55e" }]}>
@@ -134,10 +147,10 @@ export default function DashboardScreen({ onNavigateCourses }) {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Student Information</Text>
         {[
-          { label: "Student ID", value: student.id },
+          { label: "Student ID", value: student.universityId || student.id },
           { label: "Major", value: student.major },
           { label: "Level", value: student.level || 1 },
-          { label: "Semester", value: student.semester },
+          { label: "Semester", value: student.currentSemester },
         ].map((item, i, arr) => (
           <View key={i} style={[styles.infoRow, i !== arr.length - 1 && styles.infoRowBorder]}>
             <Text style={styles.infoLabel}>{item.label}</Text>

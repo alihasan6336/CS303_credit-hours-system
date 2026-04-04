@@ -9,12 +9,12 @@ import {
     View,
 } from "react-native";
 import { useEffect, useState } from "react";
-import { authApi, courseApi } from "../utils/api";
+import { courseApi } from "../utils/api";
 
 const { width } = Dimensions.get("window");
 
 export default function StudentCoursesScreen({ onNavigateDashboard }) {
-    const [activeTab, setActiveTab] = useState("available"); 
+    const [activeTab, setActiveTab] = useState("available");
     const [availableCourses, setAvailableCourses] = useState([]);
     const [myCourses, setMyCourses] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -29,8 +29,18 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
             const responseAll = await courseApi.getAll();
             setAvailableCourses(responseAll.courses || []);
 
-            const responseHome = await authApi.home();
-            setMyCourses(responseHome.student?.courses || []);
+            const responseEnrolled = await courseApi.getMyCourses();
+            const enrolledData = (responseEnrolled.data || []).map(e => ({
+                _id: e.course?._id,
+                code: e.course?.code,
+                name: e.course?.name,
+                day: e.course?.day,
+                time: e.course?.time,
+                room: e.course?.room,
+                credits: e.course?.credits,
+                instructor: e.course?.instructor,
+            }));
+            setMyCourses(enrolledData);
 
         } catch (err) {
             setError(err.message || "Failed to load courses");
@@ -187,10 +197,8 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
                     {activeTab === "my_courses" && (
                         <View>
                             {myCourses.map((course, index) => {
-                               const originalCourse = availableCourses.find(c => c.code === course.code);
-
                                 return (
-                                    <View key={index} style={styles.courseCard}>
+                                    <View key={course._id || index} style={styles.courseCard}>
                                         <View style={styles.courseTop}>
                                             <Text style={styles.courseCode}>{course.code}</Text>
                                             {course.day && (
@@ -212,19 +220,17 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
                                                 <Text style={styles.courseDetail}>📍 {course.room}</Text>
                                             </View>
 
-                                            {originalCourse ? (
-                                                <TouchableOpacity
-                                                    style={[styles.actionBtn, styles.actionBtnDanger]}
-                                                    disabled={actionLoadingId === originalCourse._id}
-                                                    onPress={() => handleDrop(originalCourse._id)}
-                                                >
-                                                    {actionLoadingId === originalCourse._id ? (
-                                                        <ActivityIndicator size="small" color="#ef4444" />
-                                                    ) : (
-                                                        <Text style={styles.actionBtnTextDanger}>Drop Course</Text>
-                                                    )}
-                                                </TouchableOpacity>
-                                            ) : null}
+                                            <TouchableOpacity
+                                                style={[styles.actionBtn, styles.actionBtnDanger]}
+                                                disabled={actionLoadingId === course._id}
+                                                onPress={() => handleDrop(course._id)}
+                                            >
+                                                {actionLoadingId === course._id ? (
+                                                    <ActivityIndicator size="small" color="#ef4444" />
+                                                ) : (
+                                                    <Text style={styles.actionBtnTextDanger}>Drop Course</Text>
+                                                )}
+                                            </TouchableOpacity>
                                         </View>
                                     </View>
                                 );

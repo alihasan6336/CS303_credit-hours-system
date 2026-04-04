@@ -8,19 +8,19 @@ import {
     View,
 } from "react-native";
 import { useEffect, useState } from "react";
-import { authApi } from "../utils/api";
+import { authApi, courseApi } from "../utils/api";
 
 const { width } = Dimensions.get("window");
 
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Saturday"];
 
 const DAY_COLORS = {
-    Sunday: "#ef4444",    
-    Monday: "#3b82f6",    
-    Tuesday: "#22c55e",   
-    Wednesday: "#f59e0b", 
-    Thursday: "#8b5cf6",  
-    Saturday: "#ff69b4", 
+    Sunday: "#ef4444",
+    Monday: "#3b82f6",
+    Tuesday: "#22c55e",
+    Wednesday: "#f59e0b",
+    Thursday: "#8b5cf6",
+    Saturday: "#ff69b4",
 };
 
 export default function StudentScheduleScreen() {
@@ -35,9 +35,21 @@ export default function StudentScheduleScreen() {
             setIsLoading(true);
             setError("");
 
-            const responseHome = await authApi.home();
-            setStudent(responseHome.student);
-            setCourses(responseHome.student?.courses || []);
+            const [homeRes, enrolledRes] = await Promise.all([
+                authApi.home(),
+                courseApi.getMyCourses(),
+            ]);
+            setStudent(homeRes.student);
+            const enrolledData = (enrolledRes.data || []).map(e => ({
+                code: e.course?.code,
+                name: e.course?.name,
+                day: e.course?.day,
+                time: e.course?.time,
+                room: e.course?.room,
+                credits: e.course?.credits,
+                instructor: e.course?.instructor,
+            }));
+            setCourses(enrolledData);
         } catch (err) {
             setError(err.message || "Failed to load schedule");
         } finally {
@@ -64,7 +76,7 @@ export default function StudentScheduleScreen() {
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>My Schedule</Text>
                 <Text style={styles.headerSub}>
-                    {student ? `${student.semester} — ${courses.length} Courses` : "Loading..."}
+                    {student ? `${student.currentSemester} — ${courses.length} Courses` : "Loading..."}
                 </Text>
 
                 {/* DAY FILTER CHIPS */}

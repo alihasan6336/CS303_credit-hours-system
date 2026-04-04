@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
-const API_BASE_URL = Platform.OS === "android" ? "http://192.168.8.129:8081" : "http://localhost:5000";
+const API_BASE_URL = Platform.OS === "android" ? "http://192.168.1.5:5000" : "http://localhost:5000";
 
 
 async function request(path, options = {}) {
@@ -88,6 +88,10 @@ export const authApi = {
 export const courseApi = {
     getAll() {
         return request("/api/courses");
+    },
+
+    getMyCourses() {
+        return request("/api/courses/my-courses");
     },
 
     enroll(id) {
