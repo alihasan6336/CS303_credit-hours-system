@@ -3,7 +3,8 @@ import {
   getAdminStats,
   getStudents,
   getStudentById,
-  createAccount,
+  createStudentAccount,
+  createAdminAccount,
   updateAccount,
   deleteAccount,
   toggleAccountStatus,
@@ -27,7 +28,8 @@ router.get('/stats', requireRole('superadmin'), requirePermission('users:stats')
 // User management - /users aliases (RESTful)
 router.get('/users', requireRole('admin', 'superadmin'), requirePermission('users:list'), asyncWrap(getStudents));
 router.get('/users/:id', requireRole('admin', 'superadmin'), requirePermission('users:view'), asyncWrap(getStudentById));
-router.post('/users', requireRole('superadmin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createAccount));
+router.post('/users/students', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createStudentAccount));
+router.post('/users/admins', requireRole('superadmin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createAdminAccount));
 router.put('/users/:id', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:update'), asyncWrap(updateAccount));
 router.delete('/users/:id', requireRole('superadmin'), adminActionLimiter, requirePermission('users:delete'), asyncWrap(deleteAccount));
 router.patch('/users/:id/toggle', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:toggle'), asyncWrap(toggleAccountStatus));
@@ -35,7 +37,8 @@ router.patch('/users/:id/toggle', requireRole('admin', 'superadmin'), adminActio
 // Legacy path aliases (for backward compatibility)
 router.get('/students', requireRole('admin', 'superadmin'), requirePermission('users:list'), asyncWrap(getStudents));
 router.get('/students/:id', requireRole('admin', 'superadmin'), requirePermission('users:view'), asyncWrap(getStudentById));
-router.post('/accounts', requireRole('superadmin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createAccount));
+router.post('/accounts/students', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createStudentAccount));
+router.post('/accounts/admins', requireRole('superadmin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createAdminAccount));
 router.put('/accounts/:id', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:update'), asyncWrap(updateAccount));
 router.delete('/accounts/:id', requireRole('superadmin'), adminActionLimiter, requirePermission('users:delete'), asyncWrap(deleteAccount));
 router.patch('/accounts/:id/toggle', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:toggle'), asyncWrap(toggleAccountStatus));

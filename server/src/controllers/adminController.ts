@@ -124,9 +124,9 @@ export const getStudentById = async (req: Request, res: Response): Promise<void>
     }
 };
 
-export const createAccount = async (req: Request, res: Response): Promise<void> => {
+export const createStudentAccount = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { fullName, universityId, email, password, major, phoneNumber, role } = req.body;
+        const { fullName, universityId, email, password, major, academicYear, currentSemester, completedCreditHours, phoneNumber } = req.body;
         const creator = req.adminUser;
 
         if (!fullName || !email || !password) {
@@ -146,11 +146,11 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
             email,
             password,
             major: major || 'Computer Science',
-            academicYear: role === 'admin' ? 'N/A' : '1st Year',
-            currentSemester: role === 'admin' ? 'N/A' : 'Fall',
-            completedCreditHours: role === 'admin' ? 0 : 0,
+            academicYear: academicYear || '1st Year',
+            currentSemester: currentSemester || 'Fall',
+            completedCreditHours: Number(completedCreditHours) || 0,
             phoneNumber: phoneNumber || '',
-            role: role || 'student',
+            role: 'student',
         });
 
         // Audit log
@@ -165,6 +165,52 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
         }
 
         res.status(201).json({ success: true, student: { id: student._id, fullName: student.fullName, email: student.email, role: student.role } });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const createAdminAccount = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { fullName, universityId, email, password, major, phoneNumber } = req.body;
+        const creator = req.adminUser;
+
+        if (!fullName || !email || !password) {
+            res.status(400).json({ success: false, message: 'Full name, email and password are required' });
+            return;
+        }
+
+        const duplicate = await Student.findOne({ $or: [{ email }, ...(universityId ? [{ universityId }] : [])] });
+        if (duplicate) {
+            res.status(409).json({ success: false, message: 'Email or University ID already exists' });
+            return;
+        }
+
+        const admin = await Student.create({
+            fullName,
+            universityId: universityId || `AUTO-${Date.now()}`,
+            email,
+            password,
+            major: major || 'Administration',
+            academicYear: 'N/A',
+            currentSemester: 'N/A',
+            completedCreditHours: 0,
+            phoneNumber: phoneNumber || '',
+            role: 'admin',
+        });
+
+        // Audit log
+        if (creator) {
+            await AuditLog.create({
+                actor: creator._id,
+                action: 'admin:create',
+                targetUser: admin._id,
+                details: { role: admin.role, email: admin.email },
+                ipAddress: req.ip,
+            });
+        }
+
+        res.status(201).json({ success: true, student: { id: admin._id, fullName: admin.fullName, email: admin.email, role: admin.role } });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }
