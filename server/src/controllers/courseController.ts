@@ -38,7 +38,7 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
         enrolledCount: c.enrolledCount,
         major: c.major,
         studentYear: c.studentYear,
-        prerequisite: c.prerequisite,
+        prerequisites: c.prerequisites,
       }))
     });
   } catch (error: any) {
@@ -80,7 +80,7 @@ export const getMyCourses = async (req: Request, res: Response): Promise<void> =
     const enrollments = await Enrollment.find(filter)
       .populate({
         path: 'course',
-        select: 'code name day time room credits instructor capacity enrolledCount major studentYear prerequisite',
+        select: 'code name day time room credits instructor capacity enrolledCount major studentYear prerequisites',
       })
       .sort({ enrolledAt: -1 })
       .lean();
@@ -98,7 +98,7 @@ export const getMyCourses = async (req: Request, res: Response): Promise<void> =
 // POST /api/courses
 export const createCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisite } = req.body;
+    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites } = req.body;
     const creator = req.adminUser;
 
     const course = await Course.create({
@@ -112,8 +112,8 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
       capacity: capacity || 30,
       major,
       studentYear,
-      prerequisite,
-    });
+      prerequisites,
+    }) as any;
 
     // Audit log
     if (creator) {
@@ -141,7 +141,7 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
         enrolledCount: course.enrolledCount,
         major: course.major,
         studentYear: course.studentYear,
-        prerequisite: course.prerequisite,
+        prerequisites: course.prerequisites,
       }
     });
   } catch (error: any) {
@@ -260,7 +260,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
         enrolledCount: course.enrolledCount,
         major: course.major,
         studentYear: course.studentYear,
-        prerequisite: course.prerequisite,
+        prerequisites: course.prerequisites,
       }
     });
   } catch (error: any) {
