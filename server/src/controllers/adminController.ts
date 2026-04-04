@@ -82,15 +82,47 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
             ];
         }
 
-        const [students, total] = await Promise.all([
-            Student.find(filter)
-                .select('fullName email universityId major academicYear level role gpa completedCreditHours currentSemester')
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limit)
-                .lean(),
-            Student.countDocuments(filter),
-        ]);
+        let students = [];
+        let total = 0;
+
+        // If role is admin or superadmin, fetch from AdminUser collection
+        if (role === 'admin' || role === 'superadmin') {
+            const [admins, adminCount] = await Promise.all([
+                AdminUser.find(filter)
+                    .select('fullName email universityId major role isActive createdAt createdBy')
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(limit)
+                    .populate('createdBy', 'fullName email')
+                    .lean(),
+                AdminUser.countDocuments(filter),
+            ]);
+            students = admins.map((admin: any) => ({
+                id: admin._id,
+                fullName: admin.fullName,
+                email: admin.email,
+                universityId: admin.universityId,
+                major: admin.major,
+                role: admin.role,
+                isActive: admin.isActive,
+                createdAt: admin.createdAt,
+                createdBy: admin.createdBy,
+            }));
+            total = adminCount;
+        } else {
+            // Fetch students from Student collection
+            const [studentDocs, studentCount] = await Promise.all([
+                Student.find(filter)
+                    .select('fullName email universityId major academicYear level role gpa completedCreditHours currentSemester')
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(limit)
+                    .lean(),
+                Student.countDocuments(filter),
+            ]);
+            students = studentDocs.map(formatStudent);
+            total = studentCount;
+        }
 
         res.status(200).json({
             success: true,
@@ -99,7 +131,7 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
             total,
             pages: Math.ceil(total / limit),
             count: students.length,
-            students: students.map(formatStudent),
+            students,
         });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -126,7 +158,7 @@ export const getStudentById = async (req: Request, res: Response): Promise<void>
 
 export const createStudentAccount = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { fullName, universityId, email, password, major, academicYear, currentSemester, completedCreditHours, phoneNumber } = req.body;
+        const { fullName, universityId, email, password, major, academicYear, currentSemester, completedCreditHours } = req.body;
         const creator = req.adminUser;
 
         if (!fullName || !email || !password) {
@@ -149,7 +181,7 @@ export const createStudentAccount = async (req: Request, res: Response): Promise
             academicYear: academicYear || '1st Year',
             currentSemester: currentSemester || 'Fall',
             completedCreditHours: Number(completedCreditHours) || 0,
-            phoneNumber: phoneNumber || '',
+            phoneNumber: '',
             role: 'student',
         });
 
@@ -180,23 +212,33 @@ export const createAdminAccount = async (req: Request, res: Response): Promise<v
             return;
         }
 
-        const duplicate = await Student.findOne({ $or: [{ email }, ...(universityId ? [{ universityId }] : [])] });
-        if (duplicate) {
-            res.status(409).json({ success: false, message: 'Email or University ID already exists' });
+        // Check for duplicate email in both Student and AdminUser collections
+        const duplicateStudent = await Student.findOne({ email });
+        const duplicateAdmin = await AdminUser.findOne({ email });
+        if (duplicateStudent || duplicateAdmin) {
+            res.status(409).json({ success: false, message: 'Email already exists' });
             return;
         }
 
-        const admin = await Student.create({
+        // Check for duplicate university ID in both collections
+        if (universityId) {
+            const duplicateIdStudent = await Student.findOne({ universityId });
+            const duplicateIdAdmin = await AdminUser.findOne({ universityId });
+            if (duplicateIdStudent || duplicateIdAdmin) {
+                res.status(409).json({ success: false, message: 'University ID already exists' });
+                return;
+            }
+        }
+
+        const admin = await AdminUser.create({
             fullName,
-            universityId: universityId || `AUTO-${Date.now()}`,
+            universityId: universityId || `ADMIN-${Date.now()}`,
             email,
             password,
             major: major || 'Administration',
-            academicYear: 'N/A',
-            currentSemester: 'N/A',
-            completedCreditHours: 0,
             phoneNumber: phoneNumber || '',
             role: 'admin',
+            createdBy: creator?._id,
         });
 
         // Audit log
@@ -256,8 +298,17 @@ export const deleteAccount = async (req: Request, res: Response): Promise<void> 
         const { id } = req.params;
         const caller = req.adminUser;
 
-        const student = await Student.findById(id);
-        if (!student) {
+        // Try to find in Student collection first
+        let user = await Student.findById(id);
+        let isAdmin = false;
+
+        // If not found in Student, try AdminUser
+        if (!user) {
+            user = await AdminUser.findById(id);
+            isAdmin = true;
+        }
+
+        if (!user) {
             res.status(404).json({ success: false, message: 'Account not found' });
             return;
         }
@@ -266,15 +317,20 @@ export const deleteAccount = async (req: Request, res: Response): Promise<void> 
         if (caller) {
             await AuditLog.create({
                 actor: caller._id,
-                action: 'user:delete',
-                targetUser: student._id,
-                details: { email: student.email, role: student.role },
+                action: isAdmin ? 'admin:delete' : 'user:delete',
+                targetUser: user._id,
+                details: { email: user.email, role: user.role },
                 ipAddress: req.ip,
             });
         }
 
-        await Student.findByIdAndDelete(id);
-        await Enrollment.deleteMany({ student: id });
+        if (isAdmin) {
+            await AdminUser.findByIdAndDelete(id);
+        } else {
+            await Student.findByIdAndDelete(id);
+            await Enrollment.deleteMany({ student: id });
+        }
+
         res.status(200).json({ success: true, message: 'Account deleted' });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -286,27 +342,36 @@ export const toggleAccountStatus = async (req: Request, res: Response): Promise<
         const { id } = req.params;
         const caller = req.adminUser;
 
-        const student = await Student.findById(id);
-        if (!student) {
+        // Try to find in Student collection first
+        let user = await Student.findById(id);
+        let isAdmin = false;
+
+        // If not found in Student, try AdminUser
+        if (!user) {
+            user = await AdminUser.findById(id);
+            isAdmin = true;
+        }
+
+        if (!user) {
             res.status(404).json({ success: false, message: 'Account not found' });
             return;
         }
 
-        student.isActive = !student.isActive;
-        await student.save();
+        user.isActive = !user.isActive;
+        await user.save();
 
         // Audit log
         if (caller) {
             await AuditLog.create({
                 actor: caller._id,
-                action: 'user:toggle',
-                targetUser: student._id,
-                details: { isActive: student.isActive },
+                action: isAdmin ? 'admin:toggle' : 'user:toggle',
+                targetUser: user._id,
+                details: { isActive: user.isActive },
                 ipAddress: req.ip,
             });
         }
 
-        res.status(200).json({ success: true, isActive: student.isActive, message: `Account ${student.isActive ? 'activated' : 'deactivated'}` });
+        res.status(200).json({ success: true, isActive: user.isActive, message: `Account ${user.isActive ? 'activated' : 'deactivated'}` });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }

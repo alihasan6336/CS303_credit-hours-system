@@ -10,7 +10,7 @@ interface StudentFormData {
   academicYear?: string;
   currentSemester?: string;
   completedCreditHours?: number;
-  position?: string;
+  phoneNumber?: string;
 }
 
 interface StudentRegisterFormProps {
@@ -38,7 +38,7 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
     academicYear: "1st Year",
     currentSemester: "Fall",
     completedCreditHours: 0,
-    position: "Admin",
+    phoneNumber: "",
   });
 
   const [passwordError, setPasswordError] = useState("");
@@ -51,8 +51,6 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
     "Cybersecurity",
     "Data Science",
   ];
-
-  const positions = ["Admin", "Manager", "Coordinator", "Director"];
 
   const getTitleAndLabel = () => {
     switch (role) {
@@ -94,7 +92,7 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
       academicYear: "1st Year",
       currentSemester: "Fall",
       completedCreditHours: 0,
-      position: "Admin",
+      phoneNumber: "",
     });
   };
 
@@ -325,25 +323,55 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
         )}
 
         {/* Admin specific fields */}
-        {role === "admin" && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Position
-            </label>
-            <select
-              name="position"
-              value={formData.position}
-              onChange={handleChange}
-              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              required
-            >
-              {positions.map((pos) => (
-                <option key={pos} value={pos}>
-                  {pos}
-                </option>
-              ))}
-            </select>
-          </div>
+        {(role === "admin" || role === "superadmin") && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                University ID
+              </label>
+              <input
+                type="text"
+                name="universityId"
+                value={formData.universityId}
+                onChange={handleChange}
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="ADMIN-001"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Major
+              </label>
+              <select
+                name="major"
+                value={formData.major}
+                onChange={handleChange}
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                required
+              >
+                {majors.map((major) => (
+                  <option key={major} value={major}>
+                    {major}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="+1234567890"
+              />
+            </div>
+          </>
         )}
 
         {/* Submit Button */}

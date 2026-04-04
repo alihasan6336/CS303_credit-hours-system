@@ -3,10 +3,14 @@ import bcrypt from 'bcryptjs';
 
 export interface IAdminUser extends Document {
   fullName: string;
+  universityId?: string;
   email: string;
   password: string;
+  major?: string;
+  phoneNumber?: string;
   role: 'admin' | 'superadmin';
   isActive: boolean;
+  createdBy?: mongoose.Types.ObjectId;
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -18,6 +22,10 @@ const AdminUserSchema = new Schema<IAdminUser>(
     fullName: {
       type: String,
       required: [true, 'Full name is required'],
+      trim: true,
+    },
+    universityId: {
+      type: String,
       trim: true,
     },
     email: {
@@ -33,6 +41,14 @@ const AdminUserSchema = new Schema<IAdminUser>(
       minlength: [6, 'Password must be at least 6 characters'],
       select: false,
     },
+    major: {
+      type: String,
+      trim: true,
+    },
+    phoneNumber: {
+      type: String,
+      trim: true,
+    },
     role: {
       type: String,
       enum: ['admin', 'superadmin'],
@@ -41,6 +57,10 @@ const AdminUserSchema = new Schema<IAdminUser>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'AdminUser',
     },
     lastLogin: {
       type: Date,

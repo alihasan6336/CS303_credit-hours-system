@@ -189,7 +189,6 @@ const AccountManagement: React.FC = () => {
             academicYear: studentData.academicYear,
             currentSemester: studentData.currentSemester,
             completedCreditHours: studentData.completedCreditHours,
-            phoneNumber: studentData.phoneNumber,
           })
         : await adminApi.createAdminAccount({
             fullName: studentData.fullName,

@@ -442,7 +442,6 @@ export const adminApi = {
     academicYear?: string;
     currentSemester?: string;
     completedCreditHours?: number;
-    phoneNumber?: string;
   }): Promise<CreateAccountResponse> {
     return request<CreateAccountResponse>("/api/admin/users/students", {
       method: "POST",
