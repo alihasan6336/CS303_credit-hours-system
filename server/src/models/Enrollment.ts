@@ -6,6 +6,7 @@ export interface IEnrollment extends Document {
   semester:     'Fall' | 'Spring' | 'Summer';  
   academicYear: string;                           
   grade?:       number; // 0-100 or 0-4.0 scale
+  status:       'active' | 'completed' | 'dropped' | 'withdrawn';
   enrolledAt:   Date;
   createdAt:    Date;
   updatedAt:    Date;
@@ -42,6 +43,12 @@ const EnrollmentSchema = new Schema<IEnrollment>(
       min: 0,
       max: 100,
       default: null,
+    },
+
+    status: {
+      type: String,
+      enum: ['active', 'completed', 'dropped', 'withdrawn'],
+      default: 'active',
     },
 
     enrolledAt: {

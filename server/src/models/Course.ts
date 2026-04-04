@@ -12,7 +12,7 @@ export interface ICourse extends Document {
   enrolledCount: number;
   major?:        string;
   studentYear?:  number;
-  prerequisite?: string;
+  prerequisites?: string[];
   isActive:      boolean;
   createdAt:     Date;
   updatedAt:     Date;
@@ -89,9 +89,9 @@ const CourseSchema = new Schema<ICourse>(
       max: 4,
     },
 
-    prerequisite: {
-      type: String,
-      trim: true,
+    prerequisites: {
+      type: [String],
+      default: [],
     },
 
     isActive: {

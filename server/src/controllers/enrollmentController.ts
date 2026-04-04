@@ -1,0 +1,174 @@
+import { Request, Response } from 'express';
+import Enrollment from '../models/Enrollment';
+import Student from '../models/Student';
+import Course from '../models/Course';
+import AuditLog from '../models/AuditLog';
+
+// GET /api/admin/enrollments - List all enrollments (admin)
+export const listEnrollments = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { studentId, courseId, semester, academicYear, status, page = '1', limit = '20' } = req.query;
+
+    const filter: any = {};
+    if (studentId) filter.student = studentId;
+    if (courseId) filter.course = courseId;
+    if (semester) filter.semester = semester;
+    if (academicYear) filter.academicYear = academicYear;
+    if (status) filter.status = status;
+
+    const pageNum = Math.max(1, parseInt(page as string));
+    const limitNum = Math.min(100, parseInt(limit as string));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [enrollments, total] = await Promise.all([
+      Enrollment.find(filter)
+        .populate('student', 'fullName universityId email level major')
+        .populate('course', 'code name credits day time room instructor')
+        .sort({ enrolledAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Enrollment.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      page: pageNum,
+      limit: limitNum,
+      total,
+      pages: Math.ceil(total / limitNum),
+      count: enrollments.length,
+      enrollments,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// POST /api/admin/enrollments - Create enrollment for a student (admin)
+export const createEnrollment = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { studentId, courseId, semester, academicYear } = req.body;
+    const caller = (req as any).adminUser;
+
+    // Validate required fields
+    if (!studentId || !courseId) {
+      res.status(400).json({ success: false, message: 'Student ID and Course ID are required' });
+      return;
+    }
+
+    // Check student exists
+    const student = await Student.findById(studentId);
+    if (!student) {
+      res.status(404).json({ success: false, message: 'Student not found' });
+      return;
+    }
+
+    // Check course exists and has capacity
+    const course = await Course.findById(courseId);
+    if (!course) {
+      res.status(404).json({ success: false, message: 'Course not found' });
+      return;
+    }
+
+    if (course.enrolledCount >= course.capacity) {
+      res.status(400).json({ success: false, message: 'Course is full' });
+      return;
+    }
+
+    // Determine semester and academic year
+    const enrollmentSemester = semester || student.currentSemester;
+    const year = new Date().getFullYear();
+    const enrollmentYear = academicYear || `${year}-${year + 1}`;
+
+    // Check if already enrolled
+    const existingEnrollment = await Enrollment.findOne({
+      student: studentId,
+      course: courseId,
+      semester: enrollmentSemester,
+      academicYear: enrollmentYear,
+    });
+
+    if (existingEnrollment) {
+      res.status(409).json({ success: false, message: 'Student is already enrolled in this course' });
+      return;
+    }
+
+    // Create enrollment
+    const enrollment = await Enrollment.create({
+      student: studentId,
+      course: courseId,
+      semester: enrollmentSemester,
+      academicYear: enrollmentYear,
+      status: 'active',
+    });
+
+    // Increment course enrolled count
+    course.enrolledCount += 1;
+    await course.save();
+
+    // Audit log
+    if (caller) {
+      await AuditLog.create({
+        actor: caller._id,
+        action: 'admin:enroll',
+        targetStudent: studentId,
+        targetCourse: courseId,
+        details: { semester: enrollmentSemester, academicYear: enrollmentYear },
+        ipAddress: req.ip,
+      });
+    }
+
+    // Populate and return
+    const populatedEnrollment = await Enrollment.findById(enrollment._id)
+      .populate('student', 'fullName universityId email')
+      .populate('course', 'code name credits');
+
+    res.status(201).json({
+      success: true,
+      message: 'Enrollment created successfully',
+      enrollment: populatedEnrollment,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// DELETE /api/admin/enrollments/:id - Delete enrollment (admin)
+export const deleteEnrollment = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const caller = (req as any).adminUser;
+
+    const enrollment = await Enrollment.findById(id);
+    if (!enrollment) {
+      res.status(404).json({ success: false, message: 'Enrollment not found' });
+      return;
+    }
+
+    // Decrement course enrolled count
+    await Course.findByIdAndUpdate(enrollment.course, { $inc: { enrolledCount: -1 } });
+
+    // Delete enrollment
+    await Enrollment.findByIdAndDelete(id);
+
+    // Audit log
+    if (caller) {
+      await AuditLog.create({
+        actor: caller._id,
+        action: 'admin:unenroll',
+        targetStudent: enrollment.student,
+        targetCourse: enrollment.course,
+        details: { semester: enrollment.semester, academicYear: enrollment.academicYear },
+        ipAddress: req.ip,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Enrollment deleted successfully',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
