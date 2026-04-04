@@ -433,6 +433,37 @@ export const adminApi = {
     });
   },
 
+  createStudentAccount(body: {
+    fullName: string;
+    email: string;
+    password: string;
+    universityId?: string;
+    major?: string;
+    academicYear?: string;
+    currentSemester?: string;
+    completedCreditHours?: number;
+    phoneNumber?: string;
+  }): Promise<CreateAccountResponse> {
+    return request<CreateAccountResponse>("/api/admin/users/students", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  createAdminAccount(body: {
+    fullName: string;
+    email: string;
+    password: string;
+    universityId?: string;
+    major?: string;
+    phoneNumber?: string;
+  }): Promise<CreateAccountResponse> {
+    return request<CreateAccountResponse>("/api/admin/users/admins", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
   deleteAccount(id: string): Promise<{ success: boolean; message: string }> {
     return request(`/api/admin/accounts/${id}`, {
       method: "DELETE",
@@ -557,5 +588,92 @@ export const courseAssignmentApi = {
   },
 };
 
-export type { StudentFromApi, AuthResponse, MeResponse, HomeResponse, CourseFromApi, AuthorityCheckResponse };
+interface CourseResponse {
+  success: boolean;
+  course: {
+    _id: string;
+    code: string;
+    name: string;
+    day: string;
+    time: string;
+    room: string;
+    credits: number;
+    instructor: string;
+    capacity: number;
+    enrolledCount: number;
+    major?: string;
+    studentYear?: number;
+    prerequisites?: string[];
+    isActive: boolean;
+  };
+}
+
+interface CoursesListResponse {
+  success: boolean;
+  courses: CourseResponse["course"][];
+}
+
+export const courseApi = {
+  getAllCourses(): Promise<CoursesListResponse> {
+    return request<CoursesListResponse>("/api/courses");
+  },
+
+  getCourseById(id: string): Promise<CourseResponse> {
+    return request<CourseResponse>(`/api/courses/${id}`);
+  },
+
+  createCourse(body: {
+    code: string;
+    name: string;
+    day: string;
+    time: string;
+    room: string;
+    credits: number;
+    instructor: string;
+    capacity?: number;
+    major?: string;
+    studentYear?: number;
+    prerequisites?: string[];
+  }): Promise<CourseResponse> {
+    return request<CourseResponse>("/api/courses", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  updateCourse(id: string, body: {
+    code?: string;
+    name?: string;
+    day?: string;
+    time?: string;
+    room?: string;
+    credits?: number;
+    instructor?: string;
+    capacity?: number;
+    major?: string;
+    studentYear?: number;
+    prerequisites?: string[];
+    isActive?: boolean;
+  }): Promise<CourseResponse> {
+    return request<CourseResponse>(`/api/courses/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
+
+  deleteCourse(id: string): Promise<{ success: boolean; message: string }> {
+    return request(`/api/courses/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  bulkUpdate(courses: any[]): Promise<{ success: boolean; message: string; courses: any[] }> {
+    return request("/api/courses/bulk", {
+      method: "PUT",
+      body: JSON.stringify({ courses }),
+    });
+  },
+};
+
+export type { StudentFromApi, AuthResponse, MeResponse, HomeResponse, CourseFromApi, AuthorityCheckResponse, CourseResponse, CoursesListResponse };
 

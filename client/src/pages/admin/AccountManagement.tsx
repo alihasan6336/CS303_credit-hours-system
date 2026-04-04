@@ -179,32 +179,26 @@ const AccountManagement: React.FC = () => {
     setAuthorizationMessage(null);
 
     try {
-      // Check authorization with backend
-      const authCheckResponse =
-        await adminApi.checkCreateUserAuthority(registerRole);
-
-      if (!authCheckResponse.success) {
-        setAuthorizationMessage(
-          `❌ Authorization Failed: ${authCheckResponse.message || "You do not have permission to create this user."}`,
-        );
-        return;
-      }
-
-      setAuthorizationMessage(
-        `✅ Authorization Granted: ${authCheckResponse.message || "You have permission to create this user."}`,
-      );
-
-      const response = await adminApi.createAccount({
-        fullName: studentData.fullName,
-        email: studentData.email,
-        password: studentData.password,
-        universityId: studentData.universityId,
-        major: studentData.major,
-        academicYear: studentData.academicYear,
-        currentSemester: studentData.currentSemester,
-        completedCreditHours: studentData.completedCreditHours,
-        role: registerRole,
-      });
+      const response = registerRole === "student"
+        ? await adminApi.createStudentAccount({
+            fullName: studentData.fullName,
+            email: studentData.email,
+            password: studentData.password,
+            universityId: studentData.universityId,
+            major: studentData.major,
+            academicYear: studentData.academicYear,
+            currentSemester: studentData.currentSemester,
+            completedCreditHours: studentData.completedCreditHours,
+            phoneNumber: studentData.phoneNumber,
+          })
+        : await adminApi.createAdminAccount({
+            fullName: studentData.fullName,
+            email: studentData.email,
+            password: studentData.password,
+            universityId: studentData.universityId,
+            major: studentData.major,
+            phoneNumber: studentData.phoneNumber,
+          });
 
       if (response.success) {
         setAuthorizationMessage(null);
