@@ -6,7 +6,7 @@ export const ALL_PERMISSIONS = [
   'users:delete', 'users:toggle', 'users:stats',
   'courses:list', 'courses:view', 'courses:create',
   'courses:update', 'courses:delete', 'courses:enrollments',
-  'enrollments:list',
+  'enrollments:list', 'enrollments:create', 'enrollments:update', 'enrollments:delete',
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSIONS[number];

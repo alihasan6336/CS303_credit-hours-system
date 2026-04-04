@@ -5,6 +5,7 @@ export interface IEnrollment extends Document {
   course:       mongoose.Types.ObjectId;
   semester:     'Fall' | 'Spring' | 'Summer';  
   academicYear: string;                           
+  grade?:       number; // 0-100 or 0-4.0 scale
   enrolledAt:   Date;
   createdAt:    Date;
   updatedAt:    Date;
@@ -34,6 +35,13 @@ const EnrollmentSchema = new Schema<IEnrollment>(
       type: String,
       required: [true, 'Academic year is required'],
       trim: true,
+    },
+
+    grade: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: null,
     },
 
     enrolledAt: {

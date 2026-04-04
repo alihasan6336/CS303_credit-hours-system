@@ -10,6 +10,7 @@ import {
   getAllEnrollments,
   adminEnroll,
   adminUnenroll,
+  updateGrade,
 } from '../controllers/adminController';
 import { adminProtect, requireRole, requirePermission } from '../middleware/adminProtect';
 import { asyncWrap } from '../middleware/errorHandler';
@@ -33,7 +34,8 @@ router.patch('/accounts/:id/toggle', requireRole('admin', 'superadmin'), adminAc
 
 // Enrollment management
 router.get('/enrollments', requireRole('admin', 'superadmin'), requirePermission('enrollments:list'), asyncWrap(getAllEnrollments));
-router.post('/enrollments', requireRole('admin', 'superadmin'), adminActionLimiter, asyncWrap(adminEnroll));
-router.delete('/enrollments/:id', requireRole('admin', 'superadmin'), adminActionLimiter, asyncWrap(adminUnenroll));
+router.post('/enrollments', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('enrollments:create'), asyncWrap(adminEnroll));
+router.delete('/enrollments/:id', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('enrollments:delete'), asyncWrap(adminUnenroll));
+router.patch('/enrollments/:id/grade', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('enrollments:update'), asyncWrap(updateGrade));
 
 export default router;
