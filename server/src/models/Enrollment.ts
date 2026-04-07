@@ -10,6 +10,7 @@ export interface IEnrollment extends Document {
   enrolledAt:   Date;
   createdAt:    Date;
   updatedAt:    Date;
+  isPassed?:    boolean;
 }
 
 const EnrollmentSchema = new Schema<IEnrollment>(
@@ -56,8 +57,20 @@ const EnrollmentSchema = new Schema<IEnrollment>(
       default: Date.now,
     },
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+  }
 );
+
+// Virtual property indicating if the student passed the course
+EnrollmentSchema.virtual('isPassed').get(function () {
+  if (this.grade === null || this.grade === undefined) return false;
+  // Fallback to 50 if course/passingGrade not populated
+  const passingGrade = (this.course as any)?.passingGrade || 50;
+  return this.grade >= passingGrade;
+});
 
 // Compound unique index: one enrollment per student+course+semester+year
 EnrollmentSchema.index(

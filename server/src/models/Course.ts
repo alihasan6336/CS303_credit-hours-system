@@ -3,6 +3,9 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface ICourse extends Document {
   code:       string;
   name:       string;
+  courseType: 'Lecture' | 'Lab';
+  semester:   ('Fall' | 'Spring' | 'Summer')[];
+  passingGrade: number;
   day:        'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
   time:       string;
   room:       string;
@@ -32,6 +35,30 @@ const CourseSchema = new Schema<ICourse>(
       type: String,
       required: [true, 'Course name is required'],
       trim: true,
+    },
+
+    courseType: {
+      type: String,
+      required: [true, 'Course type (Lecture or Lab) is required'],
+      enum: ['Lecture', 'Lab'],
+    },
+
+    semester: {
+      type: [String],
+      required: [true, 'Semester is required'],
+      enum: ['Fall', 'Spring', 'Summer'],
+      validate: [
+        function (val: string[]) { return val.length > 0; },
+        'At least one semester must be selected'
+      ],
+    },
+
+    passingGrade: {
+      type: Number,
+      required: [true, 'Passing grade is required'],
+      default: 50,
+      min: [0, 'Min 0'],
+      max: [100, 'Max 100'],
     },
 
     day: {

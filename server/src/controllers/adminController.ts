@@ -156,6 +156,41 @@ export const getStudentById = async (req: Request, res: Response): Promise<void>
     }
 };
 
+export const getStudentAcademicRecord = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const student = await Student.findById(id).lean();
+
+        if (!student) {
+            res.status(404).json({ success: false, message: 'Student not found' });
+            return;
+        }
+
+        const enrollments = await Enrollment.find({ student: id })
+            .populate('course', 'code name courseType semester passingGrade credits')
+            .sort({ enrolledAt: -1 });
+
+        // Calculate passing status explicitly here using the virtual and mapping to objects
+        const record = enrollments.map(e => {
+            const isPassed = e.isPassed;
+            const doc = e.toJSON();
+            return {
+                ...doc,
+                isPassed,
+            };
+        });
+
+        res.status(200).json({ 
+            success: true, 
+            student: formatStudent(student),
+            enrollments: record,
+            totalCreditsCompleted: student.completedCreditHours,
+            cumulativeGPA: student.gpa
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
 export const createStudentAccount = async (req: Request, res: Response): Promise<void> => {
     try {
         const { fullName, universityId, email, password, major, academicYear, currentSemester, completedCreditHours } = req.body;

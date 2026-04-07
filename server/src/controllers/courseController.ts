@@ -19,7 +19,7 @@ import { AppError } from '../middleware/errorHandler';
 export const getCourses = async (req: Request, res: Response): Promise<void> => {
   try {
     const courses = await Course.find({ isActive: true })
-      .select('code name day time room credits instructor capacity enrolledCount major studentYear prerequisites')
+      .select('code name courseType semester passingGrade day time room credits instructor capacity enrolledCount major studentYear prerequisites')
       .lean();
 
     res.status(200).json({
@@ -29,6 +29,9 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
         _id: c._id,
         code: c.code,
         name: c.name,
+        courseType: c.courseType,
+        semester: c.semester,
+        passingGrade: c.passingGrade,
         day: c.day,
         time: c.time,
         room: c.room,
@@ -80,7 +83,7 @@ export const getMyCourses = async (req: Request, res: Response): Promise<void> =
     const enrollments = await Enrollment.find(filter)
       .populate({
         path: 'course',
-        select: 'code name day time room credits instructor capacity enrolledCount major studentYear prerequisites',
+        select: 'code name courseType semester passingGrade day time room credits instructor capacity enrolledCount major studentYear prerequisites',
       })
       .sort({ enrolledAt: -1 })
       .lean();
@@ -98,12 +101,15 @@ export const getMyCourses = async (req: Request, res: Response): Promise<void> =
 // POST /api/courses
 export const createCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites } = req.body;
+    const { code, name, courseType, semester, passingGrade, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites } = req.body;
     const creator = req.adminUser;
 
     const course = await Course.create({
       code,
       name,
+      courseType,
+      semester,
+      passingGrade: passingGrade || 50,
       day: day || 'Sunday',
       time: time || '08:00 - 09:30',
       room: room || 'TBA',
@@ -132,6 +138,9 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
         _id: course._id,
         code: course.code,
         name: course.name,
+        courseType: course.courseType,
+        semester: course.semester,
+        passingGrade: course.passingGrade,
         day: course.day,
         time: course.time,
         room: course.room,
@@ -205,7 +214,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites } = req.body;
+    const { code, name, courseType, semester, passingGrade, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites } = req.body;
 
     // Guard: cannot reduce capacity below current enrollment
     if (capacity !== undefined) {
@@ -225,7 +234,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
 
     const course = await Course.findByIdAndUpdate(
       id,
-      { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites },
+      { code, name, courseType, semester, passingGrade, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites },
       { new: true, runValidators: true }
     );
 
@@ -251,6 +260,9 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
         _id: course._id,
         code: course.code,
         name: course.name,
+        courseType: course.courseType,
+        semester: course.semester,
+        passingGrade: course.passingGrade,
         day: course.day,
         time: course.time,
         room: course.room,
@@ -378,14 +390,16 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
       const completedEnrollments = await Enrollment.find({
         student: student._id,
         status: { $in: ['completed'] },
-      }).populate('course', 'code');
+      }).populate('course', 'code passingGrade');
 
-      const completedCourseCodes = completedEnrollments.map(
-        (e) => (e.course as any).code
-      );
+      // A course is only correctly completed if the grade is >= its passing grade
+      const successfullyPassedCourseCodes = completedEnrollments.filter((e) => {
+        const prereqPassGrade = (e.course as any)?.passingGrade || 50;
+        return typeof e.grade === 'number' && e.grade >= prereqPassGrade;
+      }).map((e) => (e.course as any).code);
 
       const missingPrereqs = course.prerequisites.filter(
-        (prereq) => !completedCourseCodes.includes(prereq)
+        (prereq) => !successfullyPassedCourseCodes.includes(prereq)
       );
 
       if (missingPrereqs.length > 0) {

@@ -32,7 +32,7 @@ export const recalculateStudentGPA = async (studentId: string): Promise<{ gpa: n
     student: studentId,
     status: 'completed',
     grade: { $ne: null },
-  }).populate('course', 'credits');
+  }).populate('course', 'credits passingGrade');
 
   if (completedEnrollments.length === 0) {
     student.gpa = 0;
@@ -50,14 +50,15 @@ export const recalculateStudentGPA = async (studentId: string): Promise<{ gpa: n
     if (!course || typeof course.credits !== 'number') continue;
 
     const credits = course.credits;
+    const passingGrade = typeof course.passingGrade === 'number' ? course.passingGrade : 50;
     const grade = enrollment.grade || 0;
     const gradePoints = percentageToGradePoints(grade);
 
     totalQualityPoints += (gradePoints * credits);
     totalCreditsForGpa += credits;
     
-    // In many systems, you only get credit if you pass (grade >= 50 or gradePoints > 0)
-    if (gradePoints > 0) {
+    // In many systems, you only get credit if you pass (grade >= passingGrade)
+    if (grade >= passingGrade) {
       totalCompletedCredits += credits;
     }
   }

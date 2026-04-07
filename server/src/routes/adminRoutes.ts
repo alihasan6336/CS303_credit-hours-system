@@ -12,6 +12,7 @@ import {
   adminEnroll,
   adminUnenroll,
   updateGrade,
+  getStudentAcademicRecord
 } from '../controllers/adminController';
 import { adminProtect, requireRole, requirePermission } from '../middleware/adminProtect';
 import { asyncWrap } from '../middleware/errorHandler';
@@ -28,6 +29,7 @@ router.get('/stats', requireRole('superadmin'), requirePermission('users:stats')
 // User management - /users aliases (RESTful)
 router.get('/users', requireRole('admin', 'superadmin'), requirePermission('users:list'), asyncWrap(getStudents));
 router.get('/users/:id', requireRole('admin', 'superadmin'), requirePermission('users:view'), asyncWrap(getStudentById));
+router.get('/users/:id/record', requireRole('admin', 'superadmin'), requirePermission('users:view'), asyncWrap(getStudentAcademicRecord));
 router.post('/users/students', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createStudentAccount));
 router.post('/users/admins', requireRole('superadmin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createAdminAccount));
 router.put('/users/:id', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:update'), asyncWrap(updateAccount));
