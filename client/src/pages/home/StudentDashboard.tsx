@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi } from "../../utils/api";
+import { authApi, courseApi } from "../../utils/api";
 import StudentLayout from "../../layout/StudentLayout";
+import Timetable from "../../components/Timetable";
 
 interface Course {
   code: string;
@@ -11,6 +12,7 @@ interface Course {
   room: string;
   credits: number;
   instructor: string;
+  _id?: string;
 }
 
 interface StudentData {
@@ -25,60 +27,14 @@ interface StudentData {
 }
 
 const defaultStudent: StudentData = {
-  name: "Ahmed Al-Rashidi",
-  id: "2021-CS-0342",
-  level: 3,
-  gpa: 3.75,
-  completedHours: 87,
-  major: "Computer Science",
-  semester: "Spring 2025",
-  courses: [
-    {
-      code: "CS303",
-      name: "Software Engineering",
-      day: "Sunday",
-      time: "08:00 – 09:30",
-      room: "B-201",
-      credits: 3,
-      instructor: "Dr. Khalid Nasser",
-    },
-    {
-      code: "CS311",
-      name: "Database Systems",
-      day: "Monday",
-      time: "10:00 – 11:30",
-      room: "A-104",
-      credits: 3,
-      instructor: "Dr. Sara Ahmed",
-    },
-    {
-      code: "CS321",
-      name: "Computer Networks",
-      day: "Tuesday",
-      time: "12:00 – 13:30",
-      room: "C-305",
-      credits: 3,
-      instructor: "Dr. Omar Farouk",
-    },
-    {
-      code: "MATH301",
-      name: "Numerical Methods",
-      day: "Wednesday",
-      time: "09:00 – 10:30",
-      room: "D-112",
-      credits: 3,
-      instructor: "Dr. Laila Hassan",
-    },
-    {
-      code: "CS401",
-      name: "Artificial Intelligence",
-      day: "Thursday",
-      time: "14:00 – 15:30",
-      room: "B-310",
-      credits: 3,
-      instructor: "Dr. Yusuf Malik",
-    },
-  ],
+  name: "Loading...",
+  id: "---",
+  level: 1,
+  gpa: 0.0,
+  completedHours: 0,
+  major: "Loading...",
+  semester: "Loading...",
+  courses: [],
 };
 
 const StudentDashboard: React.FC = () => {
@@ -99,30 +55,18 @@ const StudentDashboard: React.FC = () => {
   );
 
   useEffect(() => {
-    let token = localStorage.getItem("authToken");
-    const student = localStorage.getItem("student");
+    const token = localStorage.getItem("authToken");
 
-    if (!token || !student) {
-      const testToken = "test-token-" + Date.now();
-      const testStudent = {
-        id: "2021-CS-0342",
-        fullName: "Ahmed Al-Rashidi",
-        universityId: "2021-CS-0342",
-        email: "ahmed@university.edu",
-        major: "Computer Science",
-        academicYear: "3rd Year",
-        currentSemester: "Spring",
-        completedCreditHours: 87,
-        gpa: 3.75,
-        level: 3,
-        role: "student",
-      };
-
-      localStorage.setItem("authToken", testToken);
-      localStorage.setItem("student", JSON.stringify(testStudent));
-      token = testToken;
+    if (!token) {
+      navigate("/login");
+      return;
     }
 
+    fetchDashboardData();
+  }, [navigate]);
+
+  const fetchDashboardData = () => {
+    setLoading(true);
     authApi
       .home()
       .then((response) => {
@@ -140,16 +84,38 @@ const StudentDashboard: React.FC = () => {
           completedHours: s.completedCreditHours,
           major: s.major,
           semester: `${s.currentSemester} ${s.academicYear}`,
-          courses,
+          courses: courses
+            .filter((c: any) => c.isEnrolled)
+            .map(c => ({
+              ...c,
+              _id: (c as any)._id
+            })),
         }));
       })
       .catch((error) => {
         console.warn("Failed to fetch home data:", error);
+        if (error.message.includes("Not authorized") || error.message.includes("token")) {
+          navigate("/login");
+        }
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [navigate]);
+  };
+
+  const handleDropCourse = async (courseId: string) => {
+    try {
+      if (!courseId) return;
+      const response = await courseApi.dropCourse(courseId);
+      if (response.success) {
+        // Refresh the dashboard data
+        fetchDashboardData();
+      }
+    } catch (error) {
+      console.error("Failed to drop course:", error);
+      alert("Failed to drop course");
+    }
+  };
 
   if (loading) {
     return (
@@ -166,7 +132,7 @@ const StudentDashboard: React.FC = () => {
       <main className="flex-1 p-8">
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800">
-            Student Dashboard
+            Student Dashboard 
           </h1>
           <p className="text-gray-500 mt-1">
             {currentStudent.semester} • {currentStudent.major}
@@ -303,7 +269,10 @@ const StudentDashboard: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800">
               Registered Courses
             </h3>
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+            <button 
+              onClick={() => navigate("/courses")}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+            >
               + Add Course
             </button>
           </div>
@@ -318,6 +287,7 @@ const StudentDashboard: React.FC = () => {
                   <th className="pb-3">Time</th>
                   <th className="pb-3">Room</th>
                   <th className="pb-3">Credits</th>
+                  <th className="pb-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -358,6 +328,14 @@ const StudentDashboard: React.FC = () => {
                           {course.credits} cr
                         </span>
                       </td>
+                      <td className="py-3 text-right">
+                        <button
+                          onClick={() => handleDropCourse(course._id!)}
+                          className="px-3 py-1 bg-red-50 text-red-600 rounded-md text-xs font-medium hover:bg-red-100 transition-colors"
+                        >
+                          Drop
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -365,6 +343,18 @@ const StudentDashboard: React.FC = () => {
             </table>
           </div>
         </div>
+
+        {/* Weekly Timetable */}
+        {currentStudent.courses.length > 0 && (
+          <div className="mt-8 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Weekly Timetable
+              </h3>
+            </div>
+            <Timetable courses={currentStudent.courses} />
+          </div>
+        )}
       </main>
     </StudentLayout>
   );

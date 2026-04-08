@@ -12,6 +12,7 @@ import permissionRoutes from './routes/permissionRoutes';
 import auditRoutes from './routes/auditRoutes';
 import enrollmentRoutes from './routes/enrollmentRoutes';
 import gpaRoutes from './routes/gpaRoutes';
+import settingsRoutes from './routes/settingsRoutes';
 import { apiLimiter, authLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -42,7 +43,8 @@ const sanitizeBody = (req: Request, _res: Response, next: NextFunction): void =>
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', process.env.CLIENT_URL || 'http://localhost:3000'],
+  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:8081',
+    'http://localhost:8082', process.env.CLIENT_URL || 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -78,6 +80,7 @@ app.use('/api/admin/permissions', permissionRoutes);
 app.use('/api/admin/audit', auditRoutes);
 app.use('/api/admin/enrollments', enrollmentRoutes);
 app.use('/api/gpa', gpaRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Request logging
 app.use((req, res, next) => {

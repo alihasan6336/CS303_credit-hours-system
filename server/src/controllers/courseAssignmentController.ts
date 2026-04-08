@@ -1,13 +1,14 @@
 import { Request, Response } from 'express';
 import Course from '../models/Course';
 import CourseAssignment from '../models/CourseAssignment';
+import SystemSettings from '../models/SystemSettings';
 import AuditLog from '../models/AuditLog';
 
 // Get all course assignments
 export const getAssignments = async (req: Request, res: Response): Promise<void> => {
   try {
     const { level, semester, academicYear } = req.query;
-    
+
     const filter: any = { isActive: true };
     if (level) filter.level = Number(level);
     if (semester) filter.semester = semester;
@@ -84,7 +85,7 @@ export const assignCourse = async (req: Request, res: Response): Promise<void> =
 export const removeAssignment = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    
+
     const assignment = await CourseAssignment.findByIdAndUpdate(
       id,
       { isActive: false },
@@ -103,10 +104,10 @@ export const removeAssignment = async (req: Request, res: Response): Promise<voi
         actor: caller._id,
         action: 'course:unassign',
         targetCourse: assignment.course,
-        details: { 
-          level: assignment.level, 
-          semester: assignment.semester, 
-          academicYear: assignment.academicYear 
+        details: {
+          level: assignment.level,
+          semester: assignment.semester,
+          academicYear: assignment.academicYear
         },
         ipAddress: req.ip,
       });
@@ -127,8 +128,8 @@ export const getAvailableCourses = async (req: Request, res: Response): Promise<
       const courses = await Course.find({ isActive: true })
         .select('code name credits day time room instructor capacity enrolledCount')
         .sort({ code: 1 });
-      res.status(200).json({ 
-        success: true, 
+      res.status(200).json({
+        success: true,
         courses: courses.map(c => ({
           _id: c._id,
           code: c.code,
@@ -162,8 +163,8 @@ export const getAvailableCourses = async (req: Request, res: Response): Promise<
       .select('code name credits day time room instructor capacity enrolledCount')
       .sort({ code: 1 });
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       courses: courses.map(c => ({
         _id: c._id,
         code: c.code,
@@ -185,9 +186,18 @@ export const getAvailableCourses = async (req: Request, res: Response): Promise<
 // Get assignments grouped by level for admin view
 export const getAssignmentsByLevel = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { semester, academicYear } = req.query;
+    let { semester, academicYear } = req.query;
 
     const filter: any = { isActive: true };
+
+    if (!semester || !academicYear) {
+      const settings = await SystemSettings.findOne();
+      if (settings) {
+        semester = semester || settings.currentSemester;
+        academicYear = academicYear || settings.academicYear;
+      }
+    }
+
     if (semester) filter.semester = semester;
     if (academicYear) filter.academicYear = academicYear;
 

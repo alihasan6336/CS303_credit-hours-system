@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Course } from "../../types/course";
-import { authApi } from "../../utils/api";
+import { courseAssignmentApi, courseApi } from "../../utils/api";
 import StudentLayout from "../../layout/StudentLayout";
 
 const AvailableCourses: React.FC = () => {
@@ -28,77 +28,37 @@ const AvailableCourses: React.FC = () => {
   const fetchCourses = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const response = await courseApi.getAvailableCourses();
-      // if (response.success) {
-      //   setCourses(response.courses);
-      //   setEnrolledCourses(response.enrolledCourseIds || []);
-      // }
+      if (!user.level) {
+        throw new Error("Student level not found. Please log in again.");
+      }
 
-      // Mock data for now
-      const mockCourses: Course[] = [
-        {
-          _id: "1",
-          courseName: "Data Structures and Algorithms",
-          courseCode: "CS201",
-          major: "Computer Science",
-          studentYear: 2,
-          creditHours: 4,
-          instructorName: "Dr. Sarah Ahmed",
-          prerequisite: "CS101",
-        },
-        {
-          _id: "2",
-          courseName: "Database Management Systems",
-          courseCode: "CS301",
-          major: "Computer Science",
-          studentYear: 3,
-          creditHours: 3,
-          instructorName: "Dr. Mohamed Khalil",
-          prerequisite: "CS201",
-        },
-        {
-          _id: "3",
-          courseName: "Web Development",
-          courseCode: "CS305",
-          major: "Computer Science",
-          studentYear: 3,
-          creditHours: 3,
-          instructorName: "Dr. Fatima Hassan",
-        },
-        {
-          _id: "4",
-          courseName: "Mobile Application Development",
-          courseCode: "CS402",
-          major: "Computer Science",
-          studentYear: 4,
-          creditHours: 3,
-          instructorName: "Dr. Ali Mansour",
-          prerequisite: "CS305",
-        },
-        {
-          _id: "5",
-          courseName: "Machine Learning",
-          courseCode: "CS410",
-          major: "Computer Science",
-          studentYear: 4,
-          creditHours: 4,
-          instructorName: "Dr. Layla Ibrahim",
-          prerequisite: "CS201",
-        },
-        {
-          _id: "6",
-          courseName: "Computer Networks",
-          courseCode: "CS321",
-          major: "Computer Science",
-          studentYear: 3,
-          creditHours: 3,
-          instructorName: "Dr. Omar Farouk",
-        },
-      ];
+      // Fetch assignments for the student's level and their current enrollments
+      const [assignmentsResponse, enrollmentsResponse] = await Promise.all([
+        courseAssignmentApi.getAssignmentsByLevel(),
+        courseApi.getMyCourses()
+      ]);
 
-      setCourses(mockCourses);
-      setEnrolledCourses(["1"]); // Mock enrolled courses
+      if (assignmentsResponse.success && enrollmentsResponse.success) {
+        const myLevelAssignments = assignmentsResponse.byLevel[user.level] || [];
+        
+        // Extract courses from assignments
+        const availableCourses = myLevelAssignments.map((a: any) => ({
+          _id: a.course._id,
+          courseCode: a.course.code,
+          courseName: a.course.name,
+          instructorName: a.course.instructor,
+          creditHours: a.course.credits,
+          studentYear: a.level,
+          major: user.major || "Computer Science",
+          // Mapping day, time, room if needed
+        })) as any[];
+
+        setCourses(availableCourses);
+        
+        // Extract enrolled course IDs
+        const enrolledIds = enrollmentsResponse.data.map(e => e.course._id);
+        setEnrolledCourses(enrolledIds);
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to load courses";
@@ -113,15 +73,10 @@ const AvailableCourses: React.FC = () => {
     setError("");
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await courseApi.registerForCourse(courseId);
-      // if (response.success) {
-      //   setEnrolledCourses([...enrolledCourses, courseId]);
-      // }
-
-      // Mock success
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setEnrolledCourses([...enrolledCourses, courseId]);
+      const response = await courseApi.enrollCourse(courseId);
+      if (response.success) {
+        setEnrolledCourses([...enrolledCourses, courseId]);
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to register for course";
@@ -129,15 +84,6 @@ const AvailableCourses: React.FC = () => {
     } finally {
       setRegistering(null);
     }
-  };
-
-  const handleGoBack = () => {
-    navigate("/home");
-  };
-
-  const handleSignOut = () => {
-    authApi.logout();
-    navigate("/login");
   };
 
   if (loading) {
