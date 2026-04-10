@@ -20,10 +20,12 @@ export default function AccountManagement() {
   const [accountType, setAccountType] = useState("student");
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    name: "", email: "", password: "",
-    studentId: "", level: "1st Year", major: "Computer Science",
     currentSemester: "Fall",
   });
+  const [recordModalVisible, setRecordModalVisible] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [academicRecord, setAcademicRecord] = useState(null);
+  const [loadingRecord, setLoadingRecord] = useState(false);
 
   const fetchAccounts = async () => {
     try {
@@ -95,6 +97,30 @@ export default function AccountManagement() {
     ]);
   };
 
+  const toggleStatus = async (id) => {
+    try {
+      await adminApi.toggleAccountStatus(id);
+      await fetchAccounts();
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    }
+  };
+
+  const viewRecord = async (student) => {
+    setSelectedStudent(student);
+    setRecordModalVisible(true);
+    setAcademicRecord(null);
+    try {
+      setLoadingRecord(true);
+      const data = await adminApi.getStudentAcademicRecord(student.id);
+      setAcademicRecord(data);
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setLoadingRecord(false);
+    }
+  };
+
   if (isLoading) {
     return <View style={styles.centerBox}><ActivityIndicator size="large" color="#2554e8" /></View>;
   }
@@ -149,9 +175,21 @@ export default function AccountManagement() {
                       <Text style={styles.roleBadgeText}>🛡️ Admin</Text>
                     </View>
                   )}
+                  <View style={styles.accountActionsRow}>
+                    <TouchableOpacity onPress={() => toggleStatus(account.id || account._id)}>
+                      <Text style={[styles.statusText, { color: account.isActive === false ? "#ef4444" : "#22c55e" }]}>
+                        {account.isActive === false ? "● Suspended" : "● Active"}
+                      </Text>
+                    </TouchableOpacity>
+                    {account.role === "student" && (
+                      <TouchableOpacity onPress={() => viewRecord({ id: account.id || account._id, ...account })}>
+                        <Text style={styles.viewRecordText}>View Record</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => deleteAccount(account._id, account.fullName)}>
+              <TouchableOpacity onPress={() => deleteAccount(account.id || account._id, account.fullName)}>
                 <Text style={styles.deleteIcon}>🗑️</Text>
               </TouchableOpacity>
             </View>
@@ -175,9 +213,6 @@ export default function AccountManagement() {
                 { label: "Password *", key: "password", placeholder: "Set a password", secure: true },
                 ...(accountType === "student" ? [
                   { label: "University ID", key: "studentId", placeholder: "Auto-generated if empty" },
-                  { label: "Academic Year", key: "level", placeholder: "e.g. 1st Year" },
-                  { label: "Major", key: "major", placeholder: "e.g. Computer Science" },
-                  { label: "Semester", key: "currentSemester", placeholder: "e.g. Fall" },
                 ] : []),
               ].map((field) => (
                 <View key={field.key}>
@@ -193,6 +228,49 @@ export default function AccountManagement() {
                 </View>
               ))}
 
+              {accountType === "student" && (
+                <>
+                  <Text style={styles.fieldLabel}>Academic Year</Text>
+                  <View style={styles.pillRow}>
+                    {["1st Year", "2nd Year", "3rd Year", "4th Year"].map((l) => (
+                      <TouchableOpacity
+                        key={l}
+                        style={[styles.pill, form.level === l && styles.pillSelected]}
+                        onPress={() => setForm({ ...form, level: l })}
+                      >
+                        <Text style={[styles.pillText, form.level === l && styles.pillTextSelected]}>{l}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Major</Text>
+                  <View style={styles.pillRow}>
+                    {['Computer Science', 'Information Technology', 'Software Engineering', 'Cybersecurity', 'Data Science', 'Computer Engineering'].map((m) => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[styles.pill, form.major === m && styles.pillSelected]}
+                        onPress={() => setForm({ ...form, major: m })}
+                      >
+                        <Text style={[styles.pillText, form.major === m && styles.pillTextSelected]}>{m}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Current Semester</Text>
+                  <View style={styles.pillRow}>
+                    {["Fall", "Spring", "Summer"].map((s) => (
+                      <TouchableOpacity
+                        key={s}
+                        style={[styles.pill, form.currentSemester === s && styles.pillSelected]}
+                        onPress={() => setForm({ ...form, currentSemester: s })}
+                      >
+                        <Text style={[styles.pillText, form.currentSemester === s && styles.pillTextSelected]}>{s}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                   <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -203,6 +281,64 @@ export default function AccountManagement() {
               </View>
             </View>
           </ScrollView>
+        </View>
+      </Modal>
+
+      <Modal visible={recordModalVisible} animationType="fade" transparent>
+        <View style={styles.centeredOverlay}>
+          <View style={styles.recordModal}>
+            <View style={styles.recordHeader}>
+              <Text style={styles.recordTitle}>Academic Record</Text>
+              <TouchableOpacity onPress={() => setRecordModalVisible(false)}>
+                <Text style={styles.closeIcon}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {loadingRecord ? (
+              <View style={styles.modalLoading}><ActivityIndicator size="large" color="#2554e8" /></View>
+            ) : academicRecord ? (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.studentInfoCard}>
+                  <Text style={styles.recordStudentName}>{selectedStudent?.fullName}</Text>
+                  <Text style={styles.recordStudentId}>{selectedStudent?.universityId}</Text>
+                  <View style={styles.gpaStatsRow}>
+                    <View style={styles.gpaStatItem}>
+                      <Text style={styles.gpaStatValue}>{academicRecord.cumulativeGPA?.toFixed(2) || "0.00"}</Text>
+                      <Text style={styles.gpaStatLabel}>GPA</Text>
+                    </View>
+                    <View style={styles.gpaStatDivider} />
+                    <View style={styles.gpaStatItem}>
+                      <Text style={styles.gpaStatValue}>{academicRecord.totalCreditsCompleted || 0}</Text>
+                      <Text style={styles.gpaStatLabel}>Credits</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <Text style={styles.transcriptTitle}>Transcript</Text>
+                {academicRecord.enrollments?.length === 0 ? (
+                  <Text style={styles.emptyTranscriptText}>No course records found.</Text>
+                ) : (
+                  academicRecord.enrollments.map((enr, i) => (
+                    <View key={enr._id || i} style={styles.transcriptRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.transcriptCourseCode}>{enr.course?.code}</Text>
+                        <Text style={styles.transcriptCourseName}>{enr.course?.name}</Text>
+                        <Text style={styles.transcriptSem}>{enr.semester} {enr.academicYear}</Text>
+                      </View>
+                      <View style={styles.transcriptRight}>
+                        <Text style={[styles.transcriptGrade, { color: (enr.grade || 0) >= (enr.course?.passingGrade || 50) ? "#22c55e" : "#ef4444" }]}>
+                          {enr.grade ?? "N/A"}{enr.grade !== null ? "%" : ""}
+                        </Text>
+                        <Text style={styles.transcriptStatus}>{enr.status}</Text>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+            ) : (
+              <Text style={styles.errorText}>No record data found.</Text>
+            )}
+          </View>
         </View>
       </Modal>
     </View>
@@ -244,6 +380,33 @@ const styles = StyleSheet.create({
   roleBadge: { marginTop: 4, backgroundColor: "#8b5cf620", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, alignSelf: "flex-start" },
   roleBadgeText: { fontSize: 11, color: "#8b5cf6", fontWeight: "700" },
   deleteIcon: { fontSize: 18 },
+  accountActionsRow: { flexDirection: "row", gap: 12, marginTop: 4, alignItems: "center" },
+  statusText: { fontSize: 11, fontWeight: "700" },
+  viewRecordText: { fontSize: 11, fontWeight: "700", color: "#2554e8" },
+  centeredOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center" },
+  recordModal: { backgroundColor: "#fff", width: "90%", height: "80%", borderRadius: 24, padding: 20 },
+  recordHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  recordTitle: { fontSize: 18, fontWeight: "800", color: "#111" },
+  closeIcon: { fontSize: 18, color: "#888", fontWeight: "600" },
+  modalLoading: { flex: 1, justifyContent: "center", alignItems: "center" },
+  studentInfoCard: { backgroundColor: "#f8fafc", padding: 16, borderRadius: 16, marginBottom: 20 },
+  recordStudentName: { fontSize: 16, fontWeight: "800", color: "#1e293b" },
+  recordStudentId: { fontSize: 12, color: "#64748b", marginTop: 2 },
+  gpaStatsRow: { flexDirection: "row", marginTop: 16, gap: 24, alignItems: "center" },
+  gpaStatItem: { alignItems: "center" },
+  gpaStatValue: { fontSize: 24, fontWeight: "900", color: "#2554e8" },
+  gpaStatLabel: { fontSize: 10, color: "#94a3b8", fontWeight: "700", textTransform: "uppercase" },
+  gpaStatDivider: { width: 1, height: 30, backgroundColor: "#e2e8f0" },
+  transcriptTitle: { fontSize: 14, fontWeight: "800", color: "#64748b", marginBottom: 12, textTransform: "uppercase" },
+  transcriptRow: { flexDirection: "row", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", gap: 12 },
+  transcriptCourseCode: { fontSize: 13, fontWeight: "800", color: "#2554e8" },
+  transcriptCourseName: { fontSize: 13, fontWeight: "600", color: "#1e293b", marginTop: 2 },
+  transcriptSem: { fontSize: 11, color: "#94a3b8", marginTop: 2 },
+  transcriptRight: { alignItems: "flex-end", justifyContent: "center" },
+  transcriptGrade: { fontSize: 15, fontWeight: "800" },
+  transcriptStatus: { fontSize: 10, color: "#94a3b8", fontWeight: "700", textTransform: "capitalize", marginTop: 2 },
+  emptyTranscriptText: { textAlign: "center", color: "#94a3b8", marginTop: 40 },
+  errorText: { textAlign: "center", color: "#ef4444", marginTop: 40 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalBox: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, marginTop: 100 },
   modalTitle: { fontSize: 18, fontWeight: "800", color: "#111", marginBottom: 16 },
@@ -258,4 +421,12 @@ const styles = StyleSheet.create({
   cancelBtnText: { fontWeight: "700", color: "#555" },
   saveBtn: { flex: 1, backgroundColor: "#2554e8", paddingVertical: 13, borderRadius: 10, alignItems: "center" },
   saveBtnText: { fontWeight: "700", color: "#fff" },
+  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
+  pill: {
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
+    borderWidth: 1.5, borderColor: "#e0e0e0", backgroundColor: "#fafafa",
+  },
+  pillText: { fontSize: 12, fontWeight: "700", color: "#888" },
+  pillSelected: { backgroundColor: "#2554e820", borderColor: "#2554e8" },
+  pillTextSelected: { color: "#2554e8" },
 });

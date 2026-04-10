@@ -40,7 +40,9 @@ export default function StudentScheduleScreen() {
                 courseApi.getMyCourses(),
             ]);
             setStudent(homeRes.student);
-            const enrolledData = (enrolledRes.data || []).map(e => ({
+            const enrolledData = (enrolledRes.data || [])
+                .filter(e => e.status === 'active')
+                .map(e => ({
                 code: e.course?.code,
                 name: e.course?.name,
                 day: e.course?.day,

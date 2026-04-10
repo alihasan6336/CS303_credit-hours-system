@@ -41,8 +41,9 @@ const sanitizeBody = (req: Request, _res: Response, next: NextFunction): void =>
 
 // Security middleware
 app.use(helmet());
+app.use(cors());
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', process.env.CLIENT_URL || 'http://localhost:3000'],
+  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:8081','http://192.168.1.6:5000',process.env.CLIENT_URL || 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

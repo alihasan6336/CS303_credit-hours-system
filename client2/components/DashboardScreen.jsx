@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useState, useEffect } from "react";
-import { authApi, courseApi } from "../utils/api";
+import { authApi, courseApi, gpaApi } from "../utils/api";
+import { Modal } from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -17,6 +18,9 @@ export default function DashboardScreen({ onNavigateCourses }) {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [recordModalVisible, setRecordModalVisible] = useState(false);
+  const [transcript, setTranscript] = useState([]);
+  const [loadingTranscript, setLoadingTranscript] = useState(false);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -30,7 +34,9 @@ export default function DashboardScreen({ onNavigateCourses }) {
           ...homeRes.student,
           totalHours: 146,
         });
-        const enrolledData = (enrolledRes.data || []).map(e => ({
+        const enrolledData = (enrolledRes.data || [])
+          .filter(e => e.status === 'active')
+          .map(e => ({
           _id: e.course?._id,
           code: e.course?.code,
           name: e.course?.name,
@@ -50,6 +56,19 @@ export default function DashboardScreen({ onNavigateCourses }) {
 
     fetchDashboardData();
   }, []);
+
+  const fetchTranscript = async () => {
+    try {
+      setLoadingTranscript(true);
+      const res = await gpaApi.getBreakdown();
+      setTranscript(res.breakdown || []);
+      setRecordModalVisible(true);
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setLoadingTranscript(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -82,6 +101,9 @@ export default function DashboardScreen({ onNavigateCourses }) {
           <Text style={styles.headerTitle}>Hello, {student.fullName}</Text>
           <Text style={styles.headerSub}>{student.currentSemester} — {student.major}</Text>
         </View>
+        <TouchableOpacity style={styles.recordBtn} onPress={fetchTranscript} disabled={loadingTranscript}>
+          {loadingTranscript ? <ActivityIndicator size="small" color="#2554e8" /> : <Text style={styles.recordBtnText}>View Record</Text>}
+        </TouchableOpacity>
       </View>
 
       {/* USER CARD */}
@@ -189,6 +211,48 @@ export default function DashboardScreen({ onNavigateCourses }) {
       </View>
 
       <View style={{ height: 100 }} />
+
+      <Modal visible={recordModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Academic Record</Text>
+              <TouchableOpacity onPress={() => setRecordModalVisible(false)}>
+                <Text style={styles.closeIcon}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryVal}>{student.gpa?.toFixed(2) || "0.00"}</Text>
+                  <Text style={styles.summaryLab}>GPA</Text>
+                </View>
+                <View style={[styles.summaryItem, { borderLeftWidth: 1, borderLeftColor: "#e5e7eb" }]}>
+                  <Text style={styles.summaryVal}>{student.completedCreditHours || 0}</Text>
+                  <Text style={styles.summaryLab}>Credits</Text>
+                </View>
+              </View>
+              {transcript.length === 0 ? (
+                <Text style={styles.emptyTrans}>No completed courses found.</Text>
+              ) : (
+                transcript.map((e, i) => (
+                  <View key={i} style={styles.transRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.transCode}>{e.code}</Text>
+                      <Text style={styles.transName}>{e.name}</Text>
+                      <Text style={styles.transSem}>{e.semester} {e.academicYear}</Text>
+                    </View>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Text style={styles.transGrade}>{e.grade}%</Text>
+                      <Text style={styles.transGP}>{e.gradePoints?.toFixed(1)} GP</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -382,4 +446,22 @@ const styles = StyleSheet.create({
   courseInstructor: { fontSize: 12, color: "#888", marginBottom: 6 },
   courseBottom: { flexDirection: "row", gap: 16 },
   courseDetail: { fontSize: 12, color: "#666" },
+  recordBtn: { backgroundColor: "#f0f2f5", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
+  recordBtnText: { color: "#2554e8", fontWeight: "700", fontSize: 12 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalBox: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, height: "80%" },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  modalTitle: { fontSize: 18, fontWeight: "800", color: "#111" },
+  closeIcon: { fontSize: 18, color: "#888", fontWeight: "600" },
+  summaryRow: { flexDirection: "row", backgroundColor: "#f8fafc", borderRadius: 16, padding: 16, marginBottom: 20 },
+  summaryItem: { flex: 1, alignItems: "center" },
+  summaryVal: { fontSize: 24, fontWeight: "900", color: "#2554e8" },
+  summaryLab: { fontSize: 10, color: "#94a3b8", fontWeight: "700", textTransform: "uppercase", marginTop: 2 },
+  transRow: { flexDirection: "row", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", alignItems: "center" },
+  transCode: { fontSize: 13, fontWeight: "800", color: "#2554e8" },
+  transName: { fontSize: 13, fontWeight: "600", color: "#1e293b", marginTop: 1 },
+  transSem: { fontSize: 11, color: "#94a3b8", marginTop: 2 },
+  transGrade: { fontSize: 15, fontWeight: "800", color: "#1e293b" },
+  transGP: { fontSize: 10, color: "#94a3b8", fontWeight: "700", marginTop: 2 },
+  emptyTrans: { textAlign: "center", color: "#94a3b8", marginTop: 40 },
 });
