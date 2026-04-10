@@ -421,8 +421,8 @@ export const getAllEnrollments = async (req: Request, res: Response): Promise<vo
 
         const [enrollments, total] = await Promise.all([
             Enrollment.find()
-                .populate('student', 'fullName universityId email level')
-                .populate('course', 'code name credits')
+                .populate('student', 'fullName universityId email level major academicYear')
+                .populate('course', 'code name credits passingGrade')
                 .sort({ enrolledAt: -1 })
                 .skip(skip)
                 .limit(limit)
@@ -451,9 +451,12 @@ export const getAllEnrollments = async (req: Request, res: Response): Promise<vo
                     code: (e.course as any).code,
                     name: (e.course as any).name,
                     credits: (e.course as any).credits,
+                    passingGrade: (e.course as any).passingGrade,
                 },
                 semester: e.semester,
                 academicYear: e.academicYear,
+                status: e.status,
+                grade: e.grade,
                 enrolledAt: e.enrolledAt,
             })),
         });
@@ -482,6 +485,50 @@ export const adminEnroll = async (req: Request, res: Response): Promise<void> =>
         if (exists) {
             res.status(409).json({ success: false, message: 'Already enrolled' });
             return;
+        }
+
+        if (course.prerequisites && course.prerequisites.length > 0) {
+            const completedEnrollments = await Enrollment.find({
+                student: studentId,
+                status: 'completed',
+            }).populate('course', 'code passingGrade');
+
+            const passedCodes = completedEnrollments.filter((e) => {
+                const passGrade = (e.course as any)?.passingGrade || 50;
+                return typeof e.grade === 'number' && e.grade >= passGrade;
+            }).map((e) => (e.course as any).code);
+
+            const missing = course.prerequisites.filter(p => !passedCodes.includes(p));
+            if (missing.length > 0) {
+                res.status(403).json({ success: false, message: `Prerequisites not met: ${missing.join(', ')}` });
+                return;
+            }
+        }
+
+        const currentEnrollments = await Enrollment.find({
+            student: studentId,
+            semester: student.currentSemester,
+            status: 'active',
+        }).populate('course', 'day time code name');
+
+        const toMinutes = (time: string) => {
+            const [h, m] = time.split(':').map(Number);
+            return h * 60 + m;
+        };
+
+        for (const enrollment of currentEnrollments) {
+            const enrolled = enrollment.course as any;
+            if (enrolled.day === course.day) {
+                const [eS, eE] = enrolled.time.split(' - ');
+                const [nS, nE] = course.time.split(' - ');
+                if (toMinutes(eS) < toMinutes(nE) && toMinutes(nS) < toMinutes(eE)) {
+                    res.status(409).json({
+                        success: false,
+                        message: `Schedule conflict with ${enrolled.code} (${enrolled.name}) on ${course.day} at ${course.time}`
+                    });
+                    return;
+                }
+            }
         }
 
         const year = new Date().getFullYear();
