@@ -15,30 +15,38 @@ interface TimetableProps {
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 const HOURS = [
-  "08:00", "09:00", "10:00", "11:00", "12:00", 
-  "13:00", "14:00", "15:00", "16:00"
+  "08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", 
+  "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM",
+  "06:00 PM", "07:00 PM", "08:00 PM"
 ];
 
-// Helper to convert time "08:00 - 09:30" or "08:00 – 09:30" into a grid span
 const parseTime = (timeStr: string) => {
   try {
     const parts = timeStr.replace('–', '-').split('-');
     if (parts.length !== 2) return { startIdx: 0, span: 0 };
     
-    let [startHour, startMin] = parts[0].trim().split(':').map(Number);
-    let [endHour, endMin] = parts[1].trim().split(':').map(Number);
+    const parseHourMinute = (s: string) => {
+      const clean = s.trim().toUpperCase();
+      const isPM = clean.includes("PM");
+      const isAM = clean.includes("AM");
+      let [h, m] = clean.replace(/AM|PM/, "").trim().split(":").map(Number);
+      
+      if (isPM && h !== 12) h += 12;
+      if (isAM && h === 12) h = 0;
+      
+      return h + m / 60;
+    };
     
-    // Calculate slots (each hour is 2 slots, e.g. 30 min intervals)
-    // Grid starts at 08:00.
-    const startOffsetMinutes = (startHour - 8) * 60 + startMin;
-    const endOffsetMinutes = (endHour - 8) * 60 + endMin;
+    const startTimeDecimal = parseHourMinute(parts[0]);
+    const endTimeDecimal = parseHourMinute(parts[1]);
     
-    // Each row represents 1 hour. We can snap to grid by using percentages or explicit fractional grid units
-    const startIdx = startOffsetMinutes / 60;
-    const span = (endOffsetMinutes - startOffsetMinutes) / 60;
+    // Grid starts at 08:00 AM
+    const startIdx = startTimeDecimal - 8;
+    const span = endTimeDecimal - startTimeDecimal;
     
     return { startIdx, span };
   } catch (e) {
+    console.error("Timetable parse error:", e);
     return { startIdx: 0, span: 0 };
   }
 };
@@ -71,7 +79,7 @@ const Timetable: React.FC<TimetableProps> = ({ courses }) => {
           {/* Time Column */}
           <div className="w-20 flex-shrink-0 flex flex-col border-r border-gray-200">
             {HOURS.map((hour) => (
-              <div key={hour} className="h-20 text-xs text-gray-500 text-right pr-3 pt-2 relative">
+              <div key={hour} className="h-20 text-[11px] font-bold text-gray-500 text-right pr-3 pt-2 relative">
                 <span className="-top-3 relative">{hour}</span>
               </div>
             ))}
@@ -88,7 +96,7 @@ const Timetable: React.FC<TimetableProps> = ({ courses }) => {
           {DAYS.map((day) => {
             const dayCourses = courses.filter(c => c.day === day);
             return (
-              <div key={day} className="flex-1 relative h-[720px] border-r border-gray-100 last:border-r-0">
+              <div key={day} className="flex-1 relative h-[1040px] border-r border-gray-100 last:border-r-0">
                 {dayCourses.map((course, i) => {
                   const { startIdx, span } = parseTime(course.time);
                   if (span <= 0) return null;
@@ -104,9 +112,9 @@ const Timetable: React.FC<TimetableProps> = ({ courses }) => {
                         height: `${(span * 80) - 2}px`,
                       }}
                     >
-                      <div className="font-bold text-xs leading-tight mb-1">{course.code}</div>
-                      <div className="text-[10px] leading-tight opacity-90 line-clamp-2">{course.name}</div>
-                      <div className="text-[10px] opacity-75 mt-1 font-medium">{course.room}</div>
+                      <div className="font-bold text-sm leading-tight mb-1">{course.code}</div>
+                      <div className="text-xs leading-tight opacity-95 line-clamp-2">{course.name}</div>
+                      <div className="text-xs opacity-80 mt-1 font-bold">{course.room}</div>
                     </div>
                   );
                 })}
