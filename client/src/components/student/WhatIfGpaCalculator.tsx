@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { getGradePoints } from "../../utils/mockData";
+import { getGradePoints } from "../../utils/gpa";
 
 interface Props {
   currentGpa: number;

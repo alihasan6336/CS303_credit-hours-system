@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { Course } from "../../types/course";
 import { courseAssignmentApi, courseApi } from "../../utils/api";
 import StudentLayout from "../../layout/StudentLayout";
-import { mockAvailableCourses } from "../../utils/mockData";
+
 
 const AvailableCourses: React.FC = () => {
   const navigate = useNavigate();
@@ -23,13 +23,14 @@ const AvailableCourses: React.FC = () => {
     setLoading(true);
     try {
       const [assignmentsResponse, enrollmentsResponse] = await Promise.all([
-        courseAssignmentApi.getAssignmentsByLevel().catch(() => ({ success: false })),
-        courseApi.getMyCourses().catch(() => ({ success: false }))
+        courseAssignmentApi.getAssignmentsByLevel(),
+        courseApi.getMyCourses()
       ]);
 
       if (assignmentsResponse.success && (enrollmentsResponse as any).success) {
-        const myLevelAssignments = (assignmentsResponse as any).byLevel[user.level] || [];
-        const availableCourses = myLevelAssignments.map((a: any) => ({
+        // Flatten assignments and map to internal Course type
+        const allAssignments = Object.values((assignmentsResponse as any).byLevel).flat();
+        const availableCourses = allAssignments.map((a: any) => ({
           _id: a.course._id,
           courseCode: a.course.code,
           courseName: a.course.name,
@@ -41,28 +42,10 @@ const AvailableCourses: React.FC = () => {
         }));
         setCourses(availableCourses);
         setEnrolledCourses((enrollmentsResponse as any).data.map((e: any) => e.course._id));
-      } else {
-        // Fallback to mock data for demo
-        const fallbackCourses = mockAvailableCourses.map(c => ({
-          _id: c._id,
-          courseCode: c.code,
-          courseName: c.name,
-          instructorName: c.instructor,
-          creditHours: c.credits,
-          studentYear: user.level || 3,
-          major: user.major || "Computer Science",
-          prerequisite: c.prerequisites[0] || ""
-        })) as any[];
-        setCourses(fallbackCourses);
-        
-        const persistedEnrolledStr = localStorage.getItem(`mock_enrolled_${user.universityId}`);
-        if (persistedEnrolledStr) {
-          const persisted = JSON.parse(persistedEnrolledStr);
-          setEnrolledCourses(persisted.map((c: any) => c._id));
-        }
       }
     } catch (err) {
-      console.warn("Using mock fallback due to error:", err);
+      console.error("Failed to fetch real courses:", err);
+      setError("Failed to load available courses. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -73,21 +56,12 @@ const AvailableCourses: React.FC = () => {
     setError("");
 
     try {
-      // Mock registration for standalone page persistence
-      const courseToRegister = mockAvailableCourses.find(c => c._id === courseId);
-      if (courseToRegister) {
-        const persistedEnrolledStr = localStorage.getItem(`mock_enrolled_${user.universityId}`);
-        const currentEnrolled = persistedEnrolledStr ? JSON.parse(persistedEnrolledStr) : [];
-        if (!currentEnrolled.some((c: any) => c._id === courseId)) {
-           const updated = [...currentEnrolled, { ...courseToRegister, _id: courseId }];
-           localStorage.setItem(`mock_enrolled_${user.universityId}`, JSON.stringify(updated));
-           setEnrolledCourses([...enrolledCourses, courseId]);
-        }
+      const response = await courseApi.enrollCourse(courseId);
+      if (response.success) {
+        setEnrolledCourses([...enrolledCourses, courseId]);
       }
-      
-      await courseApi.enrollCourse(courseId).catch(() => {});
-    } catch (err) {
-      console.warn("Mock enrollment handled");
+    } catch (err: any) {
+      setError(err.message || "Registration failed");
     } finally {
       setRegistering(null);
     }

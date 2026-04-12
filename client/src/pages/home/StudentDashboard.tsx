@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi, courseApi } from "../../utils/api";
+import { authApi, courseApi, gpaApi } from "../../utils/api";
 import StudentLayout from "../../layout/StudentLayout";
 import Timetable from "../../components/Timetable";
 import CourseBrowserModal from "../../components/student/CourseBrowserModal";
 import WhatIfGpaCalculator from "../../components/student/WhatIfGpaCalculator";
 import AcademicHistory from "../../components/student/AcademicHistory";
-import { mockAcademicHistory, type MockCourse, studentData, LEVEL_THRESHOLDS } from "../../utils/mockData";
+import { LEVEL_THRESHOLDS } from "../../utils/gpa";
+
 
 interface Course {
   code: string;
@@ -47,10 +48,9 @@ const StudentDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"dashboard" | "calculator" | "history">("dashboard");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Synchronize completed courses from Academic History mock data
-  const [completedCourseCodes] = useState<string[]>(
-    mockAcademicHistory.flatMap(term => term.courses.map(c => c.code))
-  );
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [completedCourseCodes, setCompletedCourseCodes] = useState<string[]>([]);
+
   const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
@@ -83,43 +83,43 @@ const StudentDashboard: React.FC = () => {
     fetchDashboardData();
   }, [navigate]);
 
-  const fetchDashboardData = () => {
+  const fetchDashboardData = async () => {
     setLoading(true);
-    authApi
-      .home()
-      .then((response) => {
-        if (!response.success || !response.student) return;
+    try {
+      const [homeRes, gpaRes] = await Promise.all([
+        authApi.home(),
+        gpaApi.getBreakdown()
+      ]);
 
-        const s = response.student;
-        const courses: Course[] = response.courses || [];
+      if (homeRes.success && homeRes.student) {
+        const s = homeRes.student;
+        const courses = homeRes.courses || [];
+        
+        setCurrentStudent(prev => ({
+          ...prev,
+          name: s.fullName,
+          id: s.universityId,
+          level: calculateLevel(s.completedCreditHours),
+          gpa: s.gpa,
+          completedHours: s.completedCreditHours,
+          major: s.major,
+          semester: s.currentSemester || "Fall 2025",
+          courses: courses.map(c => ({ ...c, _id: (c as any)._id })),
+        }));
+      }
 
-        setCurrentStudent((prev) => {
-          const studentId = s.universityId;
-          const persistedCoursesStr = localStorage.getItem(`mock_enrolled_${studentId}`);
-          const enrolledCourses = persistedCoursesStr ? JSON.parse(persistedCoursesStr) : courses.filter((c: any) => c.isEnrolled).map(c => ({ ...c, _id: (c as any)._id }));
-
-          return {
-            ...prev,
-            name: s.fullName || studentData.name,
-            id: studentId || studentData.id,
-            level: calculateLevel(s.completedCreditHours || studentData.completedCredits),
-            gpa: s.gpa < 1 ? studentData.gpa : s.gpa,
-            completedHours: s.completedCreditHours < 10 ? studentData.completedCredits : s.completedCreditHours,
-            major: s.major || studentData.major,
-            semester: studentData.semester, // Overriding to Fall 2025 as requested
-            courses: enrolledCourses,
-          };
-        });
-      })
-      .catch((error) => {
-        console.warn("Failed to fetch home data:", error);
-        if (error.message.includes("Not authorized") || error.message.includes("token")) {
-          navigate("/login");
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      if (gpaRes.success) {
+        setHistoryData(gpaRes.breakdown);
+        setCompletedCourseCodes(gpaRes.breakdown.map((c: any) => c.code));
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch dashboard data:", error);
+      if (error.message?.includes("Not authorized") || error.message?.includes("token")) {
+        navigate("/login");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
 
@@ -127,43 +127,27 @@ const StudentDashboard: React.FC = () => {
     try {
       if (!courseId) return;
       
-      const updatedCourses = currentStudent.courses.filter(c => c._id !== courseId);
-      
-      setCurrentStudent(prev => ({
-        ...prev,
-        courses: updatedCourses
-      }));
-
-      // Persist in localStorage for demo
-      localStorage.setItem(`mock_enrolled_${currentStudent.id}`, JSON.stringify(updatedCourses));
-
-      // Simulate API call
-      courseApi.dropCourse(courseId).catch((err) => { console.warn("API drop failing as expected during mock demo", err); });
+      const response = await courseApi.dropCourse(courseId);
+      if (response.success) {
+        fetchDashboardData(); // Refresh all data
+      }
     } catch (error) {
       console.error("Failed to drop course:", error);
     }
   };
 
-  const handleEnrollMock = (course: MockCourse) => {
-    const updatedCourses = [...currentStudent.courses, {
-      code: course.code,
-      name: course.name,
-      day: course.day,
-      time: course.time,
-      room: course.room,
-      credits: course.credits,
-      instructor: course.instructor,
-      _id: course._id,
-    }];
-
-    setCurrentStudent(prev => ({
-      ...prev,
-      courses: updatedCourses
-    }));
-
-    // Persist in localStorage for demo
-    localStorage.setItem(`mock_enrolled_${currentStudent.id}`, JSON.stringify(updatedCourses));
-    setIsModalOpen(false);
+  const handleEnroll = async (course: any) => {
+    try {
+      if (!course._id) return;
+      
+      const response = await courseApi.enrollCourse(course._id);
+      if (response.success) {
+        setIsModalOpen(false);
+        fetchDashboardData(); // Refresh all data
+      }
+    } catch (error: any) {
+      alert(error.message || "Failed to enroll in course");
+    }
   };
 
 
@@ -218,7 +202,7 @@ const StudentDashboard: React.FC = () => {
         )}
 
         {activeTab === "history" && (
-          <AcademicHistory />
+          <AcademicHistory historyData={historyData} />
         )}
 
         {activeTab === "dashboard" && (
@@ -467,7 +451,7 @@ const StudentDashboard: React.FC = () => {
           completedCourseCodes={completedCourseCodes}
           studentLevel={currentStudent.level}
           totalCurrentCredits={totalCredits}
-          onEnroll={handleEnrollMock}
+          onEnroll={handleEnroll}
         />
       </main>
     </StudentLayout>
