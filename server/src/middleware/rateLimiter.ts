@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
 import { Request, Response } from 'express';
 
+
 // Shared error response for all limiters
 const limitHandler = (req: Request, res: Response): void => {
   res.status(429).json({
@@ -19,6 +20,7 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: limitHandler,
+  validate: { default: false },
 });
 
 // General API limiter - applied globally to all /api/* routes
@@ -33,6 +35,7 @@ export const apiLimiter = rateLimit({
     return trustedIPs.includes(req.ip || '');
   },
   handler: limitHandler,
+  validate: { default: false },
 });
 
 // Enrollment limiter - for course enrollment during high-traffic registration
@@ -47,6 +50,7 @@ export const enrollmentLimiter = rateLimit({
     return `${req.ip}-${student?._id || 'anonymous'}`;
   },
   handler: limitHandler,
+  validate: false,
 });
 
 // Admin action limiter - for admin write operations
@@ -57,4 +61,5 @@ export const adminActionLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: limitHandler,
+  validate: { default: false },
 });

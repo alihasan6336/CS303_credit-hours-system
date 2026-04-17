@@ -666,10 +666,48 @@ export const courseApi = {
     });
   },
 
+  getMyCourses(filters?: { semester?: string; academicYear?: string }): Promise<{ success: boolean; count: number; data: any[] }> {
+    const params = new URLSearchParams();
+    if (filters?.semester) params.append("semester", filters.semester);
+    if (filters?.academicYear) params.append("academicYear", filters.academicYear);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return request(`/api/courses/my-courses${query}`);
+  },
+
+  enrollCourse(id: string): Promise<{ success: boolean; message: string; seatsRemaining?: number }> {
+    return request(`/api/courses/${id}/enroll`, {
+      method: "POST",
+    });
+  },
+
+  dropCourse(id: string): Promise<{ success: boolean; message: string }> {
+    return request(`/api/courses/${id}/enroll`, {
+      method: "DELETE",
+    });
+  },
+
   bulkUpdate(courses: any[]): Promise<{ success: boolean; message: string; courses: any[] }> {
     return request("/api/courses/bulk", {
       method: "PUT",
       body: JSON.stringify({ courses }),
+    });
+  },
+};
+
+export interface SystemSettingsData {
+  currentSemester: "Fall" | "Spring" | "Summer";
+  academicYear: string;
+}
+
+export const settingsApi = {
+  getSettings(): Promise<{ success: boolean; settings: SystemSettingsData }> {
+    return request<{ success: boolean; settings: SystemSettingsData }>("/api/settings");
+  },
+
+  updateSettings(body: Partial<SystemSettingsData>): Promise<{ success: boolean; message: string; settings: SystemSettingsData }> {
+    return request("/api/settings", {
+      method: "PUT",
+      body: JSON.stringify(body),
     });
   },
 };

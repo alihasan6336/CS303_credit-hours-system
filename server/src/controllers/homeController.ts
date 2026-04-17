@@ -9,6 +9,7 @@ import { Request, Response } from 'express';
 import Student from '../models/Student';
 import Enrollment from '../models/Enrollment';
 import CourseAssignment from '../models/CourseAssignment';
+import SystemSettings from '../models/SystemSettings';
 import { ICourse } from '../models/Course';
 
 export const getHomeData = async (
@@ -24,12 +25,17 @@ export const getHomeData = async (
       return;
     }
 
-    // Get courses assigned to student's level
-    const currentYear = new Date().getFullYear();
+    // Get global system settings for the university semester
+    let settings = await SystemSettings.findOne();
+    if (!settings) {
+      settings = await SystemSettings.create({ currentSemester: 'Spring', academicYear: '2024-2025' });
+    }
+
+    // Get courses assigned to student's level globally
     const assignments = await CourseAssignment.find({
       level: student.level,
-      semester: student.currentSemester,
-      academicYear: `${currentYear}-${currentYear + 1}`,
+      semester: settings.currentSemester,
+      academicYear: settings.academicYear,
       isActive: true,
     }).populate<{
       course: ICourse
@@ -38,7 +44,7 @@ export const getHomeData = async (
     // Get student's enrollments to check which courses they're enrolled in
     const enrollments = await Enrollment.find({
       student: studentId,
-      semester: student.currentSemester,
+      semester: settings.currentSemester,
     }).select('course');
 
     const enrolledCourseIds = enrollments.map(e => e.course.toString());
@@ -47,6 +53,7 @@ export const getHomeData = async (
     const courses = assignments
       .filter((a) => a.course)
       .map((a) => ({
+        _id: a.course._id,
         code: a.course.code,
         name: a.course.name,
         day: a.course.day,
@@ -57,7 +64,7 @@ export const getHomeData = async (
         isEnrolled: enrolledCourseIds.includes(a.course._id.toString()),
       }));
 
-    const semesterLabel = `${student.currentSemester} ${currentYear}`;
+    const semesterLabel = `${settings.currentSemester} ${settings.academicYear}`;
 
     res.status(200).json({
       success: true,
@@ -67,8 +74,8 @@ export const getHomeData = async (
         universityId: student.universityId,
         email: student.email,
         major: student.major,
-        academicYear: student.academicYear,
-        currentSemester: student.currentSemester,
+        academicYear: settings.academicYear, // Provide global config
+        currentSemester: settings.currentSemester, // Provide global config
         completedCreditHours: student.completedCreditHours,
         phoneNumber: student.phoneNumber,
         gpa: student.gpa,
