@@ -6,10 +6,13 @@ import CourseManagement from "../components/CourseManagement";
 import RegisterScreen from "../components/RegisterScreen";
 import DashboardScreen from "../components/DashboardScreen";
 import EnrollmentManagement from "../components/EnrollmentManagement";
+import GradingManagement from "../components/GradingManagement";
 import LoginScreen from "../components/LoginScreen";
 import SuperAdminDashboard from "../components/SuperAdminDashboard";
 import StudentCoursesScreen from "../components/StudentCoursesScreen";
 import StudentScheduleScreen from "../components/StudentScheduleScreen";
+import GPACalculatorScreen from "../components/GPACalculatorScreen";
+import GradesScreen from "../components/GradesScreen";
 
 function BottomTab({ active, onPress, icon, label }) {
   return (
@@ -71,6 +74,7 @@ export default function App() {
         case "accounts": return <AccountManagement />;
         case "register": return <RegisterScreen />;
         case "enrollment": return <EnrollmentManagement />;
+        case "grading": return <GradingManagement />;
         default: return <SuperAdminDashboard />;
       }
     };
@@ -78,11 +82,12 @@ export default function App() {
       <View style={styles.container}>
         <View style={styles.screen}>{renderSuperAdminScreen()}</View>
         <View style={styles.tabBar}>
-          <BottomTab active={activeTab === "dashboard"} onPress={() => setActiveTab("dashboard")} icon="📊" label="Dashboard" />
+          <BottomTab active={activeTab === "dashboard"} onPress={() => setActiveTab("dashboard")} icon="📊" label="Stats" />
           <BottomTab active={activeTab === "courses"} onPress={() => setActiveTab("courses")} icon="📚" label="Courses" />
-          <BottomTab active={activeTab === "accounts"} onPress={() => setActiveTab("accounts")} icon="👥" label="Accounts" />
-          <BottomTab active={activeTab === "enrollment"} onPress={() => setActiveTab("enrollment")} icon="✅" label="Enroll" />
-          <BottomTab active={false} onPress={handleLogout} icon="🚪" label="Logout" />
+          <BottomTab active={activeTab === "accounts"} onPress={() => setActiveTab("accounts")} icon="👥" label="Users" />
+          <BottomTab active={activeTab === "enrollment"} onPress={() => setActiveTab("enrollment")} icon="📝" label="Enroll" />
+          <BottomTab active={activeTab === "grading"} onPress={() => setActiveTab("grading")} icon="🎓" label="Degrees" />
+          <BottomTab active={false} onPress={handleLogout} icon="🚪" label="Exit" />
         </View>
       </View>
     );
@@ -93,10 +98,22 @@ export default function App() {
       case "dashboard": return <DashboardScreen onNavigateCourses={() => setActiveTab("courses")} />;
       case "courses": return <StudentCoursesScreen />;
       case "schedule": return <StudentScheduleScreen />;
+      case "grades": return <GradesScreen onGoBack={() => setActiveTab("dashboard")} />;
+      case "gpa": return <GPACalculatorScreen onGoBack={() => setActiveTab("settings")} />;
       case "settings":
         return (
           <View style={styles.settingsScreen}>
             <Text style={styles.settingsTitle}>⚙️ Settings</Text>
+
+            <TouchableOpacity style={styles.gpaBtn} onPress={() => setActiveTab("gpa")}>
+              <Text style={styles.gpaBtnIcon}>🧮</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.gpaBtnTitle}>Target GPA Calculator</Text>
+                <Text style={styles.gpaBtnSub}>Calculate cumulative based on expected grades</Text>
+              </View>
+              <Text style={styles.gpaBtnArrow}>›</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
               <Text style={styles.logoutBtnText}>🚪 Logout</Text>
             </TouchableOpacity>
@@ -113,6 +130,7 @@ export default function App() {
         <BottomTab active={activeTab === "dashboard"} onPress={() => setActiveTab("dashboard")} icon="🏠" label="Dashboard" />
         <BottomTab active={activeTab === "courses"} onPress={() => setActiveTab("courses")} icon="📚" label="Courses" />
         <BottomTab active={activeTab === "schedule"} onPress={() => setActiveTab("schedule")} icon="📅" label="Schedule" />
+        <BottomTab active={activeTab === "grades"} onPress={() => setActiveTab("grades")} icon="📊" label="Grades" />
         <BottomTab active={activeTab === "settings"} onPress={() => setActiveTab("settings")} icon="⚙️" label="Settings" />
       </View>
     </View>
@@ -137,12 +155,13 @@ const styles = StyleSheet.create({
   placeholder: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#f0f2f5" },
   placeholderText: { fontSize: 28, marginBottom: 8 },
   placeholderSub: { fontSize: 14, color: "#aaa" },
-  settingsScreen: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#f0f2f5", padding: 20 },
-  settingsTitle: { fontSize: 28, fontWeight: "800", marginBottom: 40 },
-  logoutBtn: {
-    backgroundColor: "#ef4444", paddingHorizontal: 40, paddingVertical: 14,
-    borderRadius: 12, shadowColor: "#ef4444", shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
-  },
-  logoutBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  settingsScreen: { flex: 1, padding: 20 },
+  settingsTitle: { fontSize: 24, fontWeight: "800", color: "#111", marginBottom: 30 },
+  gpaBtn: { backgroundColor: "#fff", flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 12, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
+  gpaBtnIcon: { fontSize: 24, marginRight: 16 },
+  gpaBtnTitle: { fontSize: 16, fontWeight: "700", color: "#111", marginBottom: 2 },
+  gpaBtnSub: { fontSize: 13, color: "#888" },
+  gpaBtnArrow: { fontSize: 24, color: "#ccc", marginLeft: 16 },
+  logoutBtn: { backgroundColor: "#fee2e2", paddingVertical: 14, borderRadius: 12, alignItems: "center" },
+  logoutBtnText: { color: "#ef4444", fontSize: 16, fontWeight: "700" },
 });

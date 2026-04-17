@@ -27,10 +27,18 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
             setError("");
 
             const responseAll = await courseApi.getAll();
-            setAvailableCourses(responseAll.courses || []);
-
             const responseEnrolled = await courseApi.getMyCourses();
-            const enrolledData = (responseEnrolled.data || []).map(e => ({
+
+            const passedCoursesIds = (responseEnrolled.data || [])
+                .filter(e => e.status === 'completed' && e.grade >= (e.course?.passingGrade || 50))
+                .map(e => e.course?._id);
+
+            const filteredAvailable = (responseAll.courses || []).filter(c => !passedCoursesIds.includes(c._id));
+            setAvailableCourses(filteredAvailable);
+
+            const enrolledData = (responseEnrolled.data || [])
+                .filter(e => e.status === 'active')
+                .map(e => ({
                 _id: e.course?._id,
                 code: e.course?.code,
                 name: e.course?.name,
@@ -39,6 +47,7 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
                 room: e.course?.room,
                 credits: e.course?.credits,
                 instructor: e.course?.instructor,
+                status: e.status,
             }));
             setMyCourses(enrolledData);
 
@@ -55,6 +64,49 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
 
     const handleEnroll = async (courseId) => {
         try {
+            const course = availableCourses.find(c => String(c._id) === String(courseId));
+            if (!course) {
+                Alert.alert("Error", "Selected course not found.");
+                return;
+            }
+
+            const toMinutes = (t) => {
+                if (!t || typeof t !== "string") return 0;
+                const parts = t.trim().split(":");
+                const h = parseInt(parts[0], 10) || 0;
+                const m = parseInt(parts[1], 10) || 0;
+                return h * 60 + m;
+            };
+
+            const courseDay = (course.day || "").toString().trim().toLowerCase();
+            const courseTime = (course.time || "").toString().trim();
+            const newTimes = courseTime.split(/[^\d:]+/).filter(Boolean);
+
+            if (courseDay && newTimes.length >= 2) {
+                const nS = toMinutes(newTimes[0]);
+                const nE = toMinutes(newTimes[1]);
+
+                for (const enrolled of myCourses) {
+                    const enrolledDay = (enrolled.day || "").toString().trim().toLowerCase();
+                    const enrolledTime = (enrolled.time || "").toString().trim();
+                    const exTimes = enrolledTime.split(/[^\d:]+/).filter(Boolean);
+
+                    if (enrolledDay === courseDay && exTimes.length >= 2) {
+                        const eS = toMinutes(exTimes[0]);
+                        const eE = toMinutes(exTimes[1]);
+
+                        if (nS < eE && eS < nE) {
+                            Alert.alert(
+                                "Schedule Conflict",
+                                `Conflict with ${enrolled.code} (${enrolled.name}) on ${course.day} at ${enrolled.time}.`,
+                                [{ text: "OK" }]
+                            );
+                            return;
+                        }
+                    }
+                }
+            }
+
             setActionLoadingId(courseId);
             await courseApi.enroll(courseId);
             Alert.alert("Success", "Successfully enrolled in the course!");
@@ -163,6 +215,9 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
                                                 <Text style={styles.courseDetail}>🕐 {course.time}</Text>
                                                 <Text style={styles.courseDetail}>📍 {course.room}</Text>
                                                 <Text style={styles.courseDetail}>👥 {course.enrolledCount}/{course.capacity} filled</Text>
+                                                {course.prerequisites?.length > 0 && (
+                                                    <Text style={styles.coursePrereq}>Pre: {course.prerequisites.join(", ")}</Text>
+                                                )}
                                             </View>
 
                                             {enrolled ? (
@@ -372,6 +427,7 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
     },
     courseDetail: { fontSize: 13, color: "#555", marginBottom: 4 },
+    coursePrereq: { fontSize: 12, color: "#8b5cf6", fontWeight: "700", marginTop: 2 },
 
     actionBtn: {
         backgroundColor: "#2554e8",

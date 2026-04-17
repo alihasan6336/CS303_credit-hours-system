@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
-const API_BASE_URL = Platform.OS === "android" ? "http://192.168.1.5:5000" : "http://localhost:5000";
+const API_BASE_URL = Platform.OS === "android" ? "http://192.168.1.6:5000" : "http://localhost:5000";
 
 
 async function request(path, options = {}) {
@@ -105,6 +105,10 @@ export const courseApi = {
     create(payload) {
         return request("/api/courses", { method: "POST", body: JSON.stringify(payload) });
     },
+
+    update(id, payload) {
+        return request(`/api/courses/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+    },
 };
 
 export const adminApi = {
@@ -135,5 +139,37 @@ export const adminApi = {
 
     unenroll(enrollmentId) {
         return request(`/api/admin/enrollments/${enrollmentId}`, { method: "DELETE" });
+    },
+
+    getStudentAcademicRecord(id) {
+        return request(`/api/admin/users/${id}/record`);
+    },
+
+    toggleAccountStatus(id) {
+        return request(`/api/admin/users/${id}/toggle`, { method: "PATCH" });
+    },
+
+    updateGrade(enrollmentId, grade) {
+        return request(`/api/admin/enrollments/${enrollmentId}/grade`, {
+            method: "PATCH",
+            body: JSON.stringify({ grade }),
+        });
+    },
+};
+
+export const gpaApi = {
+    getBreakdown() {
+        return request("/api/gpa/me");
+    },
+
+    recalculate() {
+        return request("/api/gpa/recalculate", { method: "POST" });
+    },
+
+    predict(potentialGrades) {
+        return request("/api/gpa/predict", {
+            method: "POST",
+            body: JSON.stringify({ potentialGrades }),
+        });
     },
 };

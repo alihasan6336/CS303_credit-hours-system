@@ -23,8 +23,14 @@ export default function CourseManagement() {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingCourse, setEditingCourse] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ code: "", name: "", instructor: "", day: "Monday", time: "", room: "", credits: "3", capacity: "30" });
+  const [form, setForm] = useState({
+    code: "", name: "", instructor: "", day: "Monday", time: "", room: "",
+    credits: "3", capacity: "30", prerequisites: "",
+    courseType: "Lecture", semester: ["Fall"], passingGrade: "50",
+    major: "Computer Science", studentYear: "1",
+  });
 
   const fetchCourses = async () => {
     try {
@@ -41,7 +47,34 @@ export default function CourseManagement() {
   useEffect(() => { fetchCourses(); }, []);
 
   const openAddModal = () => {
-    setForm({ code: "", name: "", instructor: "", day: "Monday", time: "", room: "", credits: "3", capacity: "30" });
+    setEditingCourse(null);
+    setForm({
+        code: "", name: "", instructor: "", day: "Monday", time: "", room: "",
+        credits: "3", capacity: "30", prerequisites: "",
+        courseType: "Lecture", semester: ["Fall"], passingGrade: "50",
+        major: "Computer Science", studentYear: "1",
+    });
+    setModalVisible(true);
+  };
+
+  const openEditModal = (course) => {
+    setEditingCourse(course);
+    setForm({
+      code: course.code,
+      name: course.name,
+      instructor: course.instructor,
+      day: course.day,
+      time: course.time,
+      room: course.room,
+      credits: String(course.credits),
+      capacity: String(course.capacity),
+      prerequisites: course.prerequisites ? course.prerequisites.join(", ") : "",
+      courseType: course.courseType || "Lecture",
+      semester: Array.isArray(course.semester) ? course.semester : [course.semester],
+      passingGrade: String(course.passingGrade || "50"),
+      major: course.major || "Computer Science",
+      studentYear: String(course.studentYear || "1"),
+    });
     setModalVisible(true);
   };
 
@@ -52,7 +85,7 @@ export default function CourseManagement() {
     }
     try {
       setSaving(true);
-      await courseApi.create({
+      const payload = {
         code: form.code,
         name: form.name,
         instructor: form.instructor,
@@ -61,7 +94,19 @@ export default function CourseManagement() {
         room: form.room,
         credits: Number(form.credits),
         capacity: Number(form.capacity),
-      });
+        prerequisites: form.prerequisites.split(",").map(p => p.trim()).filter(Boolean),
+        courseType: form.courseType,
+        semester: form.semester,
+        passingGrade: Number(form.passingGrade),
+        major: form.major,
+        studentYear: Number(form.studentYear),
+      };
+
+      if (editingCourse) {
+        await courseApi.update(editingCourse._id, payload);
+      } else {
+        await courseApi.create(payload);
+      }
       setModalVisible(false);
       await fetchCourses();
     } catch (err) {
@@ -100,11 +145,17 @@ export default function CourseManagement() {
                   <View style={styles.creditBadge}>
                     <Text style={styles.creditText}>{course.credits} cr</Text>
                   </View>
+                  <TouchableOpacity onPress={() => openEditModal(course)} style={styles.editBtn}>
+                    <Text style={styles.editBtnText}>Edit</Text>
+                  </TouchableOpacity>
                 </View>
                 <Text style={styles.courseName}>{course.name}</Text>
                 <Text style={styles.courseDetail}>👤 {course.instructor}</Text>
                 <Text style={styles.courseDetail}>🕐 {course.time}  📍 {course.room}</Text>
                 <Text style={styles.courseDetail}>👥 {course.enrolledCount}/{course.capacity} enrolled</Text>
+                {course.prerequisites?.length > 0 && (
+                  <Text style={styles.coursePrereq}>Pre: {course.prerequisites.join(", ")}</Text>
+                )}
               </View>
             );
           })
@@ -116,16 +167,17 @@ export default function CourseManagement() {
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
           <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setModalVisible(false)} />
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Add New Course</Text>
+            <Text style={styles.modalTitle}>{editingCourse ? "Edit Course" : "Add New Course"}</Text>
             <ScrollView showsVerticalScrollIndicator={false} style={{ width: "100%" }}>
               {[
                 { label: "Course Code *", key: "code", placeholder: "e.g. CS303" },
                 { label: "Course Name *", key: "name", placeholder: "e.g. Software Engineering" },
                 { label: "Instructor *", key: "instructor", placeholder: "e.g. Dr. Khalid" },
-                { label: "Time", key: "time", placeholder: "e.g. 08:00 – 09:30" },
                 { label: "Room", key: "room", placeholder: "e.g. B-201" },
                 { label: "Credits", key: "credits", placeholder: "e.g. 3" },
                 { label: "Capacity", key: "capacity", placeholder: "e.g. 30" },
+                { label: "Passing Grade", key: "passingGrade", placeholder: "e.g. 50" },
+                { label: "Prerequisites", key: "prerequisites", placeholder: "e.g. CS101, CS202" },
               ].map((field) => (
                 <View key={field.key}>
                   <Text style={styles.fieldLabel}>{field.label}</Text>
@@ -138,21 +190,92 @@ export default function CourseManagement() {
                   />
                 </View>
               ))}
-              <Text style={styles.fieldLabel}>Day</Text>
+
+              <Text style={styles.fieldLabel}>Course Type</Text>
               <View style={styles.dayRow}>
-                {["Saturday","Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"].map((d) => {
-                  const selected = form.day === d;
-                  const color = dayColors[d] || "#888";
+                {["Lecture", "Lab"].map((t) => (
+                  <TouchableOpacity
+                    key={t}
+                    style={[styles.dayPill, form.courseType === t && styles.pillSelected]}
+                    onPress={() => setForm({ ...form, courseType: t, time: "" })}
+                  >
+                    <Text style={[styles.dayPillText, form.courseType === t && styles.pillTextSelected]}>{t}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>Time</Text>
+              <View style={styles.dayRow}>
+                {(form.courseType === "Lab" 
+                  ? ["08:00 - 11:00", "11:00 - 14:00", "14:00 - 17:00", "17:00 - 20:00"]
+                  : ["08:00 - 10:00", "10:00 - 12:00", "12:00 - 14:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"]
+                ).map((timeSlot) => (
+                  <TouchableOpacity
+                    key={timeSlot}
+                    style={[styles.dayPill, form.time === timeSlot && styles.pillSelected]}
+                    onPress={() => setForm({ ...form, time: timeSlot })}
+                  >
+                    <Text style={[styles.dayPillText, form.time === timeSlot && styles.pillTextSelected]}>{timeSlot}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>Semester (Multi-select)</Text>
+              <View style={styles.dayRow}>
+                {["Fall", "Spring", "Summer"].map((s) => {
+                  const selected = form.semester.includes(s);
                   return (
                     <TouchableOpacity
-                      key={d}
-                      style={[styles.dayPill, selected && { backgroundColor: color + "20", borderColor: color }]}
-                      onPress={() => setForm({ ...form, day: d })}
+                      key={s}
+                      style={[styles.dayPill, selected && styles.pillSelected]}
+                      onPress={() => {
+                        const next = selected ? form.semester.filter(i => i !== s) : [...form.semester, s];
+                        if (next.length > 0) setForm({ ...form, semester: next });
+                      }}
                     >
-                      <Text style={[styles.dayPillText, selected && { color }]}>{d.slice(0, 3)}</Text>
+                      <Text style={[styles.dayPillText, selected && styles.pillTextSelected]}>{s}</Text>
                     </TouchableOpacity>
                   );
                 })}
+              </View>
+
+              <Text style={styles.fieldLabel}>Day</Text>
+              <View style={styles.dayRow}>
+                {["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"].map((d) => (
+                  <TouchableOpacity
+                    key={d}
+                    style={[styles.dayPill, form.day === d && styles.pillSelected]}
+                    onPress={() => setForm({ ...form, day: d })}
+                  >
+                    <Text style={[styles.dayPillText, form.day === d && styles.pillTextSelected]}>{d.slice(0, 3)}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>Major</Text>
+              <View style={styles.dayRow}>
+                {['Computer Science', 'Information Technology', 'Software Engineering', 'Cybersecurity', 'Data Science', 'Computer Engineering'].map((m) => (
+                  <TouchableOpacity
+                    key={m}
+                    style={[styles.dayPill, form.major === m && styles.pillSelected]}
+                    onPress={() => setForm({ ...form, major: m })}
+                  >
+                    <Text style={[styles.dayPillText, form.major === m && styles.pillTextSelected]}>{m}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>Student Year</Text>
+              <View style={styles.dayRow}>
+                {["1", "2", "3", "4"].map((y) => (
+                  <TouchableOpacity
+                    key={y}
+                    style={[styles.dayPill, form.studentYear === y && styles.pillSelected]}
+                    onPress={() => setForm({ ...form, studentYear: y })}
+                  >
+                    <Text style={[styles.dayPillText, form.studentYear === y && styles.pillTextSelected]}>Yr {y}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </ScrollView>
             <View style={styles.modalActions}>
@@ -181,6 +304,8 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: "800", color: "#111" },
   addBtn: { backgroundColor: "#2554e8", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
   addBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  editBtn: { marginLeft: 8 },
+  editBtnText: { color: "#2554e8", fontSize: 12, fontWeight: "700" },
   courseCard: {
     backgroundColor: "#fff", marginHorizontal: 16, marginTop: 12,
     borderRadius: 16, padding: 16,
@@ -195,6 +320,7 @@ const styles = StyleSheet.create({
   creditText: { fontSize: 11, fontWeight: "700", color: "#555" },
   courseName: { fontSize: 15, fontWeight: "700", color: "#111", marginBottom: 6 },
   courseDetail: { fontSize: 12, color: "#666", marginBottom: 3 },
+  coursePrereq: { fontSize: 11, color: "#8b5cf6", fontWeight: "700", marginTop: 4 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalBox: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: "85%" },
   modalTitle: { fontSize: 18, fontWeight: "800", color: "#111", marginBottom: 16 },
@@ -215,4 +341,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: "#e0e0e0", backgroundColor: "#fafafa",
   },
   dayPillText: { fontSize: 13, fontWeight: "700", color: "#888" },
+  pillSelected: { backgroundColor: "#2554e820", borderColor: "#2554e8" },
+  pillTextSelected: { color: "#2554e8" },
 });
