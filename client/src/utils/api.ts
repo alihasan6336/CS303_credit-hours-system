@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5002";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 // Test mode - set to true to use mock data when API fails
 const TEST_MODE = false;
