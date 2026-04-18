@@ -1,0 +1,2 @@
+MONGO_URI=mongodb+srv://202227335_db_user:Fb3ManG7ghi6aCFQ@cluster0.kyhdlcv.mongodb.net/cs303?retryWrites=true&w=majority
+JWT_SECRET=ce6b96eb25ae6a45a4b1e0eba5ccb8a2b2ba993683558f9177e859e22f52dd1360a77bc2094c80b6d356757992f42610c2f3cd66fa6a5bba412ffa495ab64ce3
