@@ -26,10 +26,6 @@ const DEPARTMENTS = [
   'Computer Engineering',
   'Cybersecurity',
   'Data Science',
-  'Business Administration',
-  'Electrical Engineering',
-  'Mechanical Engineering',
-  'Civil Engineering',
 ];
 
 // Helper to get time slots for different days
@@ -190,101 +186,6 @@ const DEPARTMENT_COURSES: { [key: string]: any[] } = {
     { code: 'DS404', name: 'Reinforcement Learning', credits: 3, prereq: ['DS301'] },
   ],
 
-  // BUSINESS ADMINISTRATION - Business and management
-  'Business Administration': [
-    // Level 1
-    { code: 'BUS101', name: 'Principles of Management', credits: 3, prereq: [] },
-    { code: 'BUS102', name: 'Financial Accounting', credits: 3, prereq: [] },
-    { code: 'BUS103', name: 'Marketing Fundamentals', credits: 3, prereq: [] },
-    { code: 'BUS104', name: 'Business Statistics', credits: 3, prereq: [] },
-    // Level 2
-    { code: 'BUS201', name: 'Organizational Behavior', credits: 3, prereq: ['BUS101'] },
-    { code: 'BUS202', name: 'Managerial Accounting', credits: 3, prereq: ['BUS102'] },
-    { code: 'BUS203', name: 'Business Law', credits: 3, prereq: [] },
-    { code: 'BUS204', name: 'Operations Management', credits: 3, prereq: ['BUS104'] },
-    // Level 3
-    { code: 'BUS301', name: 'Strategic Management', credits: 3, prereq: ['BUS201'] },
-    { code: 'BUS302', name: 'Financial Management', credits: 3, prereq: ['BUS202'] },
-    { code: 'BUS303', name: 'Human Resource Management', credits: 3, prereq: ['BUS201'] },
-    { code: 'BUS304', name: 'Marketing Strategy', credits: 3, prereq: ['BUS103'] },
-    // Level 4
-    { code: 'BUS401', name: 'International Business', credits: 3, prereq: ['BUS301'] },
-    { code: 'BUS402', name: 'Entrepreneurship', credits: 3, prereq: ['BUS302', 'BUS304'] },
-    { code: 'BUS403', name: 'Business Capstone', credits: 6, prereq: ['BUS301', 'BUS302'] },
-    { code: 'BUS404', name: 'Leadership', credits: 3, prereq: ['BUS303'] },
-  ],
-
-  // ELECTRICAL ENGINEERING - Circuits and systems
-  'Electrical Engineering': [
-    // Level 1
-    { code: 'EE101', name: 'Circuit Theory I', credits: 4, prereq: [] },
-    { code: 'EE102', name: 'Electronics I', credits: 3, prereq: [] },
-    { code: 'EE103', name: 'Programming for EE', credits: 3, prereq: [] },
-    { code: 'EE104', name: 'Engineering Math', credits: 3, prereq: [] },
-    // Level 2
-    { code: 'EE201', name: 'Circuit Theory II', credits: 4, prereq: ['EE101'] },
-    { code: 'EE202', name: 'Electronics II', credits: 3, prereq: ['EE102'] },
-    { code: 'EE203', name: 'Digital Systems', credits: 3, prereq: ['EE102'] },
-    { code: 'EE204', name: 'Signals and Systems', credits: 3, prereq: ['EE104'] },
-    // Level 3
-    { code: 'EE301', name: 'Power Systems', credits: 4, prereq: ['EE201'] },
-    { code: 'EE302', name: 'Communication Systems', credits: 3, prereq: ['EE204'] },
-    { code: 'EE303', name: 'Control Systems', credits: 3, prereq: ['EE204'] },
-    { code: 'EE304', name: 'Electromagnetics', credits: 3, prereq: ['EE201'] },
-    // Level 4
-    { code: 'EE401', name: 'Power Electronics', credits: 3, prereq: ['EE301'] },
-    { code: 'EE402', name: 'Wireless Communications', credits: 3, prereq: ['EE302'] },
-    { code: 'EE403', name: 'Senior Design', credits: 6, prereq: ['EE303', 'EE304'] },
-    { code: 'EE404', name: 'Renewable Energy', credits: 3, prereq: ['EE301'] },
-  ],
-
-  // MECHANICAL ENGINEERING - Mechanics and design
-  'Mechanical Engineering': [
-    // Level 1
-    { code: 'ME101', name: 'Statics', credits: 3, prereq: [] },
-    { code: 'ME102', name: 'Dynamics', credits: 3, prereq: [] },
-    { code: 'ME103', name: 'Materials Science', credits: 3, prereq: [] },
-    { code: 'ME104', name: 'Engineering Graphics', credits: 3, prereq: [] },
-    // Level 2
-    { code: 'ME201', name: 'Mechanics of Materials', credits: 4, prereq: ['ME101'] },
-    { code: 'ME202', name: 'Thermodynamics', credits: 4, prereq: ['ME102'] },
-    { code: 'ME203', name: 'Fluid Mechanics', credits: 3, prereq: ['ME102'] },
-    { code: 'ME204', name: 'Manufacturing Processes', credits: 3, prereq: ['ME103'] },
-    // Level 3
-    { code: 'ME301', name: 'Heat Transfer', credits: 4, prereq: ['ME202'] },
-    { code: 'ME302', name: 'Machine Design', credits: 3, prereq: ['ME201'] },
-    { code: 'ME303', name: 'Control Systems', credits: 3, prereq: ['ME102'] },
-    { code: 'ME304', name: 'Vibration Analysis', credits: 3, prereq: ['ME201'] },
-    // Level 4
-    { code: 'ME401', name: 'Advanced Machine Design', credits: 3, prereq: ['ME302'] },
-    { code: 'ME402', name: 'Robotics', credits: 3, prereq: ['ME303'] },
-    { code: 'ME403', name: 'Capstone Design', credits: 6, prereq: ['ME301', 'ME302'] },
-    { code: 'ME404', name: 'Aerospace Engineering', credits: 3, prereq: ['ME301'] },
-  ],
-
-  // CIVIL ENGINEERING - Infrastructure and construction
-  'Civil Engineering': [
-    // Level 1
-    { code: 'CEV101', name: 'Intro to Civil Engineering', credits: 3, prereq: [] },
-    { code: 'CEV102', name: 'Surveying', credits: 3, prereq: [] },
-    { code: 'CEV103', name: 'Engineering Mechanics', credits: 3, prereq: [] },
-    { code: 'CEV104', name: 'Materials for CE', credits: 3, prereq: [] },
-    // Level 2
-    { code: 'CEV201', name: 'Structural Analysis', credits: 4, prereq: ['CEV103'] },
-    { code: 'CEV202', name: 'Geotechnical Engineering', credits: 3, prereq: ['CEV104'] },
-    { code: 'CEV203', name: 'Fluid Mechanics for CE', credits: 3, prereq: ['CEV103'] },
-    { code: 'CEV204', name: 'Transportation Engineering', credits: 3, prereq: [] },
-    // Level 3
-    { code: 'CEV301', name: 'Reinforced Concrete Design', credits: 4, prereq: ['CEV201'] },
-    { code: 'CEV302', name: 'Foundation Engineering', credits: 3, prereq: ['CEV202'] },
-    { code: 'CEV303', name: 'Water Resources', credits: 3, prereq: ['CEV203'] },
-    { code: 'CEV304', name: 'Construction Management', credits: 3, prereq: ['CEV204'] },
-    // Level 4
-    { code: 'CEV401', name: 'Structural Steel Design', credits: 3, prereq: ['CEV301'] },
-    { code: 'CEV402', name: 'Environmental Engineering', credits: 3, prereq: ['CEV303'] },
-    { code: 'CEV403', name: 'Capstone Project', credits: 6, prereq: ['CEV301', 'CEV302'] },
-    { code: 'CEV404', name: 'Urban Planning', credits: 3, prereq: ['CEV304'] },
-  ],
 };
 
 // Generate full TEST_COURSES with scheduling info
