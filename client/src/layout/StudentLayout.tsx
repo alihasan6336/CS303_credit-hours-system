@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, BookOpen, LogOut, GraduationCap } from "lucide-react";
+import { Home, BookOpen, LogOut, GraduationCap, Calculator } from "lucide-react";
 import { authApi } from "../utils/api";
 
 interface StudentLayoutProps {
@@ -20,6 +20,7 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children, user = {} }) =>
   const navItems = [
     { label: "Dashboard", path: "/home", icon: Home },
     { label: "Available Courses", path: "/courses", icon: BookOpen },
+    { label: "GPA Calculator", path: "/gpa-calculator", icon: Calculator },
   ];
 
   const displayName = user.fullName || "Student";

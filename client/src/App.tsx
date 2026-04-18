@@ -8,6 +8,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AccountManagement from "./pages/admin/AccountManagement";
 import CourseAssignmentPage from "./pages/admin/CourseAssignmentPage";
 import AvailableCourses from "./pages/student/AvailableCourses";
+import GpaCalculatorPage from "./pages/student/GpaCalculatorPage";
 import ManageCourses from "./pages/admin/ManageCourses";
 
 function ProtectedRoute() {
@@ -49,6 +50,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/home" element={<StudentDashboard />} />
         <Route path="/courses" element={<AvailableCourses />} />
+        <Route path="/gpa-calculator" element={<GpaCalculatorPage />} />
       </Route>
 
       {/* Protected admin routes */}

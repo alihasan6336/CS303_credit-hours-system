@@ -1,10 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { Home as HomeIcon, BookOpen, PlusCircle, BarChart2, Settings, LogOut } from "lucide-react";
+import { Home as HomeIcon, BookOpen, PlusCircle, BarChart2, Settings, LogOut, Calculator } from "lucide-react";
 
 const Sidebar = () => {
 const navItems = [
     { label: "Home", path: "/home", icon: <HomeIcon size={20} /> },
     { label: "Courses", path: "/courses", icon: <BookOpen size={20} /> },
+    { label: "GPA Calculator", path: "/gpa-calculator", icon: <Calculator size={20} /> },
     { label: "Admin Dashboard", path: "/admin", icon: <BarChart2 size={20} /> },
     { label: "Manage Accounts", path: "/admin/accounts", icon: <Settings size={20} /> },
     { label: "Manage Courses", path: "/admin/manage-courses", icon: <BookOpen size={20} /> },
