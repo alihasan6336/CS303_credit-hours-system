@@ -110,7 +110,6 @@ const enrollStudentWithGrades = async () => {
     // Get system settings
     const settings = await SystemSettings.findOne();
     const currentSemester = settings?.currentSemester || 'Fall';
-    const currentYear = settings?.academicYear || '2025-2026';
 
     // Find student
     const student = await Student.findOne({ email: studentEmail });
@@ -146,7 +145,7 @@ const enrollStudentWithGrades = async () => {
         student: student._id,
         course: course._id,
         semester: currentSemester,
-        academicYear: currentYear,
+        level: targetLevel,
       });
 
       if (existingEnrollment) {
@@ -166,7 +165,7 @@ const enrollStudentWithGrades = async () => {
           student: student._id,
           course: course._id,
           semester: currentSemester,
-          academicYear: currentYear,
+          level: targetLevel,
           grade: courseGrade,
           status: 'completed',
           enrolledAt: new Date(),

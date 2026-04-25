@@ -6,7 +6,6 @@ interface StudentAccount {
   email: string;
   universityId: string;
   major: string;
-  academicYear?: string;
   level?: number;
   role: string;
   gpa?: number;
@@ -147,7 +146,7 @@ const StudentsTable: React.FC<StudentsTableProps> = ({
                         <div className="text-xs text-gray-500">
                           {student.role === 'admin' || student.role === 'superadmin'
                             ? `${student.role} ${student.createdBy ? `• Created by ${student.createdBy.fullName || 'Unknown'}` : ''}`
-                            : `${student.currentSemester} - ${student.academicYear}`
+                            : `${student.currentSemester} - Level ${student.level}`
                           }
                         </div>
                       </div>
@@ -176,10 +175,12 @@ const StudentsTable: React.FC<StudentsTableProps> = ({
                               ? "bg-green-100 text-green-700"
                               : student.gpa && student.gpa >= 2.5
                                 ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
+                                : student.gpa && student.gpa > 0
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-gray-100 text-gray-700"
                           }`}
                         >
-                          {student.gpa ? student.gpa.toFixed(2) : 'N/A'}
+                          {student.gpa !== undefined && student.gpa !== null ? student.gpa.toFixed(2) : 'N/A'}
                         </span>
                       </td>
                     </>

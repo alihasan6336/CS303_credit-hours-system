@@ -309,11 +309,13 @@ export const authApi = {
     universityId: string;
     email: string;
     password: string;
+    confirmPassword: string;
     major: string;
-    academicYear: string;
+    level: number;
     currentSemester: string;
     completedCreditHours: string;
     phoneNumber?: string;
+    acceptTerms: boolean;
   }): Promise<AuthResponse> {
     return request<AuthResponse>("/api/auth/register", {
       method: "POST",
@@ -421,7 +423,7 @@ export const adminApi = {
     password: string;
     universityId?: string;
     major?: string;
-    academicYear?: string;
+    level?: number;
     currentSemester?: string;
     completedCreditHours?: number;
     phoneNumber?: string;
@@ -439,9 +441,10 @@ export const adminApi = {
     password: string;
     universityId?: string;
     major?: string;
-    academicYear?: string;
+    level?: number;
     currentSemester?: string;
     completedCreditHours?: number;
+    gpa?: number;
   }): Promise<CreateAccountResponse> {
     return request<CreateAccountResponse>("/api/admin/users/students", {
       method: "POST",

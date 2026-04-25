@@ -16,12 +16,11 @@ const buildStudentPayload = (student: InstanceType<typeof Student>) => ({
   universityId: student.universityId,
   email: student.email,
   major: student.major,
-  academicYear: student.academicYear,
+  level: student.level,
   currentSemester: student.currentSemester,
   completedCreditHours: student.completedCreditHours,
   phoneNumber: student.phoneNumber,
   gpa: student.gpa,
-  level: student.level,
   role: student.role || 'student',
 });
 
@@ -45,7 +44,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       email,
       password,
       major,
-      academicYear,
+      level,
       currentSemester,
       completedCreditHours,
       phoneNumber,
@@ -73,10 +72,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       email,
       password,
       major,
-      academicYear,
+      level: Number(level),
       currentSemester,
       completedCreditHours: Number(completedCreditHours),
       phoneNumber: phoneNumber || '',
+      gpa: 0,
     });
 
     const token = signToken(student._id.toString(), student.email, false);
@@ -446,7 +446,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const { fullName, phoneNumber, major, academicYear, currentSemester } = req.body;
+    const { fullName, phoneNumber, major, level, currentSemester } = req.body;
 
     const student = await Student.findById(studentId);
     if (!student) {
@@ -458,7 +458,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     if (fullName) student.fullName = fullName;
     if (phoneNumber !== undefined) student.phoneNumber = phoneNumber;
     if (major) student.major = major;
-    if (academicYear) student.academicYear = academicYear;
+    if (level) student.level = level;
     if (currentSemester) student.currentSemester = currentSemester;
 
     await student.save();

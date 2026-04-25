@@ -19,7 +19,7 @@ import { AppError } from '../middleware/errorHandler';
 export const getCourses = async (req: Request, res: Response): Promise<void> => {
   try {
     const courses = await Course.find({ isActive: true })
-      .select('code name day time room credits instructor capacity enrolledCount major studentYear prerequisites')
+      .select('code name day time room credits instructor capacity enrolledCount major level prerequisites')
       .lean();
 
     res.status(200).json({
@@ -37,7 +37,7 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
         capacity: c.capacity,
         enrolledCount: c.enrolledCount,
         major: c.major,
-        studentYear: c.studentYear,
+        level: c.level,
         prerequisites: c.prerequisites,
       }))
     });
@@ -71,16 +71,16 @@ export const getCourseByID = async (req: Request, res: Response): Promise<void> 
 export const getMyCourses = async (req: Request, res: Response): Promise<void> => {
   try {
     const student = req.student!;
-    const { semester, academicYear } = req.query;
+    const { semester, level } = req.query;
 
     const filter: any = { student: student._id };
     if (semester) filter.semester = semester;
-    if (academicYear) filter.academicYear = academicYear;
+    if (level) filter.level = level;
 
     const enrollments = await Enrollment.find(filter)
       .populate({
         path: 'course',
-        select: 'code name day time room credits instructor capacity enrolledCount major studentYear prerequisites',
+        select: 'code name day time room credits instructor capacity enrolledCount major level prerequisites',
       })
       .sort({ enrolledAt: -1 })
       .lean();
@@ -98,7 +98,7 @@ export const getMyCourses = async (req: Request, res: Response): Promise<void> =
 // POST /api/courses
 export const createCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites } = req.body;
+    const { code, name, day, time, room, credits, instructor, capacity, major, level, prerequisites } = req.body;
     const creator = req.adminUser;
 
     const course = await Course.create({
@@ -111,7 +111,7 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
       instructor,
       capacity: capacity || 30,
       major,
-      studentYear,
+      level,
       prerequisites,
     });
 
@@ -121,7 +121,7 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
         actor: creator._id,
         action: 'course:create',
         targetCourse: course._id,
-        details: { code, name, major, studentYear },
+        details: { code, name, major, level },
         ipAddress: req.ip,
       });
     }
@@ -140,7 +140,7 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
         capacity: course.capacity,
         enrolledCount: course.enrolledCount,
         major: course.major,
-        studentYear: course.studentYear,
+        level: course.level,
         prerequisites: course.prerequisites,
       }
     });
@@ -205,7 +205,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites } = req.body;
+    const { code, name, day, time, room, credits, instructor, capacity, major, level, prerequisites } = req.body;
 
     // Guard: cannot reduce capacity below current enrollment
     if (capacity !== undefined) {
@@ -225,7 +225,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
 
     const course = await Course.findByIdAndUpdate(
       id,
-      { code, name, day, time, room, credits, instructor, capacity, major, studentYear, prerequisites },
+      { code, name, day, time, room, credits, instructor, capacity, major, level, prerequisites },
       { new: true, runValidators: true }
     );
 
@@ -240,7 +240,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
         actor: req.adminUser._id,
         action: 'course:update',
         targetCourse: course._id,
-        details: { code, name, major, studentYear, capacity },
+        details: { code, name, major, level, capacity },
         ipAddress: req.ip,
       });
     }
@@ -259,7 +259,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
         capacity: course.capacity,
         enrolledCount: course.enrolledCount,
         major: course.major,
-        studentYear: course.studentYear,
+        level: course.level,
         prerequisites: course.prerequisites,
       }
     });
@@ -310,7 +310,7 @@ export const bulkUpdateCourses = async (req: Request, res: Response): Promise<vo
         code: c!.code,
         name: c!.name,
         major: c!.major,
-        studentYear: c!.studentYear,
+        level: c!.level,
         credits: c!.credits,
       })),
     });
@@ -329,7 +329,7 @@ export const getCourseEnrollments = async (req: Request, res: Response): Promise
     }
 
     const enrollments = await Enrollment.find({ course: id })
-      .populate('student', 'fullName universityId email major academicYear')
+      .populate('student', 'fullName universityId email major level')
       .sort({ enrolledAt: -1 })
       .lean();
 
@@ -340,7 +340,7 @@ export const getCourseEnrollments = async (req: Request, res: Response): Promise
         _id: e._id,
         student: e.student,
         semester: e.semester,
-        academicYear: e.academicYear,
+        level: e.level,
         enrolledAt: e.enrolledAt,
       })),
     });
@@ -447,13 +447,12 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
     }
 
     // Create Enrollment document
-    const year = new Date().getFullYear();
     try {
       await Enrollment.create({
         student: student._id,
         course: courseId,
         semester: student.currentSemester,
-        academicYear: `${year}-${year + 1}`,
+        level: student.level,
         status: 'active',
       });
     } catch (err: any) {
@@ -476,7 +475,7 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
       actor: student._id,
       action: 'enroll',
       targetCourse: courseId,
-      details: { semester: student.currentSemester, academicYear: `${year}-${year + 1}` },
+      details: { semester: student.currentSemester, level: student.level },
       ipAddress: req.ip,
     });
 

@@ -24,7 +24,7 @@ export const validateRegister = (
     password,
     confirmPassword,
     major,
-    academicYear,
+    level,
     currentSemester,
     completedCreditHours,
     acceptTerms,
@@ -54,7 +54,7 @@ export const validateRegister = (
   }
 
   if (!major)           errors.major = 'Please select your major';
-  if (!academicYear)    errors.academicYear = 'Please select your academic year';
+  if (!level)           errors.level = 'Please select your level';
   if (!currentSemester) errors.currentSemester = 'Please select the current semester';
 
   if (!String(completedCreditHours).trim()) {

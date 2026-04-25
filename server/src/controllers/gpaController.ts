@@ -31,7 +31,7 @@ export const getMyGPABreakdown = async (req: Request, res: Response): Promise<vo
       grade: e.grade,
       gradePoints: percentageToGradePoints(e.grade || 0),
       semester: e.semester,
-      academicYear: e.academicYear
+      level: e.level
     }));
 
     res.status(200).json({

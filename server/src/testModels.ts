@@ -19,7 +19,7 @@ const testModels = async () => {
       email: "test@example.com",
       password: "123456",
       major: "Computer Science",
-      academicYear: "3rd Year",
+      level: 3,
       currentSemester: "Fall",
       completedCreditHours: 30,
       phoneNumber: "1234567890",
@@ -44,7 +44,7 @@ const testModels = async () => {
     const enrollment = await Enrollment.create({
       student: student._id,
       course: course._id,
-      academicYear: "2024-2025",
+      level: 3,
       semester: "Fall",
     });
 

@@ -17,13 +17,12 @@ const formatStudent = (s: any) => {
         universityId: s.universityId,
         major: s.major,
         ...(isAdmin ? {} : {
-            academicYear: s.academicYear,
+            level: s.level,
             currentSemester: s.currentSemester,
-            completedCreditHours: s.completedCreditHours,
+            completedCreditHours: s.completedCreditHours || 0,
         }),
-        level: s.level,
         role: s.role,
-        gpa: s.gpa,
+        gpa: s.gpa ?? 0,
     };
 };
 
@@ -114,7 +113,7 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
             // Fetch students from Student collection
             const [studentDocs, studentCount] = await Promise.all([
                 Student.find(filter)
-                    .select('fullName email universityId major academicYear level role gpa completedCreditHours currentSemester')
+                    .select('fullName email universityId major level role gpa completedCreditHours currentSemester')
                     .sort({ createdAt: -1 })
                     .skip(skip)
                     .limit(limit)
@@ -159,7 +158,7 @@ export const getStudentById = async (req: Request, res: Response): Promise<void>
 
 export const createStudentAccount = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { fullName, universityId, email, password, major, academicYear, currentSemester, completedCreditHours } = req.body;
+        const { fullName, universityId, email, password, major, level, currentSemester, completedCreditHours, gpa } = req.body;
         const creator = req.adminUser;
 
         if (!fullName || !email || !password) {
@@ -179,10 +178,11 @@ export const createStudentAccount = async (req: Request, res: Response): Promise
             email,
             password,
             major: major || 'Computer Science',
-            academicYear: academicYear || '1st Year',
+            level: level || 1,
             currentSemester: currentSemester || 'Fall',
             completedCreditHours: Number(completedCreditHours) || 0,
             phoneNumber: '',
+            gpa: Number(gpa) || 0,
             role: 'student',
         });
 
@@ -401,7 +401,7 @@ export const getStudentAcademicRecord = async (req: Request, res: Response): Pro
                 _id: e._id,
                 course: e.course,
                 semester: e.semester,
-                academicYear: e.academicYear,
+                level: e.level,
                 grade: e.grade ?? null,
                 status: e.status,
             })),
@@ -452,7 +452,7 @@ export const getAllEnrollments = async (req: Request, res: Response): Promise<vo
                     credits: (e.course as any).credits,
                 },
                 semester: e.semester,
-                academicYear: e.academicYear,
+                level: e.level,
                 grade: e.grade ?? null,
                 status: e.status,
                 enrolledAt: e.enrolledAt,
@@ -485,12 +485,11 @@ export const adminEnroll = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
-        const year = new Date().getFullYear();
         await Enrollment.create({
             student: studentId,
             course: courseId,
             semester: student.currentSemester,
-            academicYear: `${year}-${year + 1}`,
+            level: student.level,
         });
 
         course.enrolledCount += 1;
@@ -602,7 +601,7 @@ export const updateGrade = async (req: Request, res: Response): Promise<void> =>
                 student: enrollment.student,
                 course: enrollment.course,
                 semester: enrollment.semester,
-                academicYear: enrollment.academicYear,
+                level: enrollment.level,
                 grade: enrollment.grade,
             },
         });

@@ -11,7 +11,7 @@ export interface ICourse extends Document {
   capacity:      number;
   enrolledCount: number;
   major?:        string;
-  studentYear?:  number;
+  level?:  number;
   prerequisites?: string[];
   isActive:      boolean;
   createdAt:     Date;
@@ -83,7 +83,7 @@ const CourseSchema = new Schema<ICourse>(
       enum: ['Computer Science', 'Information Technology', 'Software Engineering', 'Cybersecurity', 'Data Science', 'Computer Engineering'],
     },
 
-    studentYear: {
+    level: {
       type: Number,
       min: 1,
       max: 4,

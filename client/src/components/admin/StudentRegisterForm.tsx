@@ -7,9 +7,10 @@ interface StudentFormData {
   repeatPassword?: string;
   universityId?: string;
   major?: string;
-  academicYear?: string;
+  level?: number;
   currentSemester?: string;
   completedCreditHours?: number;
+  gpa?: number;
   phoneNumber?: string;
 }
 
@@ -35,11 +36,22 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
     repeatPassword: "",
     universityId: "",
     major: "Computer Science",
-    academicYear: "1st Year",
+    level: 1,
     currentSemester: "Fall",
     completedCreditHours: 0,
     phoneNumber: "",
   });
+
+  // Calculate GPA based on completed credit hours (simulated based on academic progress)
+  const calculateGPA = (creditHours: number): number => {
+    if (creditHours === 0) return 0;
+    // Simulate GPA based on progress: more credits = higher assumed GPA (max 4.0)
+    // Formula: Base 2.0 + (creditHours / 150) * 2.0, capped at 4.0
+    const calculatedGPA = 2.0 + (creditHours / 150) * 2.0;
+    return Math.min(4.0, Math.max(0, Number(calculatedGPA.toFixed(2))));
+  };
+
+  const gpa = calculateGPA(formData.completedCreditHours || 0);
 
   const [passwordError, setPasswordError] = useState("");
 
@@ -80,7 +92,7 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
 
     if (onClearError) onClearError();
 
-    await onSubmit(formData);
+    await onSubmit({ ...formData, gpa });
 
     setFormData({
       fullName: "",
@@ -89,7 +101,7 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
       repeatPassword: "",
       universityId: "",
       major: "Computer Science",
-      academicYear: "1st Year",
+      level: 1,
       currentSemester: "Fall",
       completedCreditHours: 0,
       phoneNumber: "",
@@ -102,7 +114,7 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "completedCreditHours" ? parseInt(value) || 0 : value,
+      [name]: name === "completedCreditHours" || name === "level" ? parseInt(value) || 0 : value,
     }));
   };
 
@@ -266,23 +278,23 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
               </div>
             </div>
 
-            {/* Year, Semester, Credit Hours Row */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Year, Semester, Credit Hours, GPA Row */}
+            <div className="grid grid-cols-4 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Year
                 </label>
                 <select
-                  name="academicYear"
-                  value={formData.academicYear}
+                  name="level"
+                  value={formData.level}
                   onChange={handleChange}
                   className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   required
                 >
-                  <option value="1st Year">1st Year</option>
-                  <option value="2nd Year">2nd Year</option>
-                  <option value="3rd Year">3rd Year</option>
-                  <option value="4th Year">4th Year</option>
+                  <option value={1}>1st Year</option>
+                  <option value={2}>2nd Year</option>
+                  <option value={3}>3rd Year</option>
+                  <option value={4}>4th Year</option>
                 </select>
               </div>
 
@@ -317,6 +329,15 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
                   min="0"
                   max="200"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  GPA (Auto)
+                </label>
+                <div className="w-full px-3 py-2.5 text-sm border border-gray-200 bg-gray-50 rounded-lg text-gray-700">
+                  {gpa.toFixed(2)}
+                </div>
               </div>
             </div>
           </>

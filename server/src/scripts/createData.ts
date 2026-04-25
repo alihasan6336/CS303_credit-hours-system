@@ -31,13 +31,13 @@ const DEPARTMENTS = [
 // Helper to get time slots for different days
 type DaySchedule = { [key: string]: string[] };
 const TIME_SLOTS: DaySchedule = {
-  'Sunday': ['09:00-11:00', '11:00-13:00', '13:00-15:00', '15:00-17:00'],
-  'Monday': ['08:00-10:00', '10:00-12:00', '13:00-15:00', '15:00-17:00'],
-  'Tuesday': ['08:00-10:00', '10:00-12:00', '13:00-15:00', '15:00-17:00'],
-  'Wednesday': ['09:00-11:00', '11:00-13:00', '14:00-16:00'],
-  'Thursday': ['09:00-11:00', '10:00-12:00', '13:00-15:00'],
-  'Friday': ['10:00-12:00', '13:00-15:00'],
-  'Saturday': ['09:00-11:00', '10:00-12:00', '13:00-15:00'],
+  'Sunday': ['09:00 - 11:00', '11:00 - 13:00', '13:00 - 15:00', '15:00 - 17:00'],
+  'Monday': ['08:00 - 10:00', '10:00 - 12:00', '13:00 - 15:00', '15:00 - 17:00'],
+  'Tuesday': ['08:00 - 10:00', '10:00 - 12:00', '13:00 - 15:00', '15:00 - 17:00'],
+  'Wednesday': ['09:00 - 11:00', '11:00 - 13:00', '14:00 - 16:00'],
+  'Thursday': ['09:00 - 11:00', '10:00 - 12:00', '13:00 - 15:00'],
+  'Friday': ['10:00 - 12:00', '13:00 - 15:00'],
+  'Saturday': ['09:00 - 11:00', '10:00 - 12:00', '13:00 - 15:00'],
 };
 
 // Course templates by department
@@ -309,7 +309,6 @@ const createTestData = async () => {
         course: course._id,
         level: courseData.level,
         semester: CURRENT_SEMESTER,
-        academicYear: SYSTEM_ACADEMIC_YEAR,
       });
 
       if (!existingAssignment) {
@@ -317,7 +316,6 @@ const createTestData = async () => {
           course: course._id,
           level: courseData.level,
           semester: CURRENT_SEMESTER,
-          academicYear: SYSTEM_ACADEMIC_YEAR,
           isActive: true,
         });
         console.log(`   ✅ Level ${courseData.level}: ${courseData.code}`);
@@ -345,7 +343,6 @@ const createTestData = async () => {
           password: hashedPassword,
           universityId: universityId,
           major: dept,
-          academicYear: STUDENT_ACADEMIC_YEAR,
           level: 1,
           gpa: 0,
           completedCreditHours: 0,

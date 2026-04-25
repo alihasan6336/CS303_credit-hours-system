@@ -37,13 +37,11 @@ async function seed() {
                     course: courseId,
                     level: 3,
                     semester: "Spring",
-                    academicYear: "2024-2025" // Assuming current year
                 });
                 await CourseAssignment.create({
                     course: courseId,
                     level: 3,
                     semester: "Spring",
-                    academicYear: "3rd Year" // Some students might use this as academicYear
                 });
                 console.log("Assigned to level 3:", c.code);
             }

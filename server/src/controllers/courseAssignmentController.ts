@@ -6,12 +6,11 @@ import AuditLog from '../models/AuditLog';
 // Get all course assignments
 export const getAssignments = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { level, semester, academicYear } = req.query;
+    const { level, semester } = req.query;
     
     const filter: any = { isActive: true };
     if (level) filter.level = Number(level);
     if (semester) filter.semester = semester;
-    if (academicYear) filter.academicYear = academicYear;
 
     const assignments = await CourseAssignment.find(filter)
       .populate('course', 'code name day time room credits instructor capacity enrolledCount')
@@ -26,10 +25,10 @@ export const getAssignments = async (req: Request, res: Response): Promise<void>
 // Assign a course to a level
 export const assignCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { courseId, level, semester, academicYear } = req.body;
+    const { courseId, level, semester } = req.body;
 
-    if (!courseId || !level || !semester || !academicYear) {
-      res.status(400).json({ success: false, message: 'Course ID, level, semester, and academic year are required' });
+    if (!courseId || !level || !semester) {
+      res.status(400).json({ success: false, message: 'Course ID, level, and semester are required' });
       return;
     }
 
@@ -45,7 +44,6 @@ export const assignCourse = async (req: Request, res: Response): Promise<void> =
       course: courseId,
       level,
       semester,
-      academicYear,
     });
 
     if (existing) {
@@ -57,7 +55,6 @@ export const assignCourse = async (req: Request, res: Response): Promise<void> =
       course: courseId,
       level,
       semester,
-      academicYear,
     });
 
     await assignment.populate('course', 'code name day time room credits instructor capacity enrolledCount');
@@ -69,7 +66,7 @@ export const assignCourse = async (req: Request, res: Response): Promise<void> =
         actor: caller._id,
         action: 'course:assign',
         targetCourse: courseId,
-        details: { level, semester, academicYear },
+        details: { level, semester },
         ipAddress: req.ip,
       });
     }
@@ -105,8 +102,7 @@ export const removeAssignment = async (req: Request, res: Response): Promise<voi
         targetCourse: assignment.course,
         details: { 
           level: assignment.level, 
-          semester: assignment.semester, 
-          academicYear: assignment.academicYear 
+          semester: assignment.semester,
         },
         ipAddress: req.ip,
       });
@@ -121,9 +117,9 @@ export const removeAssignment = async (req: Request, res: Response): Promise<voi
 // Get courses available for assignment (not yet assigned to a specific level/semester/year)
 export const getAvailableCourses = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { level, semester, academicYear } = req.query;
+    const { level, semester } = req.query;
 
-    if (!level || !semester || !academicYear) {
+    if (!level || !semester) {
       const courses = await Course.find({ isActive: true })
         .select('code name credits day time room instructor capacity enrolledCount')
         .sort({ code: 1 });
@@ -149,7 +145,6 @@ export const getAvailableCourses = async (req: Request, res: Response): Promise<
     const assigned = await CourseAssignment.find({
       level: Number(level),
       semester,
-      academicYear,
       isActive: true,
     }).select('course');
 
@@ -185,11 +180,10 @@ export const getAvailableCourses = async (req: Request, res: Response): Promise<
 // Get assignments grouped by level for admin view
 export const getAssignmentsByLevel = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { semester, academicYear } = req.query;
+    const { semester } = req.query;
 
     const filter: any = { isActive: true };
     if (semester) filter.semester = semester;
-    if (academicYear) filter.academicYear = academicYear;
 
     const assignments = await CourseAssignment.find(filter)
       .populate('course', 'code name day time room credits instructor capacity enrolledCount')
@@ -215,7 +209,6 @@ export const getAssignmentsByLevel = async (req: Request, res: Response): Promis
           },
           level: a.level,
           semester: a.semester,
-          academicYear: a.academicYear,
           isActive: a.isActive,
         });
       }

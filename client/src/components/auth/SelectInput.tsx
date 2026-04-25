@@ -12,6 +12,7 @@ interface SelectInputProps {
   required?: boolean;
   placeholder?: string;
   options: string[];
+  values?: string[]; // Optional separate values for each option
   icon?: LucideIcon;
   compact?: boolean;
 }
@@ -27,6 +28,7 @@ const SelectInput: React.FC<SelectInputProps> = ({
   required = false,
   placeholder,
   options,
+  values,
   icon: Icon,
   compact = false,
 }) => {
@@ -66,8 +68,8 @@ const SelectInput: React.FC<SelectInputProps> = ({
           <option value="">
             {placeholder || `Select ${label.toLowerCase()}`}
           </option>
-          {options.map((option) => (
-            <option key={option} value={option}>
+          {options.map((option, index) => (
+            <option key={option} value={values?.[index] ?? option}>
               {option}
             </option>
           ))}

@@ -5,7 +5,6 @@ export interface ICourseAssignment extends Document {
   course: mongoose.Types.ObjectId;
   level: number; // 1, 2, 3, or 4
   semester: 'Fall' | 'Spring' | 'Summer';
-  academicYear: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -31,12 +30,6 @@ const CourseAssignmentSchema = new Schema<ICourseAssignment>(
       enum: ['Fall', 'Spring', 'Summer'],
     },
 
-    academicYear: {
-      type: String,
-      required: [true, 'Academic year is required'],
-      trim: true,
-    },
-
     isActive: {
       type: Boolean,
       default: true,
@@ -45,9 +38,9 @@ const CourseAssignmentSchema = new Schema<ICourseAssignment>(
   { timestamps: true }
 );
 
-// Compound unique index: one assignment per course+level+semester+year
+// Compound unique index: one assignment per course+level+semester
 CourseAssignmentSchema.index(
-  { course: 1, level: 1, semester: 1, academicYear: 1 },
+  { course: 1, level: 1, semester: 1 },
   { unique: true }
 );
 

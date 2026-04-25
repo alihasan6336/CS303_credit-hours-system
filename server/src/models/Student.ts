@@ -8,7 +8,6 @@ export interface IStudent extends Document {
   email: string;
   password: string;
   major: string;
-  academicYear: '1st Year' | '2nd Year' | '3rd Year' | '4th Year';
   currentSemester: 'Fall' | 'Spring' | 'Summer';
   completedCreditHours: number;
   phoneNumber?: string;
@@ -70,17 +69,8 @@ const StudentSchema: Schema = new Schema(
         'Computer Engineering',
         'Cybersecurity',
         'Data Science',
-        'Business Administration',
-        'Electrical Engineering',
-        'Mechanical Engineering',
-        'Civil Engineering',
+   
       ],
-    },
-
-    academicYear: {
-      type: String,
-      required: [true, 'Academic year is required'],
-      enum: ['1st Year', '2nd Year', '3rd Year', '4th Year'],
     },
 
     currentSemester: {

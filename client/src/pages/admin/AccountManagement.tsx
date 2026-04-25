@@ -10,7 +10,6 @@ interface StudentAccount {
   email: string;
   universityId: string;
   major: string;
-  academicYear?: string;
   level?: number;
   role: string;
   gpa?: number;
@@ -68,7 +67,7 @@ const AccountManagement: React.FC = () => {
     password: "",
     universityId: "",
     major: "Computer Science",
-    academicYear: "1st Year",
+    level: 1,
     currentSemester: "Fall",
     completedCreditHours: 0,
     role: "student" as "student" | "admin" | "superadmin",
@@ -109,8 +108,8 @@ const AccountManagement: React.FC = () => {
         password: formData.password,
         universityId: formData.universityId || undefined,
         major: formData.role === "student" ? formData.major : undefined,
-        academicYear:
-          formData.role === "student" ? formData.academicYear : undefined,
+        level:
+          formData.role === "student" ? formData.level : undefined,
         currentSemester:
           formData.role === "student" ? formData.currentSemester : undefined,
         completedCreditHours:
@@ -128,7 +127,7 @@ const AccountManagement: React.FC = () => {
           password: "",
           universityId: "",
           major: "Computer Science",
-          academicYear: "1st Year",
+          level: 1,
           currentSemester: "Fall",
           completedCreditHours: 0,
           role: "student",
@@ -168,9 +167,10 @@ const AccountManagement: React.FC = () => {
             password: studentData.password,
             universityId: studentData.universityId,
             major: studentData.major,
-            academicYear: studentData.academicYear,
+            level: studentData.level,
             currentSemester: studentData.currentSemester,
             completedCreditHours: studentData.completedCreditHours,
+            gpa: studentData.gpa,
           })
         : await adminApi.createAdminAccount({
             fullName: studentData.fullName,
@@ -611,22 +611,22 @@ const AccountManagement: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Academic Year
+                      Level
                     </label>
                     <select
-                      value={formData.academicYear}
+                      value={formData.level}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          academicYear: e.target.value,
+                          level: Number(e.target.value),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
-                      <option value="1st Year">1st Year</option>
-                      <option value="2nd Year">2nd Year</option>
-                      <option value="3rd Year">3rd Year</option>
-                      <option value="4th Year">4th Year</option>
+                      <option value={1}>1st Year</option>
+                      <option value={2}>2nd Year</option>
+                      <option value={3}>3rd Year</option>
+                      <option value={4}>4th Year</option>
                     </select>
                   </div>
 

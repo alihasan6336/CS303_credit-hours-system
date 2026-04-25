@@ -23,7 +23,7 @@ interface FormData {
   password: string;
   confirmPassword: string;
   major: string;
-  academicYear: string;
+  level: string;
   currentSemester: string;
   completedCreditHours: string;
   phoneNumber: string;
@@ -37,7 +37,7 @@ interface FormErrors {
   password?: string;
   confirmPassword?: string;
   major?: string;
-  academicYear?: string;
+  level?: string;
   currentSemester?: string;
   completedCreditHours?: string;
   acceptTerms?: string;
@@ -58,7 +58,7 @@ const Register: React.FC = () => {
     password: "",
     confirmPassword: "",
     major: "",
-    academicYear: "",
+    level: "",
     currentSemester: "",
     completedCreditHours: "",
     phoneNumber: "",
@@ -84,7 +84,12 @@ const Register: React.FC = () => {
     "Civil Engineering",
   ];
 
-  const academicYears = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
+  const levels = [
+    { value: "1", label: "1st Year" },
+    { value: "2", label: "2nd Year" },
+    { value: "3", label: "3rd Year" },
+    { value: "4", label: "4th Year" },
+  ];
   const semesters = ["Fall", "Spring", "Summer"];
 
   const validateForm = (): FormErrors => {
@@ -120,8 +125,8 @@ const Register: React.FC = () => {
       newErrors.major = "Please select your major";
     }
 
-    if (!formData.academicYear) {
-      newErrors.academicYear = "Please select your academic year";
+    if (!formData.level) {
+      newErrors.level = "Please select your level";
     }
 
     if (!formData.currentSemester) {
@@ -206,11 +211,13 @@ const Register: React.FC = () => {
         universityId: formData.universityId,
         email: formData.email,
         password: formData.password,
+        confirmPassword: formData.confirmPassword,
         major: formData.major,
-        academicYear: formData.academicYear,
+        level: Number(formData.level),
         currentSemester: formData.currentSemester,
         completedCreditHours: formData.completedCreditHours,
         phoneNumber: formData.phoneNumber || undefined,
+        acceptTerms: formData.acceptTerms,
       });
 
       // Option 1: auto-login after registration
@@ -237,7 +244,7 @@ const Register: React.FC = () => {
       formData.password &&
       formData.confirmPassword &&
       formData.major &&
-      formData.academicYear &&
+      formData.level &&
       formData.currentSemester &&
       formData.completedCreditHours &&
       formData.acceptTerms
@@ -366,15 +373,16 @@ const Register: React.FC = () => {
 
           <SelectInput
             label="Year"
-            name="academicYear"
-            value={formData.academicYear}
+            name="level"
+            value={formData.level}
             onChange={handleChange}
             onBlur={handleBlur}
-            error={errors.academicYear}
-            touched={touched.academicYear}
+            error={errors.level}
+            touched={touched.level}
             required
             placeholder="Select year"
-            options={academicYears}
+            options={levels.map(l => l.label)}
+            values={levels.map(l => l.value)}
             icon={Calendar}
             compact
           />

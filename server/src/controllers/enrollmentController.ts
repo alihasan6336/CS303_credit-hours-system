@@ -8,13 +8,13 @@ import { recalculateStudentGPA } from '../utils/gpaCalculator';
 // GET /api/admin/enrollments - List all enrollments (admin)
 export const listEnrollments = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { studentId, courseId, semester, academicYear, status, page = '1', limit = '20' } = req.query;
+    const { studentId, courseId, semester, level, status, page = '1', limit = '20' } = req.query;
 
     const filter: any = {};
     if (studentId) filter.student = studentId;
     if (courseId) filter.course = courseId;
     if (semester) filter.semester = semester;
-    if (academicYear) filter.academicYear = academicYear;
+    if (level) filter.level = level;
     if (status) filter.status = status;
 
     const pageNum = Math.max(1, parseInt(page as string));
@@ -49,7 +49,7 @@ export const listEnrollments = async (req: Request, res: Response): Promise<void
 // POST /api/admin/enrollments - Create enrollment for a student (admin)
 export const createEnrollment = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { studentId, courseId, semester, academicYear } = req.body;
+    const { studentId, courseId, semester, level } = req.body;
     const caller = (req as any).adminUser;
 
     // Validate required fields
@@ -77,17 +77,16 @@ export const createEnrollment = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    // Determine semester and academic year
+    // Determine semester and level
     const enrollmentSemester = semester || student.currentSemester;
-    const year = new Date().getFullYear();
-    const enrollmentYear = academicYear || `${year}-${year + 1}`;
+    const enrollmentLevel = level || student.level;
 
     // Check if already enrolled
     const existingEnrollment = await Enrollment.findOne({
       student: studentId,
       course: courseId,
       semester: enrollmentSemester,
-      academicYear: enrollmentYear,
+      level: enrollmentLevel,
     });
 
     if (existingEnrollment) {
@@ -100,7 +99,7 @@ export const createEnrollment = async (req: Request, res: Response): Promise<voi
       student: studentId,
       course: courseId,
       semester: enrollmentSemester,
-      academicYear: enrollmentYear,
+      level: enrollmentLevel,
       status: 'active',
     });
 
@@ -115,7 +114,7 @@ export const createEnrollment = async (req: Request, res: Response): Promise<voi
         action: 'admin:enroll',
         targetUser: studentId,
         targetCourse: courseId,
-        details: { semester: enrollmentSemester, academicYear: enrollmentYear },
+        details: { semester: enrollmentSemester, level: enrollmentLevel },
         ipAddress: req.ip,
       });
     }
@@ -160,7 +159,7 @@ export const deleteEnrollment = async (req: Request, res: Response): Promise<voi
         action: 'admin:unenroll',
         targetUser: enrollment.student,
         targetCourse: enrollment.course,
-        details: { semester: enrollment.semester, academicYear: enrollment.academicYear },
+        details: { semester: enrollment.semester, level: enrollment.level },
         ipAddress: req.ip,
       });
     }

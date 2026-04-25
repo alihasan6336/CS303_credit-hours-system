@@ -3,8 +3,8 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IEnrollment extends Document {
   student:      mongoose.Types.ObjectId;
   course:       mongoose.Types.ObjectId;
+  level:        number; // 1, 2, 3, or 4 - matches student level
   semester:     'Fall' | 'Spring' | 'Summer';  
-  academicYear: string;                           
   grade?:       number; // 0-100 or 0-4.0 scale
   status:       'active' | 'completed' | 'dropped' | 'withdrawn';
   enrolledAt:   Date;
@@ -26,16 +26,16 @@ const EnrollmentSchema = new Schema<IEnrollment>(
       required: [true, 'Course reference is required'],
     },
 
+    level: {
+      type: Number,
+      required: [true, 'Level is required'],
+      enum: [1, 2, 3, 4],
+    },
+
     semester: {
       type: String,
       required: [true, 'Semester is required'],
       enum: ['Fall', 'Spring', 'Summer'],
-    },
-
-    academicYear: {
-      type: String,
-      required: [true, 'Academic year is required'],
-      trim: true,
     },
 
     grade: {
@@ -59,9 +59,9 @@ const EnrollmentSchema = new Schema<IEnrollment>(
   { timestamps: true }
 );
 
-// Compound unique index: one enrollment per student+course+semester+year
+// Compound unique index: one enrollment per student+course+level+semester
 EnrollmentSchema.index(
-  { student: 1, course: 1, semester: 1, academicYear: 1 },
+  { student: 1, course: 1, level: 1, semester: 1 },
   { unique: true }
 );
 
