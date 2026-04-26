@@ -5,6 +5,7 @@ import StudentsTable from "../../components/admin/StudentsTable";
 import AccountEditModal from "../../components/admin/AccountEditModal";
 import StudentEnrollmentModal from "../../components/admin/StudentEnrollmentModal";
 import AdminSidebar from "../../components/admin/AdminSidebar";
+import { getStoredAdminUser } from "../../utils/adminAccess";
 
 interface StudentAccount {
   id: string;
@@ -59,6 +60,7 @@ const AccountManagement: React.FC = () => {
   const [managingEnrollmentStudent, setManagingEnrollmentStudent] = useState<{id: string, name: string} | null>(null);
   const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
 
+  const user = getStoredAdminUser();
   const isSuperAdmin = user.role === "superadmin";
   const isAdmin = user.role === "admin";
   
