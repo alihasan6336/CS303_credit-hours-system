@@ -12,6 +12,15 @@ import GpaCalculatorPage from "./pages/student/GpaCalculatorPage";
 import AcademicHistoryPage from "./pages/student/AcademicHistoryPage";
 import ManageCourses from "./pages/admin/ManageCourses";
 import TableManagement from "./pages/admin/TableManagement";
+import ITAdminDashboard from "./pages/admin/ITAdminDashboard";
+import ScheduleAdminDashboard from "./pages/admin/ScheduleAdminDashboard";
+import CoursesAdminDashboard from "./pages/admin/CoursesAdminDashboard";
+import {
+  canAccessPath,
+  getDashboardPathForAdmin,
+  getStoredAdminUser,
+  isAdminUser,
+} from "./utils/adminAccess";
 
 function ProtectedRoute() {
   const token = localStorage.getItem("authToken");
@@ -23,22 +32,25 @@ function ProtectedRoute() {
 
 function AdminRoute() {
   const token = localStorage.getItem("authToken");
-  const userStr = localStorage.getItem("student");
 
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  try {
-    const user = JSON.parse(userStr || "{}");
-    if (user.role !== "admin" && user.role !== "superadmin") {
-      return <Navigate to="/home" replace />;
-    }
-  } catch {
-    return <Navigate to="/login" replace />;
+  const user = getStoredAdminUser();
+  if (!isAdminUser(user)) {
+    return <Navigate to="/home" replace />;
   }
 
   return <Outlet />;
+}
+
+function AdminFeatureRoute({ path, element }: { path: string; element: JSX.Element }) {
+  const user = getStoredAdminUser();
+  if (!canAccessPath(user, path)) {
+    return <Navigate to={getDashboardPathForAdmin(user)} replace />;
+  }
+  return element;
 }
 
 function App() {
@@ -58,11 +70,83 @@ function App() {
 
       {/* Protected admin routes */}
       <Route element={<AdminRoute />}>
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/accounts" element={<AccountManagement />} />
-        <Route path="/admin/courses" element={<CourseAssignmentPage />} />
-        <Route path="/admin/manage-courses" element={<ManageCourses />} />
-        <Route path="/admin/tables" element={<TableManagement />} />
+        <Route
+          path="/admin"
+          element={
+            (() => {
+              const user = getStoredAdminUser();
+              const adminHome = getDashboardPathForAdmin(user);
+              return adminHome === "/admin" ? (
+                <AdminDashboard />
+              ) : (
+                <Navigate to={adminHome} replace />
+              );
+            })()
+          }
+        />
+        <Route
+          path="/admin/it"
+          element={
+            <AdminFeatureRoute
+              path="/admin/accounts"
+              element={<ITAdminDashboard />}
+            />
+          }
+        />
+        <Route
+          path="/admin/schedule"
+          element={
+            <AdminFeatureRoute
+              path="/admin/tables"
+              element={<ScheduleAdminDashboard />}
+            />
+          }
+        />
+        <Route
+          path="/admin/courses-admin"
+          element={
+            <AdminFeatureRoute
+              path="/admin/manage-courses"
+              element={<CoursesAdminDashboard />}
+            />
+          }
+        />
+        <Route
+          path="/admin/accounts"
+          element={
+            <AdminFeatureRoute
+              path="/admin/accounts"
+              element={<AccountManagement />}
+            />
+          }
+        />
+        <Route
+          path="/admin/courses"
+          element={
+            <AdminFeatureRoute
+              path="/admin/courses"
+              element={<CourseAssignmentPage />}
+            />
+          }
+        />
+        <Route
+          path="/admin/manage-courses"
+          element={
+            <AdminFeatureRoute
+              path="/admin/manage-courses"
+              element={<ManageCourses />}
+            />
+          }
+        />
+        <Route
+          path="/admin/tables"
+          element={
+            <AdminFeatureRoute
+              path="/admin/tables"
+              element={<TableManagement />}
+            />
+          }
+        />
       </Route>
 
       <Route path="*" element={<Navigate to="/login" replace />} />
