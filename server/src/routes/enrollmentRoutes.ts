@@ -15,15 +15,19 @@ const router = Router();
 router.use(adminProtect);
 
 // GET /api/admin/enrollments - List all enrollments (with filtering)
-router.get('/', requireRole('admin', 'superadmin'), requirePermission('enrollments:list'), asyncWrap(listEnrollments));
+// Enrollment Admin + Table Admin + Superadmin can list enrollments
+router.get('/', requireRole('superadmin', 'enrollment_admin', 'table_admin'), requirePermission('enrollments:list'), asyncWrap(listEnrollments));
 
 // POST /api/admin/enrollments - Create enrollment for a student
-router.post('/', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('enrollments:create'), asyncWrap(createEnrollment));
+// Enrollment Admin + Superadmin can create enrollments
+router.post('/', requireRole('superadmin', 'enrollment_admin'), adminActionLimiter, requirePermission('enrollments:create'), asyncWrap(createEnrollment));
 
 // PATCH /api/admin/enrollments/:id/grade - Update grade
-router.patch('/:id/grade', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('enrollments:update'), asyncWrap(updateGrade));
+// Enrollment Admin + Superadmin can update grades
+router.patch('/:id/grade', requireRole('superadmin', 'enrollment_admin'), adminActionLimiter, requirePermission('enrollments:update'), asyncWrap(updateGrade));
 
 // DELETE /api/admin/enrollments/:id - Delete enrollment
-router.delete('/:id', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('enrollments:delete'), asyncWrap(deleteEnrollment));
+// Enrollment Admin + Superadmin can delete enrollments
+router.delete('/:id', requireRole('superadmin', 'enrollment_admin'), adminActionLimiter, requirePermission('enrollments:delete'), asyncWrap(deleteEnrollment));
 
 export default router;

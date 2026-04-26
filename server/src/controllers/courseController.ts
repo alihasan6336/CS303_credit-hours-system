@@ -18,7 +18,14 @@ import { AppError } from '../middleware/errorHandler';
 // GET /api/courses
 export const getCourses = async (req: Request, res: Response): Promise<void> => {
   try {
-    const courses = await Course.find({ isActive: true })
+    const { level, major } = req.query;
+    
+    // Build filter based on query params
+    const filter: any = { isActive: true };
+    if (level) filter.level = Number(level);
+    if (major) filter.major = major;
+    
+    const courses = await Course.find(filter)
       .select('code name day time room credits instructor capacity enrolledCount major level prerequisites')
       .lean();
 

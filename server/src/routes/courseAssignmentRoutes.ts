@@ -7,7 +7,7 @@ import {
   getAssignmentsByLevel,
 } from '../controllers/courseAssignmentController';
 import { protect } from '../middleware/protect';
-import { adminProtect, requirePermission } from '../middleware/adminProtect';
+import { adminProtect, requireRole, requirePermission } from '../middleware/adminProtect';
 import { asyncWrap } from '../middleware/errorHandler';
 import { adminActionLimiter } from '../middleware/rateLimiter';
 
@@ -20,15 +20,19 @@ router.get('/by-level', protect, asyncWrap(getAssignmentsByLevel));
 router.use(adminProtect);
 
 // Get all assignments (admin view)
-router.get('/', requirePermission('courses:list'), asyncWrap(getAssignments));
+// Courses Admin + Table Admin + Superadmin can view assignments
+router.get('/', requireRole('superadmin', 'courses_admin', 'table_admin'), requirePermission('courses:list'), asyncWrap(getAssignments));
 
 // Get available courses for assignment
-router.get('/available-courses', requirePermission('courses:list'), asyncWrap(getAvailableCourses));
+// Courses Admin + Table Admin + Superadmin can view available courses
+router.get('/available-courses', requireRole('superadmin', 'courses_admin', 'table_admin'), requirePermission('courses:list'), asyncWrap(getAvailableCourses));
 
 // Assign a course to a level (create assignment)
-router.post('/', adminActionLimiter, requirePermission('courses:create'), asyncWrap(assignCourse));
+// Courses Admin + Superadmin can assign courses
+router.post('/', requireRole('superadmin', 'courses_admin'), adminActionLimiter, requirePermission('courses:create'), asyncWrap(assignCourse));
 
 // Remove an assignment (soft delete)
-router.delete('/:id', adminActionLimiter, requirePermission('courses:delete'), asyncWrap(removeAssignment));
+// Only Superadmin can remove assignments (for safety)
+router.delete('/:id', requireRole('superadmin'), adminActionLimiter, requirePermission('courses:delete'), asyncWrap(removeAssignment));
 
 export default router;

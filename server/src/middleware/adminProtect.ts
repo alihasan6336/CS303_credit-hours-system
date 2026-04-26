@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
 import AdminUser, { IAdminUser } from '../models/AdminUser';
 import AdminPermission, { PermissionKey, ALL_PERMISSIONS } from '../models/AdminPermission';
+import { getRolePermissions } from '../utils/adminRoles';
 
 
 interface JwtPayload {
@@ -57,11 +58,15 @@ export const adminProtect = async (
     // 5. Attach admin user to request
     req.adminUser = user as unknown as IAdminUser;
 
-    // 6. Load permissions from DB
+    // 6. Load permissions based on role
     if (user.role === 'superadmin') {
-      // super_admin always has all permissions
+      // Super admin always has all permissions
       req.adminPermissions = [...ALL_PERMISSIONS];
+    } else if (['it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'].includes(user.role)) {
+      // Specialized admins get their role-based permissions
+      req.adminPermissions = getRolePermissions(user.role as any);
     } else if (user.role === 'admin') {
+      // Legacy admin - load from DB permissions collection
       const permDoc = await AdminPermission.findOne({ admin: user._id })
         .select('permissions')
         .lean();

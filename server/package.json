@@ -11,6 +11,7 @@
     "create-data": "ts-node src/scripts/createData.ts",
     "create-students-api": "ts-node src/scripts/createStudentsWithAPI.ts",
     "enroll-existing-students": "ts-node src/scripts/enrollExistingStudents.ts",
+    "create-specialized-admins": "ts-node src/scripts/createSpecializedAdmins.ts",
     "test-models": "ts-node src/testModels.ts"
   },
   "keywords": [],

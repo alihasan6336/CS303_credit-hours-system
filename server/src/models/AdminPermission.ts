@@ -2,11 +2,18 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { IAdminUser } from './AdminUser';
 
 export const ALL_PERMISSIONS = [
+  // User management (IT Admin)
   'users:list', 'users:view', 'users:create', 'users:update',
-  'users:delete', 'users:toggle', 'users:stats',
+  'users:delete', 'users:toggle', 'users:stats', 'users:password_reset',
+  // Course management (Courses Admin)
   'courses:list', 'courses:view', 'courses:create',
   'courses:update', 'courses:delete', 'courses:enrollments',
+  // Enrollment management (Enrollment Admin)
   'enrollments:list', 'enrollments:create', 'enrollments:update', 'enrollments:delete',
+  // Table/Registration management (Table Admin)
+  'table:view', 'table:open', 'table:close', 'table:edit', 'table:assign',
+  'registration:open', 'registration:close',
+  'system:settings',
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSIONS[number];

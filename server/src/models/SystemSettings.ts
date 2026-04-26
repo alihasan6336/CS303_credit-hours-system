@@ -3,6 +3,11 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface ISystemSettings extends Document {
     currentSemester: 'Fall' | 'Spring' | 'Summer';
     academicYear: string;
+    // Table/Registration management
+    isRegistrationOpen: boolean;
+    tableVisible: boolean;
+    enrollmentStartDate?: Date;
+    enrollmentEndDate?: Date;
 }
 
 const SystemSettingsSchema: Schema = new Schema(
@@ -17,6 +22,20 @@ const SystemSettingsSchema: Schema = new Schema(
             type: String,
             required: true,
             default: '2024-2025',
+        },
+        isRegistrationOpen: {
+            type: Boolean,
+            default: false,
+        },
+        tableVisible: {
+            type: Boolean,
+            default: false,
+        },
+        enrollmentStartDate: {
+            type: Date,
+        },
+        enrollmentEndDate: {
+            type: Date,
         },
     },
     { timestamps: true }
