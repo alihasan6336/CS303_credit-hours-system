@@ -19,6 +19,8 @@ interface StudentAccount {
 interface StudentsTableProps {
   students: StudentAccount[];
   onDelete?: (id: string, name: string) => void;
+  onEdit?: (student: StudentAccount) => void;
+  onManageEnrollments?: (studentId: string, studentName: string) => void;
   showActions?: boolean;
   isLoading?: boolean;
 }
@@ -26,6 +28,8 @@ interface StudentsTableProps {
 const StudentsTable: React.FC<StudentsTableProps> = ({
   students,
   onDelete,
+  onEdit,
+  onManageEnrollments,
   showActions = true,
   isLoading = false,
 }) => {
@@ -55,6 +59,11 @@ const StudentsTable: React.FC<StudentsTableProps> = ({
         <table className="w-full">
           <thead>
             <tr className="bg-gray-50 border-b">
+              {showActions && (onEdit || onManageEnrollments) && (
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 w-48">
+                  Manage
+                </th>
+              )}
               <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
                 Name
               </th>
@@ -83,8 +92,8 @@ const StudentsTable: React.FC<StudentsTableProps> = ({
                 </th>
               )}
               {showActions && onDelete && (
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                  Actions
+                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">
+                  Delete
                 </th>
               )}
             </tr>
@@ -93,7 +102,7 @@ const StudentsTable: React.FC<StudentsTableProps> = ({
             {students.length === 0 ? (
               <tr>
                 <td
-                  colSpan={showActions ? 7 : 6}
+                  colSpan={10}
                   className="px-6 py-12 text-center text-gray-500"
                 >
                   <div className="flex flex-col items-center gap-3">
@@ -125,6 +134,28 @@ const StudentsTable: React.FC<StudentsTableProps> = ({
                   key={student.id}
                   className="border-b last:border-0 hover:bg-gray-50 transition-colors"
                 >
+                  {showActions && (onEdit || onManageEnrollments) && (
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2 items-center">
+                        {onManageEnrollments && student.role === 'student' && (
+                          <button
+                            onClick={() => onManageEnrollments(student.id, student.fullName)}
+                            className="px-3 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                          >
+                            Courses
+                          </button>
+                        )}
+                        {onEdit && (
+                          <button
+                            onClick={() => onEdit(student)}
+                            className="px-3 py-1.5 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
@@ -199,10 +230,10 @@ const StudentsTable: React.FC<StudentsTableProps> = ({
                     </td>
                   )}
                   {showActions && onDelete && (
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-right">
                       <button
                         onClick={() => onDelete(student.id, student.fullName)}
-                        className="text-sm text-red-600 hover:text-red-800 font-medium transition-colors"
+                        className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-semibold transition-colors shadow-sm"
                       >
                         Delete
                       </button>

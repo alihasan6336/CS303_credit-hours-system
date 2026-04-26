@@ -98,7 +98,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white">
+      <aside className="w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white flex flex-col">
         <div className="p-6">
           <div className="text-2xl font-bold mb-2">🎓 Admin Panel</div>
           <p className="text-indigo-200 text-sm">Credit Hours System</p>
@@ -120,7 +120,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        <nav className="mt-6 px-4 space-y-1">
+        <nav className="mt-6 px-4 space-y-1 flex-1">
           <button
             className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 rounded-lg text-left"
             onClick={() => navigate("/admin")}
@@ -145,9 +145,15 @@ const AdminDashboard: React.FC = () => {
           >
             <span>📋</span> Course Assignments
           </button>
+          <button
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
+            onClick={() => navigate("/admin/tables")}
+          >
+            <span>📅</span> Table Management
+          </button>
         </nav>
 
-        <div className="absolute bottom-0 left-0 w-64 p-4">
+        <div className="p-4 border-t border-indigo-700">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-red-200 transition-colors"

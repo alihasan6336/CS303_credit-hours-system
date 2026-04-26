@@ -119,7 +119,7 @@ const CourseBrowserModal: React.FC<Props> = ({
                   <th className="pb-3 text-gray-600 font-bold text-base">Credits</th>
                   <th className="pb-3 text-gray-600 font-bold text-base">Schedule</th>
                   <th className="pb-3 text-gray-600 font-bold text-base">Seats</th>
-                  <th className="pb-3 text-right text-base text-gray-600 font-bold">Action</th>
+                  <th className="pb-3 text-left text-base text-gray-600 font-bold">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -171,8 +171,8 @@ const CourseBrowserModal: React.FC<Props> = ({
                           {course.enrolledCount}/{course.capacity}
                         </span>
                       </td>
-                      <td className="py-4 text-right">
-                        <div className="flex flex-col items-end gap-1">
+                      <td className="py-4 text-left">
+                        <div className="flex flex-col items-start gap-1">
                           {isAlreadyEnrolled ? (
                             <span className="px-4 py-2 bg-green-100 text-green-700 rounded font-black text-sm border border-green-200">
                                Enrolled

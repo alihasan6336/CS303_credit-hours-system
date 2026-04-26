@@ -485,6 +485,13 @@ export const adminApi = {
     });
   },
 
+  updateAccount(id: string, body: any): Promise<{ success: boolean; user: any; message?: string }> {
+    return request(`/api/admin/accounts/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
+
   getEnrollments(): Promise<EnrollmentsResponse> {
     return request<EnrollmentsResponse>("/api/admin/enrollments");
   },

@@ -276,31 +276,33 @@ const AvailableCourses: React.FC = () => {
                               {course.time}
                             </div>
                           </td>
-                          <td className="px-6 py-4">
-                            {isEnrolled ? (
-                              <div className="flex flex-col gap-2">
-                                <span className="inline-flex items-center justify-center px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
-                                  ✓ Enrolled
-                                </span>
+                          <td className="px-6 py-4 text-left">
+                            <div className="flex flex-col items-start gap-2">
+                              {isEnrolled ? (
+                                <>
+                                  <span className="inline-flex items-center justify-center px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
+                                    ✓ Enrolled
+                                  </span>
+                                  <button
+                                    onClick={() => handleDrop(course._id!)}
+                                    disabled={dropping === course._id}
+                                    className="inline-flex items-center justify-center px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {dropping === course._id
+                                      ? "Dropping..."
+                                      : "Drop"}
+                                  </button>
+                                </>
+                              ) : (
                                 <button
-                                  onClick={() => handleDrop(course._id!)}
-                                  disabled={dropping === course._id}
-                                  className="inline-flex items-center justify-center px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                  onClick={() => handleRegister(course._id!)}
+                                  disabled={isProcessing}
+                                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                                 >
-                                  {dropping === course._id
-                                    ? "Dropping..."
-                                    : "Drop"}
+                                  {isProcessing ? "Registering..." : "Register"}
                                 </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => handleRegister(course._id!)}
-                                disabled={isProcessing}
-                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                              >
-                                {isProcessing ? "Registering..." : "Register"}
-                              </button>
-                            )}
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

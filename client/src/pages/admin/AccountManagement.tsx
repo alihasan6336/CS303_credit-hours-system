@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { adminApi, authApi } from "../../utils/api";
 import StudentRegisterForm from "../../components/admin/StudentRegisterForm";
 import StudentsTable from "../../components/admin/StudentsTable";
+import AccountEditModal from "../../components/admin/AccountEditModal";
+import StudentEnrollmentModal from "../../components/admin/StudentEnrollmentModal";
 
 interface StudentAccount {
   id: string;
@@ -51,25 +53,34 @@ const AccountManagement: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
+  
+  const [editingAccount, setEditingAccount] = useState<StudentAccount | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  
+  const [managingEnrollmentStudent, setManagingEnrollmentStudent] = useState<{id: string, name: string} | null>(null);
+  const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
   const isSuperAdmin = user.role === "superadmin";
   const isAdmin = user.role === "admin";
+  
+  // canManageUsers is now strictly superadmin since we removed hardcoded whitelist
+  const canManageUsers = isSuperAdmin;
 
   const getPermissionMessage = () => {
     if (isSuperAdmin) {
       return {
-        text: "✅ Full authority granted.",
+        text: "✅ Full authority granted (Super Admin).",
         color: "bg-green-50 border-green-200 text-green-700",
       };
     } else if (isAdmin) {
       return {
-        text: "⚠️ Limited authority (students & admins only).",
+        text: "⚠️ View-only authority (students & admins).",
         color: "bg-blue-50 border-blue-200 text-blue-700",
       };
     } else {
       return {
-        text: "❌ No authority to add or remove users.",
+        text: "❌ No authority to access.",
         color: "bg-red-50 border-red-200 text-red-700",
       };
     }
@@ -98,7 +109,6 @@ const AccountManagement: React.FC = () => {
       }
     } catch (err: any) {
       console.warn("Failed to load students:", err.message);
-      // Continue with empty list or fallback
     } finally {
       setLoading(false);
     }
@@ -208,6 +218,25 @@ const AccountManagement: React.FC = () => {
     }
   };
 
+  const handleEditClick = (account: StudentAccount) => {
+    setEditingAccount(account);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateAccount = async (id: string, data: Partial<StudentAccount>) => {
+    try {
+      const response = await adminApi.updateAccount(id, data);
+      if (response.success) {
+        setShowEditModal(false);
+        setEditingAccount(null);
+        await fetchStudents();
+        await fetchKpiStats();
+      }
+    } catch (err: any) {
+      throw new Error(err.message || "Failed to update account");
+    }
+  };
+
   const handleStudentFormSubmit = async (studentData: any) => {
     setFormLoading(true);
     setError("");
@@ -276,7 +305,7 @@ const AccountManagement: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white flex flex-col relative">
+      <aside className="w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white flex flex-col">
         <div className="p-6">
           <div className="text-2xl font-bold mb-2">🎓 Admin Panel</div>
           <p className="text-indigo-200 text-sm">Credit Hours System</p>
@@ -323,9 +352,15 @@ const AccountManagement: React.FC = () => {
           >
             <span>📋</span> Course Assignments
           </button>
+          <button
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
+            onClick={() => navigate("/admin/tables")}
+          >
+            <span>📅</span> Table Management
+          </button>
         </nav>
 
-        <div className="fixed bottom-0 left-0 w-64 p-4">
+        <div className="p-4 border-t border-indigo-700">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-red-200 transition-colors"
@@ -382,17 +417,21 @@ const AccountManagement: React.FC = () => {
           /* View Accounts List */
           <div>
             <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={() => {
-                  setShowRegisterForm(true);
-                  setRegisterRole(activeTab);
-                  setAuthorizationMessage(null);
-                }}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center gap-2"
-              >
-                <span>+</span> Register New{" "}
-                {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-              </button>
+              {canManageUsers ? (
+                <button
+                  onClick={() => {
+                    setShowRegisterForm(true);
+                    setRegisterRole(activeTab);
+                    setAuthorizationMessage(null);
+                  }}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center gap-2"
+                >
+                  <span>+</span> Register New{" "}
+                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                </button>
+              ) : (
+                <div></div>
+              )}
 
               {/* Permission Message */}
               {(() => {
@@ -441,8 +480,13 @@ const AccountManagement: React.FC = () => {
             {activeTab === "student" ? (
               <StudentsTable
                 students={students}
-                onDelete={isSuperAdmin ? handleDeleteAccount : undefined}
-                showActions={isSuperAdmin}
+                onDelete={canManageUsers ? handleDeleteAccount : undefined}
+                onEdit={canManageUsers ? handleEditClick : undefined}
+                onManageEnrollments={(id, name) => {
+                  setManagingEnrollmentStudent({id, name});
+                  setShowEnrollmentModal(true);
+                }}
+                showActions={true}
                 isLoading={loading}
               />
             ) : (
@@ -451,6 +495,11 @@ const AccountManagement: React.FC = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50 border-b">
+                      {canManageUsers && (
+                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 w-32">
+                          Manage
+                        </th>
+                      )}
                       <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
                         Name
                       </th>
@@ -460,9 +509,9 @@ const AccountManagement: React.FC = () => {
                       <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
                         Role
                       </th>
-                      {isSuperAdmin && (
-                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                          Actions
+                      {canManageUsers && (
+                        <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">
+                          Delete
                         </th>
                       )}
                     </tr>
@@ -471,7 +520,7 @@ const AccountManagement: React.FC = () => {
                     {students.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={isSuperAdmin ? 4 : 3}
+                          colSpan={canManageUsers ? 5 : 3}
                           className="px-6 py-12 text-center text-gray-500"
                         >
                           No {activeTab} accounts found
@@ -483,6 +532,16 @@ const AccountManagement: React.FC = () => {
                           key={student.id}
                           className="border-b last:border-0 hover:bg-gray-50"
                         >
+                          {canManageUsers && (
+                            <td className="px-6 py-4">
+                              <button
+                                onClick={() => handleEditClick(student)}
+                                className="px-3 py-1.5 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                              >
+                                Edit
+                              </button>
+                            </td>
+                          )}
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold">
@@ -514,8 +573,8 @@ const AccountManagement: React.FC = () => {
                               {student.role}
                             </span>
                           </td>
-                          {isSuperAdmin && (
-                            <td className="px-6 py-4">
+                          {canManageUsers && (
+                            <td className="px-6 py-4 text-right">
                               <button
                                 onClick={() =>
                                   handleDeleteAccount(
@@ -523,7 +582,7 @@ const AccountManagement: React.FC = () => {
                                     student.fullName,
                                   )
                                 }
-                                className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-semibold transition-colors shadow-sm"
                               >
                                 Delete
                               </button>
@@ -559,7 +618,6 @@ const AccountManagement: React.FC = () => {
                   {/* Page numbers */}
                   <div className="flex gap-1">
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      // Show pages around current page
                       let pageNum;
                       if (totalPages <= 5) {
                         pageNum = i + 1;
@@ -822,6 +880,29 @@ const AccountManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Account Modal */}
+      <AccountEditModal
+        account={editingAccount}
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingAccount(null);
+        }}
+        onSave={handleUpdateAccount}
+        isLoading={formLoading}
+      />
+
+      {/* Manage Enrollments Modal */}
+      <StudentEnrollmentModal
+        studentId={managingEnrollmentStudent?.id || ""}
+        studentName={managingEnrollmentStudent?.name || ""}
+        isOpen={showEnrollmentModal}
+        onClose={() => {
+          setShowEnrollmentModal(false);
+          setManagingEnrollmentStudent(null);
+        }}
+      />
     </div>
   );
 };

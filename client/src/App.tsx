@@ -9,7 +9,9 @@ import AccountManagement from "./pages/admin/AccountManagement";
 import CourseAssignmentPage from "./pages/admin/CourseAssignmentPage";
 import AvailableCourses from "./pages/student/AvailableCourses";
 import GpaCalculatorPage from "./pages/student/GpaCalculatorPage";
+import AcademicHistoryPage from "./pages/student/AcademicHistoryPage";
 import ManageCourses from "./pages/admin/ManageCourses";
+import TableManagement from "./pages/admin/TableManagement";
 
 function ProtectedRoute() {
   const token = localStorage.getItem("authToken");
@@ -51,6 +53,7 @@ function App() {
         <Route path="/home" element={<StudentDashboard />} />
         <Route path="/courses" element={<AvailableCourses />} />
         <Route path="/gpa-calculator" element={<GpaCalculatorPage />} />
+        <Route path="/academic-history" element={<AcademicHistoryPage />} />
       </Route>
 
       {/* Protected admin routes */}
@@ -59,6 +62,7 @@ function App() {
         <Route path="/admin/accounts" element={<AccountManagement />} />
         <Route path="/admin/courses" element={<CourseAssignmentPage />} />
         <Route path="/admin/manage-courses" element={<ManageCourses />} />
+        <Route path="/admin/tables" element={<TableManagement />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/login" replace />} />

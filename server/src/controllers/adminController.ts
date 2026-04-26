@@ -276,10 +276,19 @@ export const createAdminAccount = async (req: Request, res: Response): Promise<v
 export const updateAccount = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const { fullName, email, isActive } = req.body;
+        const { fullName, email, isActive, major, level, role, gpa, completedCreditHours, currentSemester } = req.body;
         const caller = req.adminUser;
 
-        const student = await Student.findById(id);
+        // Try to find in Student collection first
+        let student = await Student.findById(id);
+        let isAdmin = false;
+
+        // If not found in Student, try AdminUser
+        if (!student) {
+            student = await AdminUser.findById(id);
+            isAdmin = true;
+        }
+
         if (!student) {
             res.status(404).json({ success: false, message: 'Account not found' });
             return;
@@ -288,6 +297,15 @@ export const updateAccount = async (req: Request, res: Response): Promise<void> 
         if (fullName) student.fullName = fullName;
         if (email) student.email = email;
         if (isActive !== undefined) student.isActive = isActive;
+        if (major) student.major = major;
+        if (role) student.role = role;
+        
+        if (!isAdmin) {
+            if (level !== undefined) student.level = level;
+            if (gpa !== undefined) student.gpa = gpa;
+            if (completedCreditHours !== undefined) student.completedCreditHours = completedCreditHours;
+            if (currentSemester) student.currentSemester = currentSemester;
+        }
 
         await student.save();
 
