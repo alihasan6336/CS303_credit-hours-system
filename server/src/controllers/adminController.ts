@@ -9,7 +9,8 @@ import AdminUser from '../models/AdminUser';
 
 // Helper to format student response
 const formatStudent = (s: any) => {
-    const isAdmin = s.role === 'admin' || s.role === 'superadmin';
+    const adminRoles = ['admin', 'superadmin', 'it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'];
+    const isAdmin = adminRoles.includes(s.role);
     return {
         id: s._id,
         fullName: s.fullName,
@@ -30,8 +31,16 @@ export const getAdminStats = async (req: Request, res: Response): Promise<void> 
     try {
         const totalStudents = await Student.countDocuments({ role: { $ne: 'superadmin' } });
         const totalCourses = await Course.countDocuments({ isActive: true });
+        // Count regular admins
         const totalAdmins = await AdminUser.countDocuments({ role: 'admin' });
+        // Count superadmins
         const totalSuperAdmins = await AdminUser.countDocuments({ role: 'superadmin' });
+        // Count specialized admins (it_admin, table_admin, courses_admin, enrollment_admin)
+        const totalSpecializedAdmins = await AdminUser.countDocuments({
+            role: { $in: ['it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'] }
+        });
+        // Total admins shown in UI = only specialized admins (not superadmin, not regular admin)
+        const totalAllAdmins = totalSpecializedAdmins;
         const totalEnrollments = await Enrollment.countDocuments();
 
         // Recent logins in last 24 hours
@@ -53,7 +62,14 @@ export const getAdminStats = async (req: Request, res: Response): Promise<void> 
 
         res.status(200).json({
             success: true,
-            stats: { totalStudents, totalCourses, totalAdmins, totalSuperAdmins, totalEnrollments, recentLogins },
+            stats: { 
+                totalStudents, 
+                totalCourses, 
+                totalAdmins: totalSpecializedAdmins,  // Only 4 specialized admins
+                totalSuperAdmins, 
+                totalEnrollments, 
+                recentLogins 
+            },
             studentsByLevel: studentsByLevel.map((s: { _id: number; count: number }) => ({ level: s._id, count: s.count })),
             courses: courses.map((c: any) => ({ code: c.code, name: c.name, enrolled: c.enrolledCount, capacity: c.capacity })),
         });
@@ -86,8 +102,12 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
         let students = [];
         let total = 0;
 
-        // If role is admin or superadmin, fetch from AdminUser collection
-        if (role === 'admin' || role === 'superadmin') {
+        // Define all valid admin roles including specialized ones
+        const adminRoles = ['admin', 'superadmin', 'it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'];
+        const isAdminRole = !role || adminRoles.includes(role as string);
+        
+        // If role is any type of admin, fetch from AdminUser collection
+        if (role === 'admin' || role === 'superadmin' || adminRoles.includes(role as string) || !role) {
             // Build filter for AdminUser query
             const adminFilter: any = {};
             if (search) {
@@ -96,21 +116,23 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
                     { email: { $regex: search, $options: 'i' } },
                 ];
             }
-            // If specific role requested, filter by it. Otherwise get all admins.
-            if (role) {
+            // If specific role requested, filter by it. Otherwise get all specialized admins.
+            if (role && role !== 'admin' && role !== 'superadmin') {
                 adminFilter.role = role;
+            } else {
+                // If no role specified, OR if role is 'admin' or 'superadmin' 
+                // Get only the 4 specialized admins (NOT superadmin, NOT regular admin)
+                adminFilter.role = { $in: ['it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'] };
             }
-            
-            const [admins, adminCount] = await Promise.all([
-                AdminUser.find(adminFilter)
-                    .select('fullName email universityId major role isActive createdAt createdBy')
-                    .sort({ createdAt: -1 })
-                    .skip(skip)
-                    .limit(limit)
-                    .populate('createdBy', 'fullName email')
-                    .lean(),
-                AdminUser.countDocuments(adminFilter),
-            ]);
+
+            const admins = await AdminUser.find(adminFilter)
+                .skip(skip)
+                .limit(limit)
+                .select('-password')
+                .lean();
+            total = await AdminUser.countDocuments(adminFilter);
+
+            // Format admins with all fields
             students = admins.map((admin: any) => ({
                 id: admin._id,
                 fullName: admin.fullName,
@@ -118,11 +140,10 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
                 universityId: admin.universityId,
                 major: admin.major,
                 role: admin.role,
-                isActive: admin.isActive,
+                isActive: admin.isActive ?? true,
                 createdAt: admin.createdAt,
                 createdBy: admin.createdBy,
             }));
-            total = adminCount;
         } else {
             // Fetch students from Student collection
             const [studentDocs, studentCount] = await Promise.all([
@@ -219,11 +240,26 @@ export const createStudentAccount = async (req: Request, res: Response): Promise
 
 export const createAdminAccount = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { fullName, universityId, email, password, major, phoneNumber } = req.body;
+        const { fullName, universityId, email, password, major, phoneNumber, role } = req.body;
         const creator = req.adminUser;
 
         if (!fullName || !email || !password) {
             res.status(400).json({ success: false, message: 'Full name, email and password are required' });
+            return;
+        }
+
+        // Validate role (only superadmin can create specialized admins)
+        const validRoles = ['admin', 'superadmin', 'it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'];
+        const adminRole = role || 'admin';
+        
+        if (!validRoles.includes(adminRole)) {
+            res.status(400).json({ success: false, message: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+            return;
+        }
+
+        // Only superadmin can create other admins or specialized admins
+        if (creator && creator.role !== 'superadmin' && adminRole !== 'admin') {
+            res.status(403).json({ success: false, message: 'Only super admin can create specialized admin accounts' });
             return;
         }
 
@@ -245,6 +281,18 @@ export const createAdminAccount = async (req: Request, res: Response): Promise<v
             }
         }
 
+        // Check if specialized admin already exists (only one per type)
+        if (['it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'].includes(adminRole)) {
+            const existingSpecialized = await AdminUser.findOne({ role: adminRole });
+            if (existingSpecialized) {
+                res.status(409).json({ 
+                    success: false, 
+                    message: `A ${adminRole} already exists. Only one ${adminRole} is allowed.` 
+                });
+                return;
+            }
+        }
+
         const admin = await AdminUser.create({
             fullName,
             universityId: universityId || `ADMIN-${Date.now()}`,
@@ -252,7 +300,7 @@ export const createAdminAccount = async (req: Request, res: Response): Promise<v
             password,
             major: major || 'Administration',
             phoneNumber: phoneNumber || '',
-            role: 'admin',
+            role: adminRole,
             createdBy: creator?._id,
         });
 
@@ -262,12 +310,21 @@ export const createAdminAccount = async (req: Request, res: Response): Promise<v
                 actor: creator._id,
                 action: 'admin:create',
                 targetUser: admin._id,
-                details: { role: admin.role, email: admin.email },
+                details: { role: admin.role, email: admin.email, type: adminRole },
                 ipAddress: req.ip,
             });
         }
 
-        res.status(201).json({ success: true, student: { id: admin._id, fullName: admin.fullName, email: admin.email, role: admin.role } });
+        res.status(201).json({ 
+            success: true, 
+            data: { 
+                id: admin._id, 
+                fullName: admin.fullName, 
+                email: admin.email, 
+                role: admin.role 
+            },
+            message: `${adminRole} account created successfully` 
+        });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -279,48 +336,62 @@ export const updateAccount = async (req: Request, res: Response): Promise<void> 
         const { fullName, email, isActive, major, level, role, gpa, completedCreditHours, currentSemester } = req.body;
         const caller = req.adminUser;
 
-        // Try to find in Student collection first
-        let student = await Student.findById(id);
+        let user = await Student.findById(id);
         let isAdmin = false;
+        let isSpecializedAdmin = false;
 
-        // If not found in Student, try AdminUser
-        if (!student) {
-            student = await AdminUser.findById(id);
-            isAdmin = true;
+        // If not found in Student, try AdminUser (for specialized admins)
+        if (!user) {
+            user = await AdminUser.findById(id);
+            if (user) {
+                isAdmin = true;
+                isSpecializedAdmin = ['it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'].includes(user.role);
+            }
         }
 
-        if (!student) {
+        if (!user) {
             res.status(404).json({ success: false, message: 'Account not found' });
             return;
         }
 
-        if (fullName) student.fullName = fullName;
-        if (email) student.email = email;
-        if (isActive !== undefined) student.isActive = isActive;
-        if (major) student.major = major;
-        if (role) student.role = role;
+        if (fullName) user.fullName = fullName;
+        if (email) user.email = email;
+        if (isActive !== undefined) user.isActive = isActive;
+        if (major) user.major = major;
+        if (role) user.role = role;
         
         if (!isAdmin) {
+            const student = user as any;
             if (level !== undefined) student.level = level;
             if (gpa !== undefined) student.gpa = gpa;
             if (completedCreditHours !== undefined) student.completedCreditHours = completedCreditHours;
             if (currentSemester) student.currentSemester = currentSemester;
         }
 
-        await student.save();
+        await user.save();
 
         // Audit log
         if (caller) {
             await AuditLog.create({
                 actor: caller._id,
-                action: 'user:update',
-                targetUser: student._id,
-                details: { fullName, email, isActive },
+                action: isAdmin ? 'admin:update' : 'user:update',
+                targetUser: user._id,
+                details: { fullName, email, isActive, role: user.role },
                 ipAddress: req.ip,
             });
         }
 
-        res.status(200).json({ success: true, student: formatStudent(student) });
+        res.status(200).json({ 
+            success: true, 
+            user: {
+                id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+                role: user.role,
+                isActive: user.isActive ?? true,
+                ...(isSpecializedAdmin ? { isSpecializedAdmin: true } : {})
+            }
+        });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -635,6 +706,62 @@ export const updateGrade = async (req: Request, res: Response): Promise<void> =>
                 semester: enrollment.semester,
                 level: enrollment.level,
                 grade: enrollment.grade,
+            },
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// POST /api/admin/reset-password/:id
+// IT Admin + Superadmin: Reset user password
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { newPassword } = req.body;
+        const caller = req.adminUser;
+
+        if (!newPassword || newPassword.length < 6) {
+            res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+            return;
+        }
+
+        // Try to find user in both collections
+        let user = await Student.findById(id);
+        let userType = 'student';
+        
+        if (!user) {
+            user = await AdminUser.findById(id);
+            userType = 'admin';
+        }
+
+        if (!user) {
+            res.status(404).json({ success: false, message: 'User not found' });
+            return;
+        }
+
+        // Update password
+        user.password = newPassword;
+        await user.save();
+
+        // Audit log
+        if (caller) {
+            await AuditLog.create({
+                actor: caller._id,
+                action: 'users:password_reset',
+                targetUser: user._id,
+                details: { userType, email: user.email },
+                ipAddress: req.ip,
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Password reset successfully',
+            user: {
+                id: user._id,
+                email: user.email,
+                fullName: user.fullName,
             },
         });
     } catch (error: any) {

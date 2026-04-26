@@ -8,7 +8,7 @@ export interface IAdminUser extends Document {
   password: string;
   major?: string;
   phoneNumber?: string;
-  role: 'admin' | 'superadmin';
+  role: 'admin' | 'superadmin' | 'it_admin' | 'table_admin' | 'courses_admin' | 'enrollment_admin';
   isActive: boolean;
   createdBy?: mongoose.Types.ObjectId;
   lastLogin?: Date;
@@ -51,7 +51,7 @@ const AdminUserSchema = new Schema<IAdminUser>(
     },
     role: {
       type: String,
-      enum: ['admin', 'superadmin'],
+      enum: ['admin', 'superadmin', 'it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'],
       default: 'admin',
     },
     isActive: {

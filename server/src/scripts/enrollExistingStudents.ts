@@ -10,15 +10,31 @@ import axios from 'axios';
 import { spawn } from 'child_process';
 import path from 'path';
 
-const BASE_URL = 'http://localhost:5001/api';
-const ADMIN_EMAIL = 'admin@credit-hours.com';
-const ADMIN_PASSWORD = 'admin123';
+const USE_ADMIN_API = true;
+const ADMIN_EMAIL = 'admin@admin.com'; // Only needed if USE_ADMIN_API = true
+const ADMIN_PASSWORD = '123456';     // Only needed if USE_ADMIN_API = true
+
+const SERVER_PORT = process.env.PORT || 5000;
+const BASE_URL = `http://localhost:${SERVER_PORT}/api`;
 
 // Delay helper
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Server management
 let serverProcess: any = null;
+let serverAlreadyRunning = false;
+
+// Check if server is already running
+const checkServerRunning = async (): Promise<boolean> => {
+  try {
+    // Extract base URL without /api and check health
+    const baseUrl = BASE_URL.replace('/api', '');
+    await axios.get(`${baseUrl}/api/health`, { timeout: 3000 });
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const startServer = (): Promise<void> => {
   return new Promise((resolve, reject) => {
@@ -42,28 +58,29 @@ const startServer = (): Promise<void> => {
     serverProcess.stdout?.on('data', checkReady);
     serverProcess.stderr?.on('data', checkReady);
 
+    // Wait up to 15 seconds for server to start
     setTimeout(() => {
       if (!output.includes('Server running')) {
         console.log('⏱️ Server start timeout, assuming ready...');
         resolve();
       }
-    }, 8000);
+    }, 15000);
 
     serverProcess.on('error', reject);
   });
 };
 
 const stopServer = () => {
-  if (serverProcess) {
+  if (serverProcess && !serverAlreadyRunning) {
     console.log('\n👋 Shutting down server...');
     serverProcess.kill();
   }
 };
 
-// Admin login
+// Admin login (uses same endpoint as student login)
 const adminLogin = async (): Promise<string | null> => {
   try {
-    const response = await axios.post(`${BASE_URL}/admin/auth/login`, {
+    const response = await axios.post(`${BASE_URL}/auth/login`, {
       email: ADMIN_EMAIL,
       password: ADMIN_PASSWORD,
     });
@@ -88,9 +105,11 @@ const getAllStudents = async (adminToken: string): Promise<any[]> => {
 };
 
 // Fetch all courses
-const getAllCourses = async (): Promise<any[]> => {
+const getAllCourses = async (adminToken: string): Promise<any[]> => {
   try {
-    const response = await axios.get(`${BASE_URL}/courses?limit=1000`);
+    const response = await axios.get(`${BASE_URL}/courses?limit=1000`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
     return response.data.courses || [];
   } catch (error: any) {
     console.error('❌ Failed to get courses:', error.response?.data?.message || error.message);
@@ -99,99 +118,145 @@ const getAllCourses = async (): Promise<any[]> => {
 };
 
 // Get courses by level and major
-const getCoursesByLevelAndMajor = async (level: number, major: string): Promise<any[]> => {
+const getCoursesByLevelAndMajor = async (level: number, major: string, adminToken: string): Promise<any[]> => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/courses?level=${level}&major=${encodeURIComponent(major)}&limit=100`
+      `${BASE_URL}/courses?level=${level}&major=${encodeURIComponent(major)}&limit=100`,
+      { headers: { Authorization: `Bearer ${adminToken}` } }
     );
     return response.data.courses || [];
-  } catch {
+  } catch (error: any) {
+    console.log(`   ⚠️ getCoursesByLevelAndMajor failed: ${error.response?.status} - ${error.response?.data?.message || error.message}`);
     return [];
   }
 };
 
-// Assign course to level
+// Check existing course assignments count
+const getExistingAssignmentsCount = async (adminToken: string): Promise<number> => {
+  try {
+    const response = await axios.get(`${BASE_URL}/course-assignments`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    return response.data.assignments?.length || 0;
+  } catch {
+    return 0;
+  }
+};
+
+// Assign course to level with retry
 const assignCourseToLevel = async (
   adminToken: string,
   courseId: string,
   level: number,
-  major: string,
-  semester: string
+  semester: string,
+  retries = 3
 ): Promise<boolean> => {
-  try {
-    await axios.post(
-      `${BASE_URL}/admin/course-assignments`,
-      {
-        courseId,
-        level,
-        major,
-        semester,
-        isActive: true,
-      },
-      { headers: { Authorization: `Bearer ${adminToken}` } }
-    );
-    return true;
-  } catch (error: any) {
-    if (error.response?.status === 409) {
-      return true; // Already exists
+  for (let i = 0; i < retries; i++) {
+    try {
+      await axios.post(
+        `${BASE_URL}/course-assignments`,
+        {
+          courseId,
+          level,
+          semester,
+        },
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+      return true;
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        return true; // Already exists
+      }
+      // Retry on network errors
+      if (i < retries - 1 && (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || !error.response)) {
+        console.log(`   ⚠️ Retry ${i + 1}/3 for course assignment...`);
+        await delay(1000 * (i + 1));
+        continue;
+      }
+      const status = error.response?.status;
+      const msg = error.response?.data?.message || error.message;
+      if (status !== 409) {
+        console.error(`❌ Failed to assign course (${status}): ${msg}`);
+      }
+      return false;
     }
-    console.error(`❌ Failed to assign course:`, error.response?.data?.message || error.message);
-    return false;
   }
+  return false;
 };
 
-// Enroll student in course
+// Enroll student in course with retry
 const enrollStudent = async (
   adminToken: string,
   studentId: string,
-  courseId: string
+  courseId: string,
+  retries = 3
 ): Promise<string | null> => {
-  try {
-    const response = await axios.post(
-      `${BASE_URL}/admin/enrollments`,
-      {
-        studentId,
-        courseId,
-        status: 'active',
-      },
-      { headers: { Authorization: `Bearer ${adminToken}` } }
-    );
-    return response.data.enrollment?._id || null;
-  } catch (error: any) {
-    if (error.response?.status === 409) {
-      // Already enrolled, try to find existing
-      try {
-        const listResponse = await axios.get(
-          `${BASE_URL}/admin/enrollments?studentId=${studentId}&courseId=${courseId}`,
-          { headers: { Authorization: `Bearer ${adminToken}` } }
-        );
-        const enrollments = listResponse.data.enrollments || [];
-        if (enrollments.length > 0) return enrollments[0]._id;
-      } catch {
-        // Ignore
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/admin/enrollments`,
+        {
+          studentId,
+          courseId,
+          status: 'active',
+        },
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+      return response.data.enrollment?._id || null;
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        // Already enrolled, try to find existing
+        try {
+          const listResponse = await axios.get(
+            `${BASE_URL}/admin/enrollments?studentId=${studentId}&courseId=${courseId}`,
+            { headers: { Authorization: `Bearer ${adminToken}` } }
+          );
+          const enrollments = listResponse.data.enrollments || [];
+          if (enrollments.length > 0) return enrollments[0]._id;
+        } catch {
+          // Ignore
+        }
+        return null;
       }
+      // Retry on network errors
+      if (i < retries - 1 && (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || !error.response)) {
+        await delay(500 * (i + 1));
+        continue;
+      }
+      return null;
     }
-    return null;
   }
+  return null;
 };
 
-// Update grade for enrollment
+// Update grade for enrollment with retry
 const updateGrade = async (
   adminToken: string,
   enrollmentId: string,
-  grade: number
+  grade: number,
+  retries = 3
 ): Promise<boolean> => {
-  try {
-    await axios.patch(
-      `${BASE_URL}/admin/enrollments/${enrollmentId}/grade`,
-      { grade },
-      { headers: { Authorization: `Bearer ${adminToken}` } }
-    );
-    return true;
-  } catch (error: any) {
-    console.error(`❌ Failed to update grade:`, error.response?.data?.message || error.message);
-    return false;
+  for (let i = 0; i < retries; i++) {
+    try {
+      await axios.patch(
+        `${BASE_URL}/admin/enrollments/${enrollmentId}/grade`,
+        { grade },
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+      return true;
+    } catch (error: any) {
+      // Retry on network errors
+      if (i < retries - 1 && (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || !error.response)) {
+        await delay(500 * (i + 1));
+        continue;
+      }
+      if (error.response?.status !== 404) {
+        console.error(`❌ Failed to update grade (${error.response?.status}):`, error.response?.data?.message || error.message);
+      }
+      return false;
+    }
   }
+  return false;
 };
 
 // Recalculate student GPA
@@ -217,16 +282,32 @@ const generatePassingGrade = (): number => {
 // Main function
 const main = async () => {
   try {
-    await startServer();
-    await delay(2000);
-
     console.log('\n📋 Standalone Enrollment Script');
     console.log('================================\n');
 
+    // Check if server is already running
+    console.log('🔍 Checking if server is already running...');
+    serverAlreadyRunning = await checkServerRunning();
+    
+    if (serverAlreadyRunning) {
+      console.log('✅ Server is already running! Skipping startup.\n');
+    } else {
+      console.log('🚀 Starting server...');
+      await startServer();
+      console.log('⏳ Waiting for server to fully initialize (10s)...');
+      await delay(10000);
+    }
+
     // Admin login
+    console.log('🔐 Attempting admin login...');
     const adminToken = await adminLogin();
     if (!adminToken) {
       console.error('❌ Could not authenticate admin');
+      console.log('\n💡 Tips:');
+      console.log('   1. Make sure the admin account exists in the database');
+      console.log('   2. Check ADMIN_EMAIL and ADMIN_PASSWORD in this script');
+      console.log('   3. Verify the server is running on the correct port (5001)');
+      console.log(`\n   Current credentials: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
       stopServer();
       process.exit(1);
     }
@@ -245,8 +326,17 @@ const main = async () => {
 
     // Fetch all courses
     console.log('📚 Fetching existing courses...');
-    const allCourses = await getAllCourses();
-    console.log(`✅ Found ${allCourses.length} courses\n`);
+    const allCourses = await getAllCourses(adminToken);
+    console.log(`✅ Found ${allCourses.length} courses`);
+    
+    // Debug: Show sample courses
+    if (allCourses.length > 0) {
+      console.log('   📋 Sample courses:');
+      allCourses.slice(0, 3).forEach((c: any) => {
+        console.log(`      - ${c.code}: level=${c.level}, major=${c.major}`);
+      });
+    }
+    console.log();
 
     if (allCourses.length === 0) {
       console.log('⚠️ No courses found. Exiting.');
@@ -254,25 +344,44 @@ const main = async () => {
       process.exit(0);
     }
 
-    // Step 1: Assign courses to levels
-    console.log('📋 Step 1: Assigning courses to levels...');
+    // Step 1: Check and assign courses to levels
+    console.log('📋 Step 1: Checking course assignments...');
     console.log('-'.repeat(60));
-
-    let assignmentCount = 0;
-    for (const course of allCourses) {
-      if (course.level && course.major) {
-        const success = await assignCourseToLevel(
-          adminToken,
-          course._id,
-          course.level,
-          course.major,
-          'Fall 2024'
-        );
-        if (success) assignmentCount++;
-        await delay(200); // Small delay to avoid rate limits
+    
+    const existingAssignments = await getExistingAssignmentsCount(adminToken);
+    const totalCourses = allCourses.filter((c: any) => c.level && c.major).length;
+    
+    console.log(`   ℹ️ Found ${existingAssignments} existing assignments, ${totalCourses} courses available`);
+    
+    // Skip if most courses are already assigned (90% threshold)
+    if (existingAssignments >= totalCourses * 0.9) {
+      console.log(`   ✅ Skipping assignment - ${existingAssignments} courses already assigned to levels\n`);
+    } else {
+      console.log('   🔄 Assigning courses to levels...');
+      let assignmentCount = 0;
+      let processedCount = 0;
+      
+      for (const course of allCourses) {
+        if (course.level && course.major) {
+          processedCount++;
+          const success = await assignCourseToLevel(
+            adminToken,
+            course._id,
+            course.level,
+            'Fall'
+          );
+          if (success) assignmentCount++;
+          
+          // Show progress every 10 courses
+          if (processedCount % 10 === 0 || processedCount === totalCourses) {
+            process.stdout.write(`\r   📊 Progress: ${processedCount}/${totalCourses} (${Math.round((processedCount/totalCourses)*100)}%)`);
+          }
+          
+          await delay(1000); // 1 second delay to avoid rate limits
+        }
       }
+      console.log(`\n   ✅ Assigned ${assignmentCount} new courses to levels\n`);
     }
-    console.log(`✅ Assigned ${assignmentCount} courses to levels\n`);
 
     // Step 2: Enroll students in courses
     console.log('📋 Step 2: Enrolling students in courses...');
@@ -300,7 +409,8 @@ const main = async () => {
         let completedCount = 0;
 
         for (let prevLevel = 1; prevLevel < level; prevLevel++) {
-          const courses = await getCoursesByLevelAndMajor(prevLevel, major);
+          const courses = await getCoursesByLevelAndMajor(prevLevel, major, adminToken);
+          console.log(`      Level ${prevLevel}: found ${courses.length} courses`);
 
           for (const course of courses) {
             const enrollmentId = await enrollStudent(adminToken, studentId, course._id);
@@ -310,9 +420,9 @@ const main = async () => {
               await updateGrade(adminToken, enrollmentId, grade);
               completedCount++;
               totalGradesSet++;
-              await delay(300);
+              await delay(1000);
             }
-            await delay(200);
+            await delay(1000);
           }
         }
 
@@ -322,7 +432,8 @@ const main = async () => {
 
       // Enroll in current level courses (in-progress)
       console.log(`   📚 Enrolling in current level courses (Level ${level})...`);
-      const currentCourses = await getCoursesByLevelAndMajor(level, major);
+      const currentCourses = await getCoursesByLevelAndMajor(level, major, adminToken);
+      console.log(`      Level ${level}: found ${currentCourses.length} courses`);
       let currentCount = 0;
 
       for (const course of currentCourses.slice(0, 6)) {
@@ -330,7 +441,7 @@ const main = async () => {
         if (enrollmentId) {
           currentCount++;
         }
-        await delay(200);
+        await delay(1000);
       }
 
       console.log(`   ✅ Current: ${currentCount} courses (in-progress)`);
@@ -340,7 +451,7 @@ const main = async () => {
       if (level > 1) {
         console.log(`   🔄 Recalculating GPA...`);
         await recalculateGPA(adminToken, studentId);
-        await delay(500);
+        await delay(1000);
       }
 
       // Progress indicator
