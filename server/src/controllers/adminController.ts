@@ -30,7 +30,8 @@ export const getAdminStats = async (req: Request, res: Response): Promise<void> 
     try {
         const totalStudents = await Student.countDocuments({ role: { $ne: 'superadmin' } });
         const totalCourses = await Course.countDocuments({ isActive: true });
-        const totalAdmins = await AdminUser.countDocuments({ role: 'superadmin' });
+        const totalAdmins = await AdminUser.countDocuments({ role: 'admin' });
+        const totalSuperAdmins = await AdminUser.countDocuments({ role: 'superadmin' });
         const totalEnrollments = await Enrollment.countDocuments();
 
         // Recent logins in last 24 hours
@@ -52,7 +53,7 @@ export const getAdminStats = async (req: Request, res: Response): Promise<void> 
 
         res.status(200).json({
             success: true,
-            stats: { totalStudents, totalCourses, totalAdmins, totalEnrollments, recentLogins },
+            stats: { totalStudents, totalCourses, totalAdmins, totalSuperAdmins, totalEnrollments, recentLogins },
             studentsByLevel: studentsByLevel.map((s: { _id: number; count: number }) => ({ level: s._id, count: s.count })),
             courses: courses.map((c: any) => ({ code: c.code, name: c.name, enrolled: c.enrolledCount, capacity: c.capacity })),
         });
@@ -87,15 +88,28 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
 
         // If role is admin or superadmin, fetch from AdminUser collection
         if (role === 'admin' || role === 'superadmin') {
+            // Build filter for AdminUser query
+            const adminFilter: any = {};
+            if (search) {
+                adminFilter.$or = [
+                    { fullName: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } },
+                ];
+            }
+            // If specific role requested, filter by it. Otherwise get all admins.
+            if (role) {
+                adminFilter.role = role;
+            }
+            
             const [admins, adminCount] = await Promise.all([
-                AdminUser.find(filter)
+                AdminUser.find(adminFilter)
                     .select('fullName email universityId major role isActive createdAt createdBy')
                     .sort({ createdAt: -1 })
                     .skip(skip)
                     .limit(limit)
                     .populate('createdBy', 'fullName email')
                     .lean(),
-                AdminUser.countDocuments(filter),
+                AdminUser.countDocuments(adminFilter),
             ]);
             students = admins.map((admin: any) => ({
                 id: admin._id,

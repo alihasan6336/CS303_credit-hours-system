@@ -27,6 +27,20 @@ const AccountManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "student" | "admin" | "superadmin"
   >("student");
+  
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Actual total counts for KPI (from stats API, not paginated)
+  const [kpiStats, setKpiStats] = useState({
+    totalStudents: 0,
+    totalAdmins: 0,
+    totalSuperAdmins: 0,
+  });
   const [showRegisterForm, setShowRegisterForm] = useState(false);
   const [registerRole, setRegisterRole] = useState<
     "student" | "admin" | "superadmin"
@@ -75,9 +89,12 @@ const AccountManagement: React.FC = () => {
 
   const fetchStudents = useCallback(async () => {
     try {
-      const response = await adminApi.getStudents(activeTab);
+      setLoading(true);
+      const response = await adminApi.getStudents(activeTab, page, limit, searchQuery);
       if (response.success) {
         setStudents(response.students);
+        setTotalPages(response.pages);
+        setTotalStudents(response.total);
       }
     } catch (err: any) {
       console.warn("Failed to load students:", err.message);
@@ -85,11 +102,47 @@ const AccountManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, page, limit, searchQuery]);
+  
+  // Fetch KPI stats (actual totals, not paginated)
+  const fetchKpiStats = useCallback(async () => {
+    try {
+      const response = await adminApi.getStats();
+      if (response.success) {
+        setKpiStats({
+          totalStudents: response.stats.totalStudents || 0,
+          totalAdmins: response.stats.totalAdmins || 0,
+          totalSuperAdmins: response.stats.totalSuperAdmins || 0,
+        });
+      }
+    } catch (err: any) {
+      console.warn("Failed to load KPI stats:", err.message);
+    }
+  }, []);
+  
+  // Reset page when tab or search changes
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, searchQuery]);
 
   useEffect(() => {
     fetchStudents();
-  }, [activeTab, fetchStudents]);
+  }, [fetchStudents]);
+  
+  // Load KPI stats on mount and when tab changes
+  useEffect(() => {
+    fetchKpiStats();
+  }, [fetchKpiStats, activeTab]);
+  
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+    }
+  };
+  
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
 
   const handleLogout = () => {
     authApi.logout();
@@ -148,7 +201,8 @@ const AccountManagement: React.FC = () => {
 
     try {
       await adminApi.deleteAccount(id);
-      fetchStudents();
+      await fetchStudents();
+      await fetchKpiStats(); // Refresh totals for KPI
     } catch (err: any) {
       setError(err.message || "Failed to delete account");
     }
@@ -184,6 +238,7 @@ const AccountManagement: React.FC = () => {
       if (response.success) {
         setAuthorizationMessage(null);
         await fetchStudents();
+        await fetchKpiStats(); // Refresh totals for KPI
         setError("");
         setShowRegisterForm(false);
       }
@@ -196,8 +251,6 @@ const AccountManagement: React.FC = () => {
       setFormLoading(false);
     }
   };
-
-  const filteredStudents = students.filter((s) => s.role === activeTab);
 
   const majors = [
     "Computer Science",
@@ -319,7 +372,7 @@ const AccountManagement: React.FC = () => {
                   : "bg-white text-gray-600 hover:bg-gray-50"
               }`}
             >
-              {tab}s ({students.filter((s) => s.role === tab).length})
+              {tab}s ({tab === "student" ? kpiStats.totalStudents : tab === "admin" ? kpiStats.totalAdmins : kpiStats.totalSuperAdmins})
             </button>
           ))}
         </div>
@@ -354,10 +407,40 @@ const AccountManagement: React.FC = () => {
               })()}
             </div>
 
+            {/* Search and Pagination Info */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search by name, email, or ID..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="w-80 px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                />
+                <svg
+                  className="absolute left-3 top-2.5 w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+              <div className="text-sm text-gray-600">
+                Showing {students.length} of {totalStudents} {activeTab}s
+                {searchQuery && ` (filtered by "${searchQuery}")`}
+              </div>
+            </div>
+
             {/* Admin/SuperAdmin/Student Accounts Table */}
             {activeTab === "student" ? (
               <StudentsTable
-                students={filteredStudents}
+                students={students}
                 onDelete={isSuperAdmin ? handleDeleteAccount : undefined}
                 showActions={isSuperAdmin}
                 isLoading={loading}
@@ -385,17 +468,17 @@ const AccountManagement: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredStudents.length === 0 ? (
+                    {students.length === 0 ? (
                       <tr>
                         <td
                           colSpan={isSuperAdmin ? 4 : 3}
                           className="px-6 py-12 text-center text-gray-500"
                         >
-                          No {activeTab}s found
+                          No {activeTab} accounts found
                         </td>
                       </tr>
                     ) : (
-                      filteredStudents.map((student) => (
+                      students.map((student) => (
                         <tr
                           key={student.id}
                           className="border-b last:border-0 hover:bg-gray-50"
@@ -451,6 +534,71 @@ const AccountManagement: React.FC = () => {
                     )}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 px-4 py-3 bg-white rounded-lg shadow-sm">
+                <div className="text-sm text-gray-600">
+                  Page {page} of {totalPages}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePageChange(page - 1)}
+                    disabled={page === 1}
+                    className={`px-3 py-1 rounded text-sm ${
+                      page === 1
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                    }`}
+                  >
+                    ← Previous
+                  </button>
+                  
+                  {/* Page numbers */}
+                  <div className="flex gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      // Show pages around current page
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (page <= 3) {
+                        pageNum = i + 1;
+                      } else if (page >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = page - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`w-8 h-8 rounded text-sm ${
+                            page === pageNum
+                              ? "bg-indigo-600 text-white"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => handlePageChange(page + 1)}
+                    disabled={page === totalPages}
+                    className={`px-3 py-1 rounded text-sm ${
+                      page === totalPages
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                    }`}
+                  >
+                    Next →
+                  </button>
+                </div>
               </div>
             )}
           </div>

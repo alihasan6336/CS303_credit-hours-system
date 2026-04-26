@@ -10,6 +10,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "create-data": "ts-node src/scripts/createData.ts",
     "create-students-api": "ts-node src/scripts/createStudentsWithAPI.ts",
+    "enroll-existing-students": "ts-node src/scripts/enrollExistingStudents.ts",
     "test-models": "ts-node src/testModels.ts"
   },
   "keywords": [],

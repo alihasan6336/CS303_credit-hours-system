@@ -350,7 +350,9 @@ interface AdminStatsResponse {
     totalStudents: number;
     totalCourses: number;
     totalAdmins: number;
+    totalSuperAdmins: number;
     totalEnrollments: number;
+    recentLogins: number;
   };
   studentsByLevel: { level: number; count: number }[];
   courses: { code: string; name: string; enrolled: number; capacity: number }[];
@@ -373,6 +375,11 @@ interface StudentAccount {
 interface StudentsListResponse {
   success: boolean;
   students: StudentAccount[];
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+  count: number;
 }
 
 interface CreateAccountResponse {
@@ -405,8 +412,14 @@ export const adminApi = {
     return request<AdminStatsResponse>("/api/admin/stats");
   },
 
-  getStudents(role?: string): Promise<StudentsListResponse> {
-    const query = role ? `?role=${role}` : "";
+  getStudents(role?: string, page: number = 1, limit: number = 10, search?: string): Promise<StudentsListResponse> {
+    const params = new URLSearchParams();
+    if (role) params.append('role', role);
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+    if (search) params.append('search', search);
+    
+    const query = params.toString() ? `?${params.toString()}` : "";
     return request<StudentsListResponse>(`/api/admin/students${query}`);
   },
 
