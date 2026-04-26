@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { courseApi, authApi } from "../../utils/api";
+import { courseApi } from "../../utils/api";
+import AdminSidebar from "../../components/admin/AdminSidebar";
 
 interface Course {
   _id: string;
@@ -24,13 +24,10 @@ const TIME_SLOTS = [
 ];
 
 const TableManagement: React.FC = () => {
-  const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterYear, setFilterYear] = useState<number | "all">("all");
   const [filterMajor, setFilterMajor] = useState<string>("all");
-
-  const user = JSON.parse(localStorage.getItem("student") || "{}");
 
   useEffect(() => {
     fetchCourses();
@@ -48,11 +45,6 @@ const TableManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    authApi.logout();
-    navigate("/login");
   };
 
   const filteredCourses = courses.filter((c) => {
@@ -81,67 +73,7 @@ const TableManagement: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white flex flex-col">
-        <div className="p-6">
-          <div className="text-2xl font-bold mb-2">🎓 Admin Panel</div>
-          <p className="text-indigo-200 text-sm">Credit Hours System</p>
-        </div>
-
-        <div className="px-4 py-3 mx-4 bg-indigo-700/50 rounded-lg">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-semibold">
-              {user.fullName?.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
-            </div>
-            <div>
-              <p className="font-medium">{user.fullName}</p>
-              <p className="text-xs text-indigo-200 capitalize">{user.role}</p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="mt-6 px-4 space-y-1 flex-1">
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
-            onClick={() => navigate("/admin")}
-          >
-            <span>📊</span> Dashboard
-          </button>
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
-            onClick={() => navigate("/admin/accounts")}
-          >
-            <span>👥</span> Manage Accounts
-          </button>
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
-            onClick={() => navigate("/admin/manage-courses")}
-          >
-            <span>📚</span> Manage Courses
-          </button>
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg text-left transition-colors"
-            onClick={() => navigate("/admin/courses")}
-          >
-            <span>📋</span> Course Assignments
-          </button>
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 rounded-lg text-left"
-            onClick={() => navigate("/admin/tables")}
-          >
-            <span>📅</span> Table Management
-          </button>
-        </nav>
-
-        <div className="p-4 border-t border-indigo-700">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-red-200 transition-colors"
-          >
-            <span>🚪</span> Sign Out
-          </button>
-        </div>
-      </aside>
+      <AdminSidebar />
 
       {/* Main Content */}
       <main className="flex-1 p-8 overflow-y-auto">
