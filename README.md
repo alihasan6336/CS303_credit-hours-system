@@ -472,21 +472,16 @@ CS303_credit-hours-system/
 
 ---
 
-## 📄 License
-
-This project is licensed under the ISC License - see the individual `package.json` files for details.
-
----
-
 ## 👥 Team
 
 **CS303 Course Project** - University Academic Management System
 
-Built with ❤️ by the development team.
+Built the development team.
 
----
+- Youssef bassiony 
+- Hassan Khaled 
+- Ali Hassan 
+- Mostafa 
+- Hazem 
 
-<p align="center">
-  <strong>⭐ Star this repo if you find it helpful!</strong>
-</p>
 
