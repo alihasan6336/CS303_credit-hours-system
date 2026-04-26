@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import Student from '../models/Student';
 import AdminUser from '../models/AdminUser';
 import { signToken, verifyToken } from '../utils/jwt';
+import { resolveAdminType } from '../utils/adminType';
 
 // Matches every field that Login.tsx and Home.tsx read from the response
 const buildStudentPayload = (student: InstanceType<typeof Student>) => ({
@@ -30,6 +31,7 @@ const buildAdminPayload = (admin: InstanceType<typeof AdminUser>) => ({
   fullName: admin.fullName,
   email: admin.email,
   role: admin.role,
+  adminType: resolveAdminType(admin._id.toString(), admin.email),
   isActive: admin.isActive,
 });
 

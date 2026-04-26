@@ -19,6 +19,10 @@ declare global {
        * List of permission keys granted to the current admin.
        */
       adminPermissions?: import('../models/AdminPermission').PermissionKey[];
+      /**
+       * Resolved operational admin type based on id/email mapping.
+       */
+      adminType?: import('../utils/adminType').AdminType | null;
     }
   }
 }

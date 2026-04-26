@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
 import AdminUser, { IAdminUser } from '../models/AdminUser';
 import AdminPermission, { PermissionKey, ALL_PERMISSIONS } from '../models/AdminPermission';
+import { permissionsFromAdminType, resolveAdminType } from '../utils/adminType';
 
 
 interface JwtPayload {
@@ -56,6 +57,7 @@ export const adminProtect = async (
 
     // 5. Attach admin user to request
     req.adminUser = user as unknown as IAdminUser;
+    req.adminType = resolveAdminType(String(user._id), user.email);
 
     // 6. Load permissions from DB
     if (user.role === 'superadmin') {
@@ -65,7 +67,9 @@ export const adminProtect = async (
       const permDoc = await AdminPermission.findOne({ admin: user._id })
         .select('permissions')
         .lean();
-      req.adminPermissions = (permDoc?.permissions ?? []) as PermissionKey[];
+      const dbPermissions = (permDoc?.permissions ?? []) as PermissionKey[];
+      const mappedPermissions = permissionsFromAdminType(req.adminType);
+      req.adminPermissions = [...new Set([...dbPermissions, ...mappedPermissions])];
     } else {
       req.adminPermissions = [];
     }

@@ -23,8 +23,8 @@ const router = Router();
 // All admin routes require admin authentication
 router.use(adminProtect);
 
-// Stats - super_admin only, requires users:stats permission
-router.get('/stats', requireRole('superadmin'), requirePermission('users:stats'), asyncWrap(getAdminStats));
+// Stats - admin/superadmin with explicit users:stats permission
+router.get('/stats', requireRole('admin', 'superadmin'), requirePermission('users:stats'), asyncWrap(getAdminStats));
 
 // User management - /users aliases (RESTful)
 router.get('/users', requireRole('admin', 'superadmin'), requirePermission('users:list'), asyncWrap(getStudents));
