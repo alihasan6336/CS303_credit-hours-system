@@ -12,7 +12,7 @@ const AdminSidebar: React.FC = () => {
   const location = useLocation();
   const user = getStoredAdminUser();
   const isSuperAdmin = user.role === "superadmin";
-  const adminType = user.adminType;
+  const userType = (user.adminType || user.role || "").toLowerCase();
 
   const handleLogout = () => {
     authApi.logout();
@@ -53,8 +53,14 @@ const AdminSidebar: React.FC = () => {
     {
       label: "Table Management",
       path: "/admin/tables",
-      icon: "📅",
+      icon: "🗓️",
       visible: canAccessFeature(user, "tableManagement"),
+    },
+    {
+      label: "Student Timetables",
+      path: "/admin/student-timetables",
+      icon: "📅",
+      visible: canAccessFeature(user, "studentTimetables"),
     },
   ];
 
@@ -63,9 +69,10 @@ const AdminSidebar: React.FC = () => {
       <div className="p-6">
         <div className="text-2xl font-bold mb-1">
           {isSuperAdmin ? "🛡️ Super Admin" : 
-           adminType === "it_admin" ? "🖥️ IT Admin" :
-           adminType === "schedule_admin" ? "📅 Schedule Admin" :
-           adminType === "courses_admin" ? "📚 Courses Admin" : "🎓 Admin Panel"}
+           userType.includes("it") ? "🖥️ IT Admin" :
+           userType.includes("table") || userType.includes("schedule") ? "📅 Table Admin" :
+           userType.includes("courses") ? "📚 Courses Admin" : 
+           userType.includes("enrollment") ? "✍️ Enrollment Admin" : "🎓 Admin Panel"}
         </div>
         <p className="text-indigo-200 text-sm">Credit Hours System</p>
       </div>
@@ -78,7 +85,7 @@ const AdminSidebar: React.FC = () => {
           <div>
             <p className="font-medium truncate max-w-[120px]">{user.fullName}</p>
             <p className="text-xs text-indigo-200 capitalize">
-              {isSuperAdmin ? "Super Admin" : adminType?.replace("_", " ") || "Admin"}
+              {isSuperAdmin ? "Super Admin" : userType.replace("_", " ") || "Admin"}
             </p>
           </div>
         </div>

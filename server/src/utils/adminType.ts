@@ -1,61 +1,49 @@
 import { PermissionKey } from '../models/AdminPermission';
 
-export type AdminType = 'it_admin' | 'schedule_admin' | 'courses_admin';
+export type AdminType = 'super_admin' | 'it_admin' | 'table_admin' | 'courses_admin' | 'enrollment_admin' | 'none';
 
-const DEFAULT_IT_IDENTIFIERS = ['it@university.edu'];
-const DEFAULT_SCHEDULE_IDENTIFIERS = ['schedule@university.edu'];
-const DEFAULT_COURSES_IDENTIFIERS = ['courses@university.edu'];
-
-const parseIdentifiers = (rawValue: string | undefined, fallback: string[]): Set<string> => {
-  const source = rawValue?.trim() ? rawValue : fallback.join(',');
-  return new Set(
-    source
-      .split(',')
-      .map((v) => v.trim().toLowerCase())
-      .filter(Boolean)
-  );
-};
-
-const IT_ADMIN_IDENTIFIERS = parseIdentifiers(
-  process.env.IT_ADMIN_IDENTIFIERS,
-  DEFAULT_IT_IDENTIFIERS
-);
-const SCHEDULE_ADMIN_IDENTIFIERS = parseIdentifiers(
-  process.env.SCHEDULE_ADMIN_IDENTIFIERS,
-  DEFAULT_SCHEDULE_IDENTIFIERS
-);
-const COURSES_ADMIN_IDENTIFIERS = parseIdentifiers(
-  process.env.COURSES_ADMIN_IDENTIFIERS,
-  DEFAULT_COURSES_IDENTIFIERS
-);
-
-const ADMIN_TYPE_PERMISSIONS: Record<AdminType, PermissionKey[]> = {
+const ADMIN_TYPE_PERMISSIONS: Record<string, PermissionKey[]> = {
   it_admin: ['users:list', 'users:view', 'users:create', 'users:update', 'users:toggle', 'users:stats'],
-  schedule_admin: ['courses:list', 'courses:view', 'courses:update'],
-  courses_admin: [
-    'courses:list',
-    'courses:view',
-    'courses:create',
-    'courses:update',
-    'courses:enrollments',
-    'enrollments:list',
-    'enrollments:create',
-    'enrollments:update',
+  table_admin: [
+    'users:list', 'users:view',
+    'courses:list', 'courses:view', 'courses:update',
+    'enrollments:list', 'enrollments:create', 'enrollments:update', 'enrollments:delete',
+    'users:stats'
   ],
+  courses_admin: [
+    'courses:list', 'courses:view', 'courses:create', 'courses:update', 'courses:delete', 'courses:enrollments',
+    'enrollments:list', 'enrollments:create', 'enrollments:update',
+    'users:stats'
+  ],
+  enrollment_admin: [
+    'users:list', 'users:view',
+    'enrollments:list', 'enrollments:create', 'enrollments:update', 'enrollments:delete',
+    'users:stats'
+  ],
+  super_admin: [
+    'users:list', 'users:view', 'users:create', 'users:update', 'users:delete', 'users:toggle', 'users:stats', 'users:password_reset',
+    'courses:list', 'courses:view', 'courses:create', 'courses:update', 'courses:delete', 'courses:enrollments',
+    'enrollments:list', 'enrollments:create', 'enrollments:update', 'enrollments:delete',
+    'system:settings', 'system:audit'
+  ],
+  none: []
 };
 
-const matchesIdentifiers = (identifiers: Set<string>, adminId: string, adminEmail: string): boolean => {
-  return identifiers.has(adminId.toLowerCase()) || identifiers.has(adminEmail.toLowerCase());
+export const resolveAdminType = (id: string, email: string, role: string): AdminType => {
+  const normalizedRole = role.toLowerCase();
+  const normalizedEmail = email.toLowerCase();
+
+  if (normalizedRole === 'superadmin' || normalizedEmail === 'admin@admin.com') return 'super_admin';
+  if (normalizedRole === 'it_admin') return 'it_admin';
+  if (normalizedRole === 'table_admin' || normalizedRole === 'schedule_admin') return 'table_admin';
+  if (normalizedRole === 'courses_admin') return 'courses_admin';
+  if (normalizedRole === 'enrollment_admin') return 'enrollment_admin';
+
+  return 'none';
 };
 
-export const resolveAdminType = (adminId: string, adminEmail: string): AdminType | null => {
-  if (matchesIdentifiers(IT_ADMIN_IDENTIFIERS, adminId, adminEmail)) return 'it_admin';
-  if (matchesIdentifiers(SCHEDULE_ADMIN_IDENTIFIERS, adminId, adminEmail)) return 'schedule_admin';
-  if (matchesIdentifiers(COURSES_ADMIN_IDENTIFIERS, adminId, adminEmail)) return 'courses_admin';
-  return null;
-};
-
-export const permissionsFromAdminType = (adminType: AdminType | null): PermissionKey[] => {
+export const permissionsFromAdminType = (adminType: AdminType | string | null): PermissionKey[] => {
   if (!adminType) return [];
-  return ADMIN_TYPE_PERMISSIONS[adminType];
+  const typeKey = String(adminType);
+  return ADMIN_TYPE_PERMISSIONS[typeKey] || [];
 };

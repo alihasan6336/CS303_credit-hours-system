@@ -13,7 +13,7 @@ export const ALL_PERMISSIONS = [
   // Table/Registration management (Table Admin)
   'table:view', 'table:open', 'table:close', 'table:edit', 'table:assign',
   'registration:open', 'registration:close',
-  'system:settings',
+  'system:settings', 'system:audit',
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSIONS[number];

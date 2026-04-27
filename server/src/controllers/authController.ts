@@ -31,7 +31,7 @@ const buildAdminPayload = (admin: InstanceType<typeof AdminUser>) => ({
   fullName: admin.fullName,
   email: admin.email,
   role: admin.role,
-  adminType: resolveAdminType(admin._id.toString(), admin.email),
+  adminType: resolveAdminType(admin._id.toString(), admin.email, admin.role),
   isActive: admin.isActive,
 });
 

@@ -1,37 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { adminApi, authApi } from "../../utils/api";
+import { adminApi } from "../../utils/api";
 import AdminSidebar from "../../components/admin/AdminSidebar";
-
-interface Stats {
-  totalStudents: number;
-  totalCourses: number;
-  totalAdmins: number;
-  totalSuperAdmins: number;
-  totalEnrollments: number;
-  recentLogins: number;
-}
-
-interface StudentsByLevel {
-  level: number;
-  count: number;
-}
-
-interface CourseStat {
-  code: string;
-  name: string;
-  enrolled: number;
-  capacity: number;
-}
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [studentsByLevel, setStudentsByLevel] = useState<StudentsByLevel[]>([]);
-  const [courses, setCourses] = useState<CourseStat[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
-  const user = JSON.parse(localStorage.getItem("student") || "{}");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,11 +14,9 @@ const SuperAdminDashboard: React.FC = () => {
         const response = await adminApi.getStats();
         if (response.success) {
           setStats(response.stats);
-          setStudentsByLevel(response.studentsByLevel);
-          setCourses(response.courses);
         }
       } catch (err: any) {
-        console.warn("Failed to load stats:", err.message);
+        console.warn("Failed to load SuperAdmin stats:", err.message);
       } finally {
         setLoading(false);
       }
@@ -51,93 +24,59 @@ const SuperAdminDashboard: React.FC = () => {
     fetchData();
   }, []);
 
-  const handleLogout = () => {
-    authApi.logout();
-    navigate("/login");
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-[#FDFDFF] font-sans">
       <AdminSidebar />
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Super Admin Dashboard</h1>
-          <p className="text-gray-500 mt-1">Complete system overview and control</p>
+      <main className="flex-1 p-10 overflow-y-auto">
+        <header className="mb-12">
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">System Command</h1>
+          <p className="text-slate-400 font-medium mt-1">Full administrative control and global oversight</p>
         </header>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
-            <p className="text-gray-500 text-xs">Students</p>
-            <p className="text-2xl font-bold text-gray-800">{stats?.totalStudents || 0}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-purple-500">
-            <p className="text-gray-500 text-xs">Courses</p>
-            <p className="text-2xl font-bold text-gray-800">{stats?.totalCourses || 0}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
-            <p className="text-gray-500 text-xs">Enrollments</p>
-            <p className="text-2xl font-bold text-gray-800">{stats?.totalEnrollments || 0}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-orange-500">
-            <p className="text-gray-500 text-xs">Admins</p>
-            <p className="text-2xl font-bold text-gray-800">{stats?.totalAdmins || 0}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500">
-            <p className="text-gray-500 text-xs">Super Admins</p>
-            <p className="text-2xl font-bold text-gray-800">{stats?.totalSuperAdmins || 0}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-teal-500">
-            <p className="text-gray-500 text-xs">Logins (24h)</p>
-            <p className="text-2xl font-bold text-gray-800">{stats?.recentLogins || 0}</p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          {[
+            { label: "Students", val: stats?.totalStudents, color: "blue" },
+            { label: "Admins", val: stats?.totalAdmins, color: "amber" },
+            { label: "Courses", val: stats?.totalCourses, color: "emerald" },
+            { label: "Enrollments", val: stats?.totalEnrollments, color: "indigo" }
+          ].map((item, idx) => (
+            <div key={idx} className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-100 border border-slate-50">
+               <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">{item.label}</p>
+               <p className={`text-4xl font-black text-${item.color}-600`}>{item.val || 0}</p>
+            </div>
+          ))}
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Master Controls</h3>
+        <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-slate-200/30 border border-slate-50">
+          <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
+             <span className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center text-lg">⚙️</span>
+             Master Portals
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button onClick={() => navigate("/admin/accounts")} className="flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors">
-              <div className="w-12 h-12 bg-slate-600 rounded-lg flex items-center justify-center text-white text-xl">👥</div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-800">Users</p>
-                <p className="text-xs text-gray-500">Accounts & Admins</p>
-              </div>
-            </button>
-            <button onClick={() => navigate("/admin/manage-courses")} className="flex items-center gap-4 p-4 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 transition-colors">
-              <div className="w-12 h-12 bg-amber-600 rounded-lg flex items-center justify-center text-white text-xl">📚</div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-800">Courses</p>
-                <p className="text-xs text-gray-500">Curriculum Mgmt</p>
-              </div>
-            </button>
-            <button onClick={() => navigate("/admin/courses")} className="flex items-center gap-4 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition-colors">
-              <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xl">📋</div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-800">Levels</p>
-                <p className="text-xs text-gray-500">Assignments</p>
-              </div>
-            </button>
-            <button onClick={() => navigate("/admin/tables")} className="flex items-center gap-4 p-4 bg-teal-50 hover:bg-teal-100 rounded-xl border border-teal-200 transition-colors">
-              <div className="w-12 h-12 bg-teal-600 rounded-lg flex items-center justify-center text-white text-xl">📅</div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-800">Schedules</p>
-                <p className="text-xs text-gray-500">Timetables</p>
-              </div>
-            </button>
+             {[
+               { label: "Accounts", path: "/admin/accounts", icon: "👥" },
+               { label: "Catalog", path: "/admin/manage-courses", icon: "📚" },
+               { label: "Assignments", path: "/admin/courses", icon: "📋" },
+               { label: "Timetable", path: "/admin/tables", icon: "📅" }
+             ].map((btn, idx) => (
+               <button
+                 key={idx}
+                 onClick={() => navigate(btn.path)}
+                 className="flex flex-col items-center justify-center p-8 bg-slate-50 hover:bg-white hover:shadow-xl transition-all rounded-[2rem] border border-transparent hover:border-slate-100 group"
+               >
+                 <span className="text-3xl mb-4 group-hover:scale-125 transition-transform">{btn.icon}</span>
+                 <span className="font-black text-slate-800 text-xs uppercase tracking-widest">{btn.label}</span>
+               </button>
+             ))}
           </div>
         </div>
       </main>

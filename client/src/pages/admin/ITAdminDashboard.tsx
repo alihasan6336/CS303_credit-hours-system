@@ -5,11 +5,9 @@ import AdminSidebar from "../../components/admin/AdminSidebar";
 
 interface Stats {
   totalStudents: number;
-  totalCourses: number;
   totalAdmins: number;
-  totalEnrollments: number;
-  recentLogins?: number;
-  totalSuperAdmins?: number;
+  totalSuperAdmins: number;
+  recentLogins: number;
 }
 
 const ITAdminDashboard: React.FC = () => {
@@ -25,7 +23,7 @@ const ITAdminDashboard: React.FC = () => {
           setStats(response.stats);
         }
       } catch (err: any) {
-        console.warn("Failed to load stats:", err.message);
+        console.warn("Failed to load IT stats:", err.message);
       } finally {
         setLoading(false);
       }
@@ -35,136 +33,61 @@ const ITAdminDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-[#FDFDFF] font-sans">
       <AdminSidebar />
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">IT Admin Dashboard</h1>
-          <p className="text-gray-500 mt-1">
-            Manage user accounts and system access
-          </p>
+      <main className="flex-1 p-10 overflow-y-auto">
+        <header className="mb-12">
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">IT Infrastructure</h1>
+          <p className="text-slate-400 font-medium mt-1">Global system state and user directory management</p>
         </header>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Total Students</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {stats?.totalStudents || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-2xl">
-                🎓
-              </div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-100 border border-slate-50">
+             <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">Total Students</p>
+             <p className="text-4xl font-black text-slate-800">{stats?.totalStudents || 0}</p>
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-orange-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Total Admins</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {stats?.totalAdmins || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-2xl">
-                👤
-              </div>
-            </div>
+          <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-100 border border-slate-50">
+             <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">Total Admins</p>
+             <p className="text-4xl font-black text-blue-600">{stats?.totalAdmins || 0}</p>
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Super Admins</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {stats?.totalSuperAdmins || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-2xl">
-                🛡️
-              </div>
-            </div>
+          <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-100 border border-slate-50">
+             <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">Super Admins</p>
+             <p className="text-4xl font-black text-purple-600">{stats?.totalSuperAdmins || 0}</p>
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Recent Logins (24h)</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {stats?.recentLogins || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl">
-                🔑
-              </div>
-            </div>
+          <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-100 border border-slate-50">
+             <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">Recent Logins (24h)</p>
+             <p className="text-4xl font-black text-emerald-600">{stats?.recentLogins || 0}</p>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            Quick Actions
+        <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-slate-200/30 border border-slate-50">
+          <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
+             <span className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">🔐</span>
+             System Administration
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="max-w-md">
             <button
               onClick={() => navigate("/admin/accounts")}
-              className="flex items-center gap-4 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition-colors"
+              className="group w-full p-8 bg-slate-50 hover:bg-white hover:shadow-2xl hover:shadow-blue-100 transition-all rounded-[2rem] border border-transparent hover:border-blue-100 text-left flex items-center justify-between"
             >
-              <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xl">
-                👥
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform">
+                  👥
+                </div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-lg">Manage Accounts</h4>
+                  <p className="text-sm text-slate-400 font-medium">Create, edit, or remove all user types</p>
+                </div>
               </div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-800">Manage Accounts</p>
-                <p className="text-sm text-gray-500">
-                  Create, edit, or delete user accounts
-                </p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => navigate("/admin/accounts")}
-              className="flex items-center gap-4 p-4 bg-green-50 hover:bg-green-100 rounded-xl border border-green-200 transition-colors"
-            >
-              <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center text-white text-xl">
-                ➕
-              </div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-800">Register Student</p>
-                <p className="text-sm text-gray-500">
-                  Add a new student account
-                </p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => navigate("/admin/accounts")}
-              className="flex items-center gap-4 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl border border-purple-200 transition-colors"
-            >
-              <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center text-white text-xl">
-                🔧
-              </div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-800">Register Admin</p>
-                <p className="text-sm text-gray-500">
-                  Add a new admin account
-                </p>
-              </div>
+              <span className="text-slate-300 group-hover:text-blue-600 font-black text-2xl transition-colors">→</span>
             </button>
           </div>
         </div>

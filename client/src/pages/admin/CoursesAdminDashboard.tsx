@@ -1,247 +1,100 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { courseApi, adminApi } from "../../utils/api";
+import { adminApi } from "../../utils/api";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 
-interface Course {
-  _id: string;
+interface CourseStat {
   code: string;
   name: string;
-  credits: number;
-  day: string;
-  time: string;
-  room: string;
-  instructor: string;
-  major?: string;
-  studentYear?: number;
-  capacity?: number;
-  enrolledCount?: number;
-  isActive?: boolean;
-}
-
-interface EnrollmentStat {
-  courseCode: string;
-  courseName: string;
   enrolled: number;
   capacity: number;
 }
 
 const CoursesAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [enrollmentStats, setEnrollmentStats] = useState<EnrollmentStat[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [topCourses, setTopCourses] = useState<CourseStat[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await adminApi.getStats();
+        if (response.success) {
+          setStats(response.stats);
+          setTopCourses(response.courses || []);
+        }
+      } catch (err: any) {
+        console.warn("Failed to load courses stats:", err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchData();
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [coursesRes] = await Promise.all([
-        courseApi.getAllCourses(),
-        adminApi.getStats().catch(() => null),
-      ]);
-
-      if (coursesRes.success) {
-        const allCourses = coursesRes.courses as any[];
-        setCourses(allCourses);
-
-        // Build enrollment stats from courses
-        const eStats = allCourses
-          .filter((c: any) => c.capacity)
-          .map((c: any) => ({
-            courseCode: c.code,
-            courseName: c.name,
-            enrolled: c.enrolledCount || 0,
-            capacity: c.capacity || 0,
-          }))
-          .sort((a: EnrollmentStat, b: EnrollmentStat) => b.enrolled - a.enrolled)
-          .slice(0, 10);
-        setEnrollmentStats(eStats);
-      }
-    } catch (err) {
-      console.error("Failed to load data:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const totalCourses = courses.length;
-  const activeCourses = courses.filter((c) => c.isActive !== false).length;
-  const totalCapacity = courses.reduce((sum, c) => sum + (c.capacity || 0), 0);
-  const totalEnrolled = courses.reduce(
-    (sum, c) => sum + (c.enrolledCount || 0),
-    0
-  );
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-[#FCFCFE] font-sans">
       <AdminSidebar />
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">
-            Courses Admin Dashboard
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Manage courses, assignments, and student enrollments
-          </p>
+      <main className="flex-1 p-10 overflow-y-auto">
+        <header className="mb-12">
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Curriculum & Courses</h1>
+          <p className="text-slate-400 font-medium mt-1">Manage academic catalog and program structure</p>
         </header>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-amber-500">
-            <p className="text-gray-500 text-sm">Total Courses</p>
-            <p className="text-3xl font-bold text-gray-800">{totalCourses}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-100 border border-slate-50">
+             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2">Total Courses</p>
+             <p className="text-5xl font-black text-slate-800">{stats?.totalCourses || 0}</p>
+             <button 
+               onClick={() => navigate("/admin/manage-courses")}
+               className="mt-6 px-6 py-3 bg-amber-500 text-white rounded-2xl text-[10px] font-black tracking-widest uppercase hover:bg-amber-600 transition-all active:scale-95 shadow-lg shadow-amber-100"
+             >
+               Manage Catalog
+             </button>
           </div>
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500">
-            <p className="text-gray-500 text-sm">Active Courses</p>
-            <p className="text-3xl font-bold text-green-600">
-              {activeCourses}
-            </p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
-            <p className="text-gray-500 text-sm">Total Enrolled</p>
-            <p className="text-3xl font-bold text-gray-800">{totalEnrolled}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500">
-            <p className="text-gray-500 text-sm">Total Capacity</p>
-            <p className="text-3xl font-bold text-gray-800">{totalCapacity}</p>
+
+          <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-100 border border-slate-50">
+             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2">Global Enrollment</p>
+             <p className="text-5xl font-black text-indigo-600">{stats?.totalEnrollments || 0}</p>
+             <button 
+               onClick={() => navigate("/admin/courses")}
+               className="mt-6 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black tracking-widest uppercase hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-100"
+             >
+               Level Assignments
+             </button>
           </div>
         </div>
 
-        {/* Two columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Popular Courses */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              Top Enrolled Courses
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="text-left text-sm text-gray-500 border-b">
-                    <th className="pb-2">Code</th>
-                    <th className="pb-2">Name</th>
-                    <th className="pb-2">Enrolled</th>
-                    <th className="pb-2">Capacity</th>
-                    <th className="pb-2">Fill %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {enrollmentStats.map((course) => {
-                    const fillPercent =
-                      course.capacity > 0
-                        ? Math.round(
-                            (course.enrolled / course.capacity) * 100
-                          )
-                        : 0;
-                    return (
-                      <tr
-                        key={course.courseCode}
-                        className="border-b last:border-0"
-                      >
-                        <td className="py-3 font-mono text-sm text-amber-700">
-                          {course.courseCode}
-                        </td>
-                        <td className="py-3 text-sm">{course.courseName}</td>
-                        <td className="py-3 text-sm font-medium">
-                          {course.enrolled}
-                        </td>
-                        <td className="py-3 text-sm text-gray-500">
-                          {course.capacity}
-                        </td>
-                        <td className="py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full ${
-                                  fillPercent >= 90
-                                    ? "bg-red-500"
-                                    : fillPercent >= 70
-                                    ? "bg-amber-500"
-                                    : "bg-green-500"
-                                }`}
-                                style={{
-                                  width: `${Math.min(100, fillPercent)}%`,
-                                }}
-                              />
-                            </div>
-                            <span className="text-xs text-gray-600">
-                              {fillPercent}%
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {enrollmentStats.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="py-4 text-center text-gray-500"
-                      >
-                        No enrollment data available
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              Quick Actions
-            </h3>
-            <div className="space-y-3">
-              <button
-                onClick={() => navigate("/admin/manage-courses")}
-                className="w-full flex items-center gap-4 p-4 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 transition-colors"
-              >
-                <div className="w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center text-white text-xl">
-                  📚
+        <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-slate-200/30 border border-slate-50">
+          <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
+             <span className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">🔥</span>
+             Top Enrolled Courses
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             {topCourses.map((c, i) => (
+                <div key={i} className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100 group hover:bg-white hover:shadow-xl transition-all">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center font-black text-amber-600 shadow-sm group-hover:scale-110 transition-transform">{c.code}</div>
+                      <div>
+                         <p className="font-black text-slate-800 text-sm">{c.name}</p>
+                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{c.enrolled} / {c.capacity} Students</p>
+                      </div>
+                   </div>
+                   <div className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.min(100, (c.enrolled / c.capacity) * 100)}%` }}></div>
+                   </div>
                 </div>
-                <div className="text-left">
-                  <p className="font-semibold text-gray-800">Manage Courses</p>
-                  <p className="text-sm text-gray-500">
-                    Add, edit, or remove courses
-                  </p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate("/admin/courses")}
-                className="w-full flex items-center gap-4 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition-colors"
-              >
-                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xl">
-                  📋
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold text-gray-800">
-                    Course Assignments
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Assign courses to levels & semesters
-                  </p>
-                </div>
-              </button>
-            </div>
+             ))}
           </div>
         </div>
       </main>

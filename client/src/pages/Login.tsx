@@ -7,7 +7,7 @@ import PasswordInput from "../components/auth/PasswordInput";
 import SubmitButton from "../components/auth/SubmitButton";
 import { validateEmail } from "../utils/validation";
 import { authApi } from "../utils/api";
-import { getDashboardPathForAdmin } from "../utils/adminAccess";
+import { getDashboardPathForAdmin, isAdminRole } from "../utils/adminAccess";
 
 interface FormData {
   email: string;
@@ -29,7 +29,7 @@ const Login: React.FC = () => {
   if (token && storedUser) {
     try {
       const user = JSON.parse(storedUser);
-      if (user.role === "admin" || user.role === "superadmin") {
+      if (isAdminRole(user.role)) {
         return <Navigate to={getDashboardPathForAdmin(user)} replace />;
       }
       return <Navigate to="/home" replace />;
@@ -133,7 +133,7 @@ const Login: React.FC = () => {
 
       // Redirect based on role
       const role = response.student.role;
-      if (role === "admin" || role === "superadmin") {
+      if (isAdminRole(role)) {
         navigate(getDashboardPathForAdmin(response.student));
       } else {
         navigate("/home");

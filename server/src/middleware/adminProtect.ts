@@ -3,7 +3,6 @@ import { verifyToken } from '../utils/jwt';
 import AdminUser, { IAdminUser } from '../models/AdminUser';
 import AdminPermission, { PermissionKey, ALL_PERMISSIONS } from '../models/AdminPermission';
 import { permissionsFromAdminType, resolveAdminType } from '../utils/adminType';
-import { getRolePermissions } from '../utils/adminRoles';
 
 
 interface JwtPayload {
@@ -58,25 +57,26 @@ export const adminProtect = async (
 
     // 5. Attach admin user to request
     req.adminUser = user as unknown as IAdminUser;
-    req.adminType = resolveAdminType(String(user._id), user.email);
+    
+    // Safety check: force superadmin role for the primary admin email
+    if (user.email === 'admin@admin.com') {
+      req.adminUser.role = 'superadmin';
+    }
+    
+    req.adminType = resolveAdminType(String(user._id), user.email, req.adminUser.role);
 
-    // 6. Load permissions based on role
-    if (user.role === 'superadmin') {
-      // Super admin always has all permissions
+    // 6. Load permissions from DB
+    if (req.adminUser.role === 'superadmin') {
+      // super_admin always has all permissions
       req.adminPermissions = [...ALL_PERMISSIONS];
-    } else if (['it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'].includes(user.role)) {
-      // Specialized admins get their role-based permissions
-      req.adminPermissions = getRolePermissions(user.role as any);
-    } else if (user.role === 'admin') {
-      // Legacy admin - load from DB permissions collection
+    } else {
+      // Any other admin role (regular admin or specialized ones like it_admin)
       const permDoc = await AdminPermission.findOne({ admin: user._id })
         .select('permissions')
         .lean();
       const dbPermissions = (permDoc?.permissions ?? []) as PermissionKey[];
       const mappedPermissions = permissionsFromAdminType(req.adminType);
       req.adminPermissions = [...new Set([...dbPermissions, ...mappedPermissions])];
-    } else {
-      req.adminPermissions = [];
     }
 
     next();

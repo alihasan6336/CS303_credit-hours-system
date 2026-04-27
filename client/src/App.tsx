@@ -1,4 +1,5 @@
 import "./App.css";
+import type { ReactNode } from "react";
 
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import Login from "./pages/Login";
@@ -13,12 +14,16 @@ import AcademicHistoryPage from "./pages/student/AcademicHistoryPage";
 import ManageCourses from "./pages/admin/ManageCourses";
 import TableManagement from "./pages/admin/TableManagement";
 import ITAdminDashboard from "./pages/admin/ITAdminDashboard";
-import ScheduleAdminDashboard from "./pages/admin/ScheduleAdminDashboard";
+import TableAdminDashboard from "./pages/admin/TableAdminDashboard";
 import CoursesAdminDashboard from "./pages/admin/CoursesAdminDashboard";
+import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
+import EnrollmentAdminDashboard from "./pages/admin/EnrollmentAdminDashboard";
+import StudentSchedules from "./pages/admin/StudentSchedules";
 import {
   canAccessPath,
   getDashboardPathForAdmin,
   getStoredAdminUser,
+  hasResolvedAdminType,
   isAdminUser,
 } from "./utils/adminAccess";
 
@@ -45,12 +50,32 @@ function AdminRoute() {
   return <Outlet />;
 }
 
-function AdminFeatureRoute({ path, element }: { path: string; element: JSX.Element }) {
+function AdminFeatureRoute({ path, element }: { path: string; element: ReactNode }) {
   const user = getStoredAdminUser();
   if (!canAccessPath(user, path)) {
     return <Navigate to={getDashboardPathForAdmin(user)} replace />;
   }
-  return element;
+  return <>{element}</>;
+}
+
+function AdminTypeMissingPage() {
+  const user = getStoredAdminUser();
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+      <div className="max-w-lg w-full bg-white border border-amber-200 rounded-xl shadow-sm p-6 text-center">
+        <h1 className="text-2xl font-bold text-amber-700 mb-2">
+          Admin Type Not Configured
+        </h1>
+        <p className="text-gray-700">
+          Your account is logged in as admin, but no admin type is assigned yet.
+        </p>
+        <p className="text-sm text-gray-500 mt-2">
+          Ask backend to map this account in admin identifiers:{" "}
+          <span className="font-medium">{user.email || "unknown email"}</span>
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function App() {
@@ -72,17 +97,7 @@ function App() {
       <Route element={<AdminRoute />}>
         <Route
           path="/admin"
-          element={
-            (() => {
-              const user = getStoredAdminUser();
-              const adminHome = getDashboardPathForAdmin(user);
-              return adminHome === "/admin" ? (
-                <AdminDashboard />
-              ) : (
-                <Navigate to={adminHome} replace />
-              );
-            })()
-          }
+          element={<AdminDashboard />}
         />
         <Route
           path="/admin/it"
@@ -94,11 +109,20 @@ function App() {
           }
         />
         <Route
+          path="/admin/enrollment"
+          element={
+            <AdminFeatureRoute
+              path="/admin/accounts"
+              element={<EnrollmentAdminDashboard />}
+            />
+          }
+        />
+        <Route
           path="/admin/schedule"
           element={
             <AdminFeatureRoute
               path="/admin/tables"
-              element={<ScheduleAdminDashboard />}
+              element={<TableAdminDashboard />}
             />
           }
         />
@@ -144,6 +168,15 @@ function App() {
             <AdminFeatureRoute
               path="/admin/tables"
               element={<TableManagement />}
+            />
+          }
+        />
+        <Route
+          path="/admin/student-timetables"
+          element={
+            <AdminFeatureRoute
+              path="/admin/student-timetables"
+              element={<StudentSchedules />}
             />
           }
         />

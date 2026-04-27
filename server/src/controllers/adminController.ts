@@ -89,7 +89,11 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
         // Filter
         const { role } = req.query;
         const filter: any = {};
-        if (role) filter.role = role;
+        if (role === 'student') {
+            filter.role = { $regex: '^student$', $options: 'i' };
+        } else if (role) {
+            filter.role = role;
+        }
 
         // Search by name or email
         if (search) {
@@ -116,13 +120,15 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
                     { email: { $regex: search, $options: 'i' } },
                 ];
             }
-            // If specific role requested, filter by it. Otherwise get all specialized admins.
-            if (role && role !== 'admin' && role !== 'superadmin') {
+            // If specific role requested, filter by it.
+            if (role === 'admin') {
+                // When "admin" tab is selected, show all specialized assistants + regular admins
+                adminFilter.role = { $in: ['admin', 'it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'] };
+            } else if (role) {
                 adminFilter.role = role;
             } else {
-                // If no role specified, OR if role is 'admin' or 'superadmin' 
-                // Get only the 4 specialized admins (NOT superadmin, NOT regular admin)
-                adminFilter.role = { $in: ['it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'] };
+                // If no role specified, get all admins including superadmin for total count
+                adminFilter.role = { $in: ['admin', 'superadmin', 'it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'] };
             }
 
             const admins = await AdminUser.find(adminFilter)
@@ -327,6 +333,19 @@ export const createAdminAccount = async (req: Request, res: Response): Promise<v
         });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const createAccountUnified = async (req: Request, res: Response): Promise<void> => {
+    const { role, adminType } = req.body;
+    if (role === 'student') {
+        return createStudentAccount(req, res);
+    } else {
+        // If it's a general admin role but has a specific specialization, use the specialization
+        if (role === 'admin' && adminType) {
+            req.body.role = adminType;
+        }
+        return createAdminAccount(req, res);
     }
 };
 

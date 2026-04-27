@@ -1,30 +1,26 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { adminApi, authApi } from "../../utils/api";
+import { adminApi } from "../../utils/api";
 import AdminSidebar from "../../components/admin/AdminSidebar";
-
-interface Stats {
-  totalStudents: number;
-  totalEnrollments: number;
-  recentEnrollments?: number;
-}
 
 const EnrollmentAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [recentEnrollments, setRecentEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const user = JSON.parse(localStorage.getItem("student") || "{}");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await adminApi.getStats();
-        if (response.success) {
-          setStats(response.stats);
-        }
+        const [statsRes, enrollRes] = await Promise.all([
+          adminApi.getStats(),
+          adminApi.getEnrollments(1, 5) // Page 1, limit 5
+        ]);
+
+        if (statsRes.success) setStats(statsRes.stats);
+        if (enrollRes.success) setRecentEnrollments(enrollRes.enrollments || []);
       } catch (err: any) {
-        console.warn("Failed to load stats:", err.message);
+        console.warn("Failed to load enrollment data:", err.message);
       } finally {
         setLoading(false);
       }
@@ -34,86 +30,65 @@ const EnrollmentAdminDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading enrollment data...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-[#F8FAFC] font-sans">
       <AdminSidebar />
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Enrollment Dashboard</h1>
-          <p className="text-gray-500 mt-1">Manage student course enrollments and academic records</p>
+      <main className="flex-1 p-10 overflow-y-auto">
+        <header className="mb-12">
+          <h1 className="text-4xl font-black text-slate-800 tracking-tight">Student Registry</h1>
+          <p className="text-slate-400 font-medium mt-1">Enrollment management and academic record auditing</p>
         </header>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Total Enrollments</p>
-                <p className="text-3xl font-bold text-gray-800">{stats?.totalEnrollments || 0}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl">✅</div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+          <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-100 border border-slate-50">
+             <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">Active Students</p>
+             <p className="text-4xl font-black text-slate-800">{stats?.totalStudents || 0}</p>
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Total Students</p>
-                <p className="text-3xl font-bold text-gray-800">{stats?.totalStudents || 0}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-2xl">🎓</div>
-            </div>
+          <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-100 border border-slate-50">
+             <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">Total Enrollments</p>
+             <p className="text-4xl font-black text-indigo-600">{stats?.totalEnrollments || 0}</p>
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Avg. Courses/Student</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {stats ? (stats.totalEnrollments / (stats.totalStudents || 1)).toFixed(1) : 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-2xl">📊</div>
-            </div>
+          <div className="bg-slate-900 p-8 rounded-[2rem] shadow-2xl shadow-slate-200 border border-slate-800 flex flex-col justify-center">
+             <button 
+               onClick={() => navigate("/admin/accounts")}
+               className="w-full py-4 bg-white text-slate-900 rounded-2xl text-[10px] font-black tracking-widest uppercase hover:bg-indigo-50 transition-all active:scale-95"
+             >
+               Manage Student Profiles
+             </button>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button
-              onClick={() => navigate("/admin/accounts")}
-              className="flex items-center gap-4 p-4 bg-green-50 hover:bg-green-100 rounded-xl border border-green-200 transition-colors"
-            >
-              <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center text-white text-xl">📝</div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-800">Manage Student Enrollments</p>
-                <p className="text-sm text-gray-500">Add or drop courses for students</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => navigate("/admin/accounts")}
-              className="flex items-center gap-4 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition-colors"
-            >
-              <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xl">⭐</div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-800">Grading & Results</p>
-                <p className="text-sm text-gray-500">Update student grades and view records</p>
-              </div>
-            </button>
+        <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-slate-200/40 border border-slate-50">
+          <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
+             <span className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-lg">📝</span>
+             Recent Enrollments
+          </h3>
+          <div className="space-y-4">
+             {recentEnrollments.map((e, i) => (
+                <div key={i} className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                   <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm text-xl">👤</div>
+                      <div>
+                         <p className="font-black text-slate-800">{e.student?.fullName}</p>
+                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{e.course?.code} — {e.course?.name}</p>
+                      </div>
+                   </div>
+                   <div className="text-right">
+                      <p className="text-xs font-black text-slate-800">{e.semester}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(e.enrolledAt).toLocaleDateString()}</p>
+                   </div>
+                </div>
+             ))}
+             {recentEnrollments.length === 0 && (
+                <p className="text-center py-10 text-slate-400 font-medium italic">No recent enrollment activity</p>
+             )}
           </div>
         </div>
       </main>
