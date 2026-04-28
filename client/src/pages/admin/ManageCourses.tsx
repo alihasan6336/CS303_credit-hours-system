@@ -23,6 +23,7 @@ const ManageCourses: React.FC = () => {
     time: "09:00 - 10:30",
     creditHours: 3,
     instructorName: "",
+    group: "A",
     prerequisite: "",
   });
 
@@ -45,6 +46,7 @@ const ManageCourses: React.FC = () => {
           time: course.time,
           creditHours: course.credits,
           instructorName: course.instructor,
+          group: course.group || "A",
           prerequisite: course.prerequisites?.join(", ") || "",
         })));
       }
@@ -88,6 +90,7 @@ const ManageCourses: React.FC = () => {
         room: "TBA",
         credits: formData.creditHours,
         instructor: formData.instructorName,
+        group: formData.group,
         capacity: 30,
         major: formData.major || undefined,
         studentYear: formData.studentYear || undefined,
@@ -129,6 +132,7 @@ const ManageCourses: React.FC = () => {
       time: "09:00 - 10:30",
       creditHours: 3,
       instructorName: "",
+      group: "A",
       prerequisite: "",
     });
   };
@@ -262,6 +266,9 @@ const ManageCourses: React.FC = () => {
                       Instructor
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      Group
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Prerequisite
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
@@ -308,6 +315,9 @@ const ManageCourses: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
                           {course.instructorName || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-700">
+                          {course.group || "A"}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
                           {course.prerequisite || "-"}
@@ -492,6 +502,21 @@ const ManageCourses: React.FC = () => {
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="e.g., Dr. Ahmed Hassan"
+                />
+              </div>
+
+              {/* Group */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Section / Group
+                </label>
+                <input
+                  type="text"
+                  name="group"
+                  value={formData.group}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="e.g., A, B, Morning, Evening"
                 />
               </div>
 

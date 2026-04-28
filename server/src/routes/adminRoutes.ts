@@ -13,6 +13,7 @@ import {
   adminEnroll,
   adminUnenroll,
   updateGrade,
+  updateStudentCreditOverride,
 } from '../controllers/adminController';
 import { adminProtect, requireRole, requirePermission } from '../middleware/adminProtect';
 import { asyncWrap } from '../middleware/errorHandler';
@@ -35,6 +36,7 @@ router.put('/users/:id', requireRole('admin', 'superadmin'), adminActionLimiter,
 router.delete('/users/:id', requireRole('superadmin'), adminActionLimiter, requirePermission('users:delete'), asyncWrap(deleteAccount));
 router.patch('/users/:id/toggle', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:toggle'), asyncWrap(toggleAccountStatus));
 router.get('/users/:id/record', requireRole('admin', 'superadmin'), requirePermission('users:view'), asyncWrap(getStudentAcademicRecord));
+router.patch('/users/:id/credit-override', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:update'), asyncWrap(updateStudentCreditOverride));
 
 // Legacy path aliases (for backward compatibility)
 router.get('/students', requireRole('admin', 'superadmin'), requirePermission('users:list'), asyncWrap(getStudents));

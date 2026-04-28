@@ -45,6 +45,7 @@ const AvailableCourses: React.FC = () => {
           time: c.time,
           creditHours: c.credits,
           instructorName: c.instructor,
+          group: c.group || "A",
           prerequisite: c.prerequisites?.join(", ") || "",
         }));
         setCourses(mappedCourses);
@@ -165,6 +166,9 @@ const AvailableCourses: React.FC = () => {
                     Day & Time
                   </th>
                   <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                    Group
+                  </th>
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
                     Action
                   </th>
                 </tr>
@@ -253,6 +257,11 @@ const AvailableCourses: React.FC = () => {
                           <div className="text-sm text-gray-600">
                             {course.time}
                           </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium">
+                            {course.group}
+                          </span>
                         </td>
                         <td className="px-6 py-4">
                           {isEnrolled ? (

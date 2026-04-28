@@ -24,6 +24,12 @@ const formatStudent = (s: any) => {
         level: s.level,
         role: s.role,
         gpa: s.gpa,
+        creditLimitOverride: s.creditLimitOverride || {
+            min: 14,
+            max: 19,
+            isActive: false,
+            reason: '',
+        },
     };
 };
 
@@ -610,3 +616,51 @@ export const updateGrade = async (req: Request, res: Response): Promise<void> =>
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const updateStudentCreditOverride = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { min, max, isActive, reason } = req.body;
+        const caller = req.adminUser;
+
+        if (min === undefined || max === undefined || isActive === undefined) {
+            res.status(400).json({ success: false, message: 'Min, max, and isActive status are required' });
+            return;
+        }
+
+        const student = await Student.findById(id);
+        if (!student) {
+            res.status(404).json({ success: false, message: 'Student not found' });
+            return;
+        }
+
+        student.creditLimitOverride = {
+            min: Number(min),
+            max: Number(max),
+            isActive: Boolean(isActive),
+            reason: reason || '',
+        };
+
+        await student.save();
+
+        // Audit log
+        if (caller) {
+            await AuditLog.create({
+                actor: caller._id,
+                action: 'admin:credit_override',
+                targetUser: student._id,
+                details: { min, max, isActive, reason },
+                ipAddress: req.ip,
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Credit limit override updated successfully',
+            creditLimitOverride: student.creditLimitOverride,
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+

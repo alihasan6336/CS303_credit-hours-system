@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../utils/api";
 import StudentLayout from "../../layout/StudentLayout";
+import { Sparkles } from "lucide-react";
 
 interface Course {
   code: string;
@@ -11,6 +12,7 @@ interface Course {
   room: string;
   credits: number;
   instructor: string;
+  group?: string;
 }
 
 interface StudentData {
@@ -303,12 +305,21 @@ const StudentDashboard: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800">
               Registered Courses
             </h3>
-            <button 
-              onClick={() => navigate("/courses")}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
-            >
-              + Add Course
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => navigate("/ai-schedule")}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-600 hover:to-purple-700 transition-all flex items-center gap-2 shadow-sm"
+              >
+                <Sparkles size={16} />
+                AI Optimize
+              </button>
+              <button 
+                onClick={() => navigate("/courses")}
+                className="px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                + Add Course
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -320,13 +331,14 @@ const StudentDashboard: React.FC = () => {
                   <th className="pb-3">Day</th>
                   <th className="pb-3">Time</th>
                   <th className="pb-3">Room</th>
+                  <th className="pb-3">Group</th>
                   <th className="pb-3">Credits</th>
                 </tr>
               </thead>
               <tbody>
                 {currentStudent.courses.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-4 text-center text-gray-500">
+                    <td colSpan={8} className="py-4 text-center text-gray-500">
                       No courses enrolled yet
                     </td>
                   </tr>
@@ -355,6 +367,11 @@ const StudentDashboard: React.FC = () => {
                       </td>
                       <td className="py-3 text-sm text-gray-600">
                         {course.room}
+                      </td>
+                      <td className="py-3 text-sm">
+                        <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                          {course.group || "A"}
+                        </span>
                       </td>
                       <td className="py-3 text-sm">
                         <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">

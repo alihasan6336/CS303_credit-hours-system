@@ -5,9 +5,12 @@ export interface ICourse extends Document {
   name:       string;
   day:        'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
   time:       string;
+  startTime:  number; // Minutes from midnight
+  endTime:    number;   // Minutes from midnight
   room:       string;
   credits:    number;
   instructor: string;
+  group?:      string; // e.g. "Group A"
   capacity:      number;
   enrolledCount: number;
   major?:        string;
@@ -23,7 +26,6 @@ const CourseSchema = new Schema<ICourse>(
     code: {
       type: String,
       required: [true, 'Course code is required'],
-      unique: true,
       uppercase: true,
       trim: true,
     },
@@ -46,6 +48,16 @@ const CourseSchema = new Schema<ICourse>(
       trim: true,
     },
 
+    startTime: {
+      type: Number,
+      required: [true, 'Start time is required'],
+    },
+
+    endTime: {
+      type: Number,
+      required: [true, 'End time is required'],
+    },
+
     room: {
       type: String,
       required: [true, 'Room is required'],
@@ -63,6 +75,12 @@ const CourseSchema = new Schema<ICourse>(
       type: String,
       required: [true, 'Instructor is required'],
       trim: true,
+    },
+    
+    group: {
+      type: String,
+      trim: true,
+      default: 'A',
     },
 
     capacity: {
@@ -101,6 +119,9 @@ const CourseSchema = new Schema<ICourse>(
   },
   { timestamps: true }
 );
+
+// Compound unique index: code + group must be unique
+CourseSchema.index({ code: 1, group: 1 }, { unique: true });
 
 CourseSchema.virtual('isFull').get(function () {
   return this.enrolledCount >= this.capacity;
