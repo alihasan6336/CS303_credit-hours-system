@@ -757,9 +757,6 @@ export const updateStudentCreditOverride = async (req: Request, res: Response): 
     }
 };
 
-
-// POST /api/admin/reset-password/:id
-// IT Admin + Superadmin: Reset user password
 export const resetPassword = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
