@@ -1,30 +1,32 @@
 import React, { useEffect, useState } from "react";
 import StudentLayout from "../../layout/StudentLayout";
 import WhatIfGpaCalculator from "../../components/student/WhatIfGpaCalculator";
+import { gpaApi } from "../../utils/api";
 
 const GpaCalculatorPage: React.FC = () => {
   const [studentData, setStudentData] = useState<{ gpa: number; completedCreditHours: number } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // Attempt to load from localStorage as in StudentDashboard
-    const studentStr = localStorage.getItem("student");
-    if (studentStr) {
+    const fetchGpaData = async () => {
       try {
-        const student = JSON.parse(studentStr);
-        setStudentData({
-          gpa: student.gpa || 0,
-          completedCreditHours: student.completedCreditHours || 0,
-        });
-      } catch (e) {
-        console.error("Failed to parse student data", e);
+        const response = await gpaApi.getBreakdown();
+        if (response.success) {
+          setStudentData({
+            gpa: response.gpa || 0,
+            completedCreditHours: response.totalCredits || 0,
+          });
+        }
+      } catch (err: any) {
+        console.error("Failed to fetch GPA data:", err);
+        setError(err.message || "Failed to load GPA data");
+      } finally {
+        setLoading(false);
       }
-    } else {
-      // Fallback dummy data if no local storage found
-      setStudentData({
-        gpa: 3.75,
-        completedCreditHours: 87,
-      });
-    }
+    };
+
+    fetchGpaData();
   }, []);
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
@@ -39,20 +41,24 @@ const GpaCalculatorPage: React.FC = () => {
           </p>
         </header>
 
-        {studentData ? (
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : studentData ? (
           <WhatIfGpaCalculator
             currentGpa={studentData.gpa}
             completedCredits={studentData.completedCreditHours}
           />
         ) : (
-          <div className="animate-pulse flex space-x-4">
-            <div className="flex-1 space-y-4 py-1">
-              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              <div className="space-y-2">
-                <div className="h-4 bg-gray-200 rounded"></div>
-                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-              </div>
-            </div>
+          <div className="text-center py-12 text-gray-500">
+            No GPA data available
           </div>
         )}
       </div>

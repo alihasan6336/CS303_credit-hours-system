@@ -16,12 +16,11 @@ const AvailableCourses: React.FC = () => {
   const user = JSON.parse(localStorage.getItem("student") || "{}");
 
   useEffect(() => {
-    // TEMPORARY: Authentication check bypassed for testing
-    // const token = localStorage.getItem("authToken");
-    // if (!token) {
-    //   navigate("/login");
-    //   return;
-    // }
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
 
     fetchCourses();
   }, [navigate]);
@@ -292,15 +291,6 @@ const AvailableCourses: React.FC = () => {
                                 <span className="inline-flex items-center justify-center px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
                                   ✓ Enrolled
                                 </span>
-                                 <button
-                                    onClick={() => handleDrop(course._id!)}
-                                    disabled={dropping === course._id}
-                                    className="inline-flex items-center justify-center px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    {dropping === course._id
-                                      ? "Dropping..."
-                                      : "Drop"}
-                                  </button>
                                 <button
                                   onClick={() => handleDrop(course._id!)}
                                   disabled={dropping === course._id}
@@ -320,7 +310,7 @@ const AvailableCourses: React.FC = () => {
                                 {isProcessing ? "Registering..." : "Register"}
                               </button>
                             )}
-                            </div>
+                          </div>
                           </td>
                         </tr>
                       );
