@@ -31,7 +31,7 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
     // If a student is requesting, filter by major and student level
     if (student) {
       // Must match major (or be general) AND match level (or be general/unspecified)
-      query.$and = [
+      filter.$and = [
         {
           $or: [
             { major: student.major },
@@ -49,7 +49,7 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
       ];
     }
 
-    const courses = await Course.find(query)   
+    const courses = await Course.find(filter)   
       .select('code name day time room credits instructor capacity enrolledCount major studentYear prerequisites')
       .lean();
 
