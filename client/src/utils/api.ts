@@ -216,29 +216,28 @@ async function request<T>(
 ): Promise<T> {
   const token = localStorage.getItem("authToken");
 
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+
+  let data: any = null;
   try {
-    const res = await fetch(`${API_BASE_URL}${path}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(options.headers || {}),
-      },
-      ...options,
-    });
+    data = await res.json();
+  } catch {
+    // ignore JSON parse errors, will fall back to generic message
+  }
 
-    let data: any = null;
-    try {
-      data = await res.json();
-    } catch {
-      // ignore JSON parse errors, will fall back to generic message
-    }
-
-    if (!res.ok) {
-      const message =
-        data?.message ||
-        (typeof data === "string" ? data : "Something went wrong");
-      throw new Error(message);
-    }
+  if (!res.ok) {
+    const message =
+      data?.message ||
+      (typeof data === "string" ? data : "Something went wrong");
+    throw new Error(message);
+  }
 
     return data as T;
   } catch (error) {
@@ -485,6 +484,13 @@ export const adminApi = {
   deleteAccount(id: string): Promise<{ success: boolean; message: string }> {
     return request(`/api/admin/accounts/${id}`, {
       method: "DELETE",
+    });
+  },
+
+  updateAccount(id: string, body: any): Promise<{ success: boolean; user: any; message?: string }> {
+    return request(`/api/admin/accounts/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
     });
   },
 

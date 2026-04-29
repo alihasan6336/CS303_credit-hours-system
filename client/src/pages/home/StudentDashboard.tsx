@@ -26,66 +26,20 @@ interface StudentData {
   courses: Course[];
 }
 
-const defaultStudent: StudentData = {
-  name: "Ahmed Al-Rashidi",
-  id: "2021-CS-0342",
-  level: 3,
-  gpa: 3.75,
-  completedHours: 87,
-  major: "Computer Science",
-  semester: "Spring 2025",
-  courses: [
-    {
-      code: "CS303",
-      name: "Software Engineering",
-      day: "Sunday",
-      time: "08:00 – 09:30",
-      room: "B-201",
-      credits: 3,
-      instructor: "Dr. Khalid Nasser",
-    },
-    {
-      code: "CS311",
-      name: "Database Systems",
-      day: "Monday",
-      time: "10:00 – 11:30",
-      room: "A-104",
-      credits: 3,
-      instructor: "Dr. Sara Ahmed",
-    },
-    {
-      code: "CS321",
-      name: "Computer Networks",
-      day: "Tuesday",
-      time: "12:00 – 13:30",
-      room: "C-305",
-      credits: 3,
-      instructor: "Dr. Omar Farouk",
-    },
-    {
-      code: "MATH301",
-      name: "Numerical Methods",
-      day: "Wednesday",
-      time: "09:00 – 10:30",
-      room: "D-112",
-      credits: 3,
-      instructor: "Dr. Laila Hassan",
-    },
-    {
-      code: "CS401",
-      name: "Artificial Intelligence",
-      day: "Thursday",
-      time: "14:00 – 15:30",
-      room: "B-310",
-      credits: 3,
-      instructor: "Dr. Yusuf Malik",
-    },
-  ],
+const emptyStudent: StudentData = {
+  name: "",
+  id: "",
+  level: 0,
+  gpa: 0,
+  completedHours: 0,
+  major: "",
+  semester: "",
+  courses: [],
 };
 
 const StudentDashboard: React.FC = () => {
   const [currentStudent, setCurrentStudent] =
-    useState<StudentData>(defaultStudent);
+    useState<StudentData>(emptyStudent);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -105,24 +59,8 @@ const StudentDashboard: React.FC = () => {
     const student = localStorage.getItem("student");
 
     if (!token || !student) {
-      const testToken = "test-token-" + Date.now();
-      const testStudent = {
-        id: "2021-CS-0342",
-        fullName: "Ahmed Al-Rashidi",
-        universityId: "2021-CS-0342",
-        email: "ahmed@university.edu",
-        major: "Computer Science",
-        academicYear: "3rd Year",
-        currentSemester: "Spring",
-        completedCreditHours: 87,
-        gpa: 3.75,
-        level: 3,
-        role: "student",
-      };
-
-      localStorage.setItem("authToken", testToken);
-      localStorage.setItem("student", JSON.stringify(testStudent));
-      token = testToken;
+      navigate("/login");
+      return;
     }
 
     authApi
@@ -171,7 +109,7 @@ const StudentDashboard: React.FC = () => {
             Student Dashboard
           </h1>
           <p className="text-gray-500 mt-1">
-            {currentStudent.semester} • {currentStudent.major}
+            {currentStudent.semester} {currentStudent.major ? `• ${currentStudent.major}` : ""}
           </p>
         </header>
 

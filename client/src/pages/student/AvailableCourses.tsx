@@ -232,81 +232,103 @@ const AvailableCourses: React.FC = () => {
                     );
                     const isProcessing = registering === course._id;
 
-                    return (
-                      <tr
-                        key={course._id}
-                        className="border-b last:border-0 hover:bg-gray-50 transition"
-                      >
-                        <td className="px-6 py-4">
-                          <span className="font-mono font-semibold text-gray-900">
-                            {course.courseCode}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-gray-900">
-                            {course.courseName}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {course.major}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-700">
-                          {course.instructorName || "-"}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                            {course.creditHours} cr
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {course.prerequisite ? (
-                            <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
-                              {course.prerequisite}
+                      return (
+                        <tr
+                          key={course._id}
+                          className="border-b last:border-0 hover:bg-gray-50 transition"
+                        >
+                          <td className="px-6 py-4">
+                            <span className="font-mono font-semibold text-gray-900">
+                              {course.courseCode}
                             </span>
-                          ) : (
-                            <span className="text-gray-400">None</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm text-gray-700">
-                            Year {course.studentYear}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-indigo-700">
-                            {course.day}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {course.time}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2.5 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium">
-                            {course.group}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          {isEnrolled ? (
-                            <span className="inline-flex items-center px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
-                              ✓ Enrolled
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="font-medium text-gray-900">
+                              {course.courseName}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {course.major}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-gray-700">
+                            {course.instructorName || "-"}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                              {course.creditHours} cr
                             </span>
-                          ) : (
-                            <button
-                              onClick={() => handleRegister(course._id!)}
-                              disabled={isProcessing}
-                              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                            >
-                              {isProcessing ? "Registering..." : "Register"}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {course.prerequisite ? (
+                              <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
+                                {course.prerequisite}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">None</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-gray-700">
+                              Year {course.studentYear}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-indigo-700">
+                              {course.day}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {course.time}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center px-2.5 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium">
+                              {course.group}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                          <div className="flex flex-col items-start gap-2">
+                            {isEnrolled ? (
+                              <div className="flex flex-col gap-2">
+                                <span className="inline-flex items-center justify-center px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
+                                  ✓ Enrolled
+                                </span>
+                                 <button
+                                    onClick={() => handleDrop(course._id!)}
+                                    disabled={dropping === course._id}
+                                    className="inline-flex items-center justify-center px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {dropping === course._id
+                                      ? "Dropping..."
+                                      : "Drop"}
+                                  </button>
+                                <button
+                                  onClick={() => handleDrop(course._id!)}
+                                  disabled={dropping === course._id}
+                                  className="inline-flex items-center justify-center px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {dropping === course._id
+                                    ? "Dropping..."
+                                    : "Drop"}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleRegister(course._id!)}
+                                disabled={isProcessing}
+                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                              >
+                                {isProcessing ? "Registering..." : "Register"}
+                              </button>
+                            )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             {courses.length > 0 && (
               <div className="px-6 py-4 bg-gray-50 border-t">
