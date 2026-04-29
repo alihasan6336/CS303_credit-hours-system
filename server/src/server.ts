@@ -12,6 +12,7 @@ import permissionRoutes from './routes/permissionRoutes';
 import auditRoutes from './routes/auditRoutes';
 import enrollmentRoutes from './routes/enrollmentRoutes';
 import gpaRoutes from './routes/gpaRoutes';
+import scheduleRoutes from './routes/scheduleRoutes';
 import { apiLimiter, authLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -42,8 +43,18 @@ const sanitizeBody = (req: Request, _res: Response, next: NextFunction): void =>
 
 // Security middleware
 app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(cors());
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:8081', 'http://192.168.1.6:5000', process.env.CLIENT_URL || 'http://localhost:3000'],
+  origin: [
+    'http://localhost:3000', 
+    'http://localhost:5173', 
+    'http://localhost:5174', 
+    'http://localhost:8081', 
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://192.168.1.6:5000', 
+    process.env.CLIENT_URL || 'http://localhost:3000'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -51,6 +62,15 @@ app.use(cors({
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(sanitizeBody); // Custom sanitizer for Express 5 compatibility
+
+// Request logging
+app.use((req, res, next) => {
+  console.log(`🚀 [${new Date().toISOString()}] ${req.method} ${req.url}`);
+  if (req.method !== 'GET') {
+    console.log('📦 Body:', JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
 
 // Global rate limiter for all API routes
 app.use('/api', apiLimiter);
@@ -79,12 +99,7 @@ app.use('/api/admin/permissions', permissionRoutes);
 app.use('/api/admin/audit', auditRoutes);
 app.use('/api/admin/enrollments', enrollmentRoutes);
 app.use('/api/gpa', gpaRoutes);
-
-// Request logging
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  next();
-});
+app.use('/api/schedule', scheduleRoutes);
 
 // 404 handler
 app.use((_req, res) => {

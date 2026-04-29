@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
 
 // Test mode - set to true to use mock data when API fails
 const TEST_MODE = false;
@@ -51,6 +51,7 @@ interface CourseFromApi {
   room: string;
   credits: number;
   instructor: string;
+  group?: string;
 }
 
 // Mock data generators
@@ -273,6 +274,7 @@ async function request<T>(
               room: "B-201",
               credits: 3,
               instructor: "Dr. Khalid Nasser",
+              group: "A",
             },
             {
               code: "CS311",
@@ -282,6 +284,7 @@ async function request<T>(
               room: "A-104",
               credits: 3,
               instructor: "Dr. Sara Ahmed",
+              group: "A",
             },
           ],
         } as T;
@@ -533,6 +536,7 @@ interface CourseAssignmentData {
     room: string;
     credits: number;
     instructor: string;
+    group?: string;
     capacity: number;
     enrolledCount: number;
   };
@@ -614,6 +618,7 @@ interface CourseResponse {
     room: string;
     credits: number;
     instructor: string;
+    group?: string;
     capacity: number;
     enrolledCount: number;
     major?: string;
@@ -645,6 +650,7 @@ export const courseApi = {
     room: string;
     credits: number;
     instructor: string;
+    group?: string;
     capacity?: number;
     major?: string;
     studentYear?: number;
@@ -664,6 +670,7 @@ export const courseApi = {
     room?: string;
     credits?: number;
     instructor?: string;
+    group?: string;
     capacity?: number;
     major?: string;
     studentYear?: number;
@@ -698,6 +705,26 @@ export const courseApi = {
   drop(courseId: string): Promise<{ success: boolean; message: string }> {
     return request(`/api/courses/${courseId}/enroll`, {
       method: "DELETE",
+    });
+  },
+};
+
+interface ScheduleResponse {
+  success: boolean;
+  message: string;
+  schedule: {
+    courses: any[];
+    totalCredits: number;
+    dayCount: number;
+    uniqueDays: string[];
+  };
+}
+
+export const scheduleApi = {
+  generate(body?: { preferredCourseIds?: string[] }): Promise<ScheduleResponse> {
+    return request<ScheduleResponse>("/api/schedule/generate", {
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
     });
   },
 };

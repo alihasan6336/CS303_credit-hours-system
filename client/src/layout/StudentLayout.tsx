@@ -20,6 +20,7 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children, user = {} }) =>
   const navItems = [
     { label: "Dashboard", path: "/home", icon: Home },
     { label: "Available Courses", path: "/courses", icon: BookOpen },
+    { label: "AI Optimizer", path: "/ai-schedule", icon: GraduationCap },
     { label: "GPA Calculator", path: "/gpa-calculator", icon: Calculator },
   ];
 

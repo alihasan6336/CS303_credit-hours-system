@@ -21,6 +21,12 @@ export interface IStudent extends Document {
   createdAt: Date;
   updatedAt: Date;
   role: string;
+  creditLimitOverride: {
+    min: number;
+    max: number;
+    isActive: boolean;
+    reason: string;
+  };
 }
 
 const StudentSchema: Schema = new Schema(
@@ -123,6 +129,13 @@ const StudentSchema: Schema = new Schema(
     resetPasswordExpires: {
       type: Date,
       select: false,
+    },
+
+    creditLimitOverride: {
+      min: { type: Number, default: 14 },
+      max: { type: Number, default: 19 },
+      isActive: { type: Boolean, default: false },
+      reason: { type: String, default: '' },
     },
   },
   {

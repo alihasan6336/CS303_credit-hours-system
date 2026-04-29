@@ -9,6 +9,7 @@ import AccountManagement from "./pages/admin/AccountManagement";
 import CourseAssignmentPage from "./pages/admin/CourseAssignmentPage";
 import AvailableCourses from "./pages/student/AvailableCourses";
 import GpaCalculatorPage from "./pages/student/GpaCalculatorPage";
+import AIScheduleGenerator from "./pages/student/AIScheduleGenerator";
 import ManageCourses from "./pages/admin/ManageCourses";
 
 function ProtectedRoute() {
@@ -51,6 +52,7 @@ function App() {
         <Route path="/home" element={<StudentDashboard />} />
         <Route path="/courses" element={<AvailableCourses />} />
         <Route path="/gpa-calculator" element={<GpaCalculatorPage />} />
+        <Route path="/ai-schedule" element={<AIScheduleGenerator />} />
       </Route>
 
       {/* Protected admin routes */}

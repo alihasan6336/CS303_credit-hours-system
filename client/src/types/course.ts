@@ -8,6 +8,7 @@ export interface Course {
   time: string;
   creditHours: number;
   instructorName?: string;
+  group?: string;
   prerequisite?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -22,6 +23,7 @@ export interface CourseFormData {
   time: string;
   creditHours: number;
   instructorName: string;
+  group: string;
   prerequisite: string;
 }
 

@@ -13,11 +13,14 @@ import mongoose from 'mongoose';
 import Course from '../models/Course';
 import Enrollment from '../models/Enrollment';
 import AuditLog from '../models/AuditLog';
+import SystemSettings from '../models/SystemSettings';
+import Student from '../models/Student';
 import { AppError } from '../middleware/errorHandler';
 
 // GET /api/courses
 export const getCourses = async (req: Request, res: Response): Promise<void> => {
   try {
+    const student = req.student; // From protect middleware
     const { level, major } = req.query;
     
     // Build filter based on query params
@@ -25,8 +28,29 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
     if (level) filter.level = Number(level);
     if (major) filter.major = major;
     
-    const courses = await Course.find(filter)
-      .select('code name day time room credits instructor capacity enrolledCount major level prerequisites')
+    // If a student is requesting, filter by major and student level
+    if (student) {
+      // Must match major (or be general) AND match level (or be general/unspecified)
+      query.$and = [
+        {
+          $or: [
+            { major: student.major },
+            { major: { $exists: false } },
+            { major: '' }
+          ]
+        },
+        {
+          $or: [
+            { studentYear: student.level },
+            { studentYear: { $exists: false } },
+            { studentYear: 0 } // Assuming 0 means all years
+          ]
+        }
+      ];
+    }
+
+    const courses = await Course.find(query)   
+      .select('code name day time room credits instructor capacity enrolledCount major studentYear prerequisites')
       .lean();
 
     res.status(200).json({
@@ -41,6 +65,7 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
         room: c.room,
         credits: c.credits,
         instructor: c.instructor,
+        group: c.group,
         capacity: c.capacity,
         enrolledCount: c.enrolledCount,
         major: c.major,
@@ -105,17 +130,23 @@ export const getMyCourses = async (req: Request, res: Response): Promise<void> =
 // POST /api/courses
 export const createCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { code, name, day, time, room, credits, instructor, capacity, major, level, prerequisites } = req.body;
+    const { code, name, day, time, room, credits, instructor, capacity, major,group, level,studentYear, prerequisites } = req.body;
     const creator = req.adminUser;
+
+    const timeStr = time || '08:00 - 09:30';
+    const { start, end } = parseTimeString(timeStr);
 
     const course = await Course.create({
       code,
       name,
       day: day || 'Sunday',
-      time: time || '08:00 - 09:30',
+      time: timeStr,
+      startTime: start,
+      endTime: end,
       room: room || 'TBA',
       credits,
       instructor,
+      group: group || 'A',
       capacity: capacity || 30,
       major,
       level,
@@ -155,7 +186,7 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
     if (error.code === 11000) {
       res.status(409).json({
         success: false,
-        message: `Course with code "${req.body.code}" already exists`,
+        message: `Course with code "${req.body.code}" and group "${req.body.group || 'A'}" already exists`,
       });
       return;
     }
@@ -212,7 +243,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const { code, name, day, time, room, credits, instructor, capacity, major, level, prerequisites } = req.body;
+    const { code, name, day, time, room, credits, instructor,group,level, capacity, major, studentYear, prerequisites } = req.body;
 
     // Guard: cannot reduce capacity below current enrollment
     if (capacity !== undefined) {
@@ -230,9 +261,16 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
       }
     }
 
+    let startTime, endTime;
+    if (time) {
+      const { start, end } = parseTimeString(time);
+      startTime = start;
+      endTime = end;
+    }
+
     const course = await Course.findByIdAndUpdate(
       id,
-      { code, name, day, time, room, credits, instructor, capacity, major, level, prerequisites },
+      { code, name, day, time, room, credits, instructor, capacity, major,group, level, studentYear, prerequisites },
       { new: true, runValidators: true }
     );
 
@@ -274,7 +312,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
     if (error.code === 11000) {
       res.status(409).json({
         success: false,
-        message: `Course with code "${req.body.code}" already exists`,
+        message: `Course with code "${req.body.code}" and group "${req.body.group || 'A'}" already exists`,
       });
       return;
     }
@@ -405,31 +443,55 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
       }
     }
 
+    // === CREDIT HOUR LIMIT CHECK ===
+    const settings = await SystemSettings.findOne().lean();
+    const minLimit = student.creditLimitOverride?.isActive 
+      ? student.creditLimitOverride.min 
+      : (settings?.minCreditHoursDefault || 14);
+    const maxLimit = student.creditLimitOverride?.isActive 
+      ? student.creditLimitOverride.max 
+      : (settings?.maxCreditHoursDefault || 19);
+
+    const enrolledEnrollments = await Enrollment.find({
+      student: student._id,
+      semester: student.currentSemester,
+      status: 'active',
+    }).populate('course', 'credits');
+
+    const currentTotalCredits = enrolledEnrollments.reduce((sum, e) => sum + ((e.course as any).credits || 0), 0);
+    
+    if (currentTotalCredits + course.credits > maxLimit) {
+      res.status(403).json({
+        success: false,
+        message: `Credit hour limit exceeded. Your maximum is ${maxLimit} credits. Current: ${currentTotalCredits}, Adding: ${course.credits}.`,
+        limit: maxLimit,
+        current: currentTotalCredits
+      });
+      return;
+    }
+
     // === SCHEDULE CONFLICT CHECK ===
     // Check if student has time conflict with already enrolled courses
     const currentEnrollments = await Enrollment.find({
       student: student._id,
       semester: student.currentSemester,
       status: 'active',
-    }).populate('course', 'day time code name');
+    }).populate('course', 'day startTime endTime code name');
 
     for (const enrollment of currentEnrollments) {
       const enrolledCourse = enrollment.course as any;
       if (enrolledCourse.day === course.day) {
-        // Check if times overlap (simple check for now)
-        // Format expected: "09:00 - 10:30"
-        const [existingStart, existingEnd] = enrolledCourse.time.split(' - ');
-        const [newStart, newEnd] = course.time.split(' - ');
-
-        if (timesOverlap(existingStart, existingEnd, newStart, newEnd)) {
+        // Optimized check using startTime and endTime
+        if (course.startTime < enrolledCourse.endTime && enrolledCourse.startTime < course.endTime) {
           res.status(409).json({
             success: false,
-            message: `Schedule conflict with ${enrolledCourse.code} (${enrolledCourse.name}) on ${course.day} at ${course.time}`,
+            message: `Schedule conflict with ${enrolledCourse.code} (${enrolledCourse.name}) on ${course.day}`,
             conflict: {
               courseCode: enrolledCourse.code,
               courseName: enrolledCourse.name,
               day: enrolledCourse.day,
-              time: enrolledCourse.time,
+              startTime: enrolledCourse.startTime,
+              endTime: enrolledCourse.endTime,
             },
           });
           return;
@@ -494,6 +556,27 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+// Helper function to parse time string into minutes from midnight
+export const parseTimeString = (timeStr: string) => {
+  // Handles formats like "08:00 - 09:30", "08:00 – 09:30", "08:00 – 09:30"
+  const parts = timeStr.split(/[-–—]/).map(p => p.trim());
+  if (parts.length < 2) return { start: 480, end: 570 };
+
+  const toMinutes = (time: string) => {
+    try {
+      const [hours, minutes] = time.split(':').map(Number);
+      return (hours || 0) * 60 + (minutes || 0);
+    } catch {
+      return 0;
+    }
+  };
+
+  return {
+    start: toMinutes(parts[0]),
+    end: toMinutes(parts[1])
+  };
 };
 
 // Helper function to check if two time ranges overlap

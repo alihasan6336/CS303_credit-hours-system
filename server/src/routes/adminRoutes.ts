@@ -13,7 +13,9 @@ import {
   adminEnroll,
   adminUnenroll,
   updateGrade,
+  updateStudentCreditOverride,
   resetPassword,
+
 } from '../controllers/adminController';
 import { adminProtect, requireRole, requirePermission } from '../middleware/adminProtect';
 import { asyncWrap } from '../middleware/errorHandler';
@@ -33,10 +35,11 @@ router.get('/users', requireRole( 'superadmin', 'it_admin'), requirePermission('
 router.get('/users/:id', requireRole( 'superadmin', 'it_admin'), requirePermission('users:view'), asyncWrap(getStudentById));
 router.post('/users/students', requireRole( 'superadmin', 'it_admin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createStudentAccount));
 router.post('/users/admins', requireRole('superadmin'), adminActionLimiter, requirePermission('users:create'), asyncWrap(createAdminAccount));
-router.put('/users/:id', requireRole( 'superadmin', 'it_admin'), adminActionLimiter, requirePermission('users:update'), asyncWrap(updateAccount));
-router.delete('/users/:id', requireRole('superadmin', 'it_admin'), adminActionLimiter, requirePermission('users:delete'), asyncWrap(deleteAccount));
-router.patch('/users/:id/toggle', requireRole( 'superadmin', 'it_admin'), adminActionLimiter, requirePermission('users:toggle'), asyncWrap(toggleAccountStatus));
-router.get('/users/:id/record', requireRole( 'superadmin', 'it_admin'), requirePermission('users:view'), asyncWrap(getStudentAcademicRecord));
+router.put('/users/:id', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:update'), asyncWrap(updateAccount));
+router.delete('/users/:id', requireRole('superadmin'), adminActionLimiter, requirePermission('users:delete'), asyncWrap(deleteAccount));
+router.patch('/users/:id/toggle', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:toggle'), asyncWrap(toggleAccountStatus));
+router.get('/users/:id/record', requireRole('admin', 'superadmin'), requirePermission('users:view'), asyncWrap(getStudentAcademicRecord));
+router.patch('/users/:id/credit-override', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:update'), asyncWrap(updateStudentCreditOverride));
 router.post('/users/:id/reset-password', requireRole( 'superadmin', 'it_admin'), adminActionLimiter, requirePermission('users:password_reset'), asyncWrap(resetPassword));
 
 // Legacy path aliases (for backward compatibility)
