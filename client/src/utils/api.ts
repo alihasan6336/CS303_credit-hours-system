@@ -216,28 +216,29 @@ async function request<T>(
 ): Promise<T> {
   const token = localStorage.getItem("authToken");
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
-
-  let data: any = null;
   try {
-    data = await res.json();
-  } catch {
-    // ignore JSON parse errors, will fall back to generic message
-  }
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {}),
+      },
+      ...options,
+    });
 
-  if (!res.ok) {
-    const message =
-      data?.message ||
-      (typeof data === "string" ? data : "Something went wrong");
-    throw new Error(message);
-  }
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      // ignore JSON parse errors, will fall back to generic message
+    }
+
+    if (!res.ok) {
+      const message =
+        data?.message ||
+        (typeof data === "string" ? data : "Something went wrong");
+      throw new Error(message);
+    }
 
     return data as T;
   } catch (error) {
