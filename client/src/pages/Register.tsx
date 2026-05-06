@@ -237,7 +237,6 @@ const Register: React.FC = () => {
 
   const isFormValid = useMemo(() => {
     return (
-      Object.keys(errors).length === 0 &&
       formData.fullName &&
       formData.universityId &&
       formData.email &&
@@ -249,7 +248,7 @@ const Register: React.FC = () => {
       formData.completedCreditHours &&
       formData.acceptTerms
     );
-  }, [errors, formData]);
+  }, [formData]);
 
   return (
     <CompactAuthLayout
@@ -381,8 +380,8 @@ const Register: React.FC = () => {
             touched={touched.level}
             required
             placeholder="Select year"
-            options={levels.map(l => l.label)}
-            values={levels.map(l => l.value)}
+            options={levels.map((l) => l.label)}
+            values={levels.map((l) => l.value)}
             icon={Calendar}
             compact
           />

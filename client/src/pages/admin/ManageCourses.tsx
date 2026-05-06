@@ -10,6 +10,7 @@ const ManageCourses: React.FC = () => {
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [formData, setFormData] = useState<CourseFormData>({
     courseName: "",
@@ -33,19 +34,21 @@ const ManageCourses: React.FC = () => {
     try {
       const response = await courseApi.getAllCourses();
       if (response.success) {
-        setCourses(response.courses.map(course => ({
-          _id: course._id,
-          courseName: course.name,
-          courseCode: course.code,
-          major: course.major || "",
-          studentYear: course.studentYear || 1,
-          day: course.day,
-          time: course.time,
-          creditHours: course.credits,
-          instructorName: course.instructor,
-          group: course.group || "A",
-          prerequisite: course.prerequisites?.join(", ") || "",
-        })));
+        setCourses(
+          response.courses.map((course) => ({
+            _id: course._id,
+            courseName: course.name,
+            courseCode: course.code,
+            major: course.major || "",
+            studentYear: course.studentYear || 1,
+            day: course.day,
+            time: course.time,
+            creditHours: course.credits,
+            instructorName: course.instructor,
+            group: course.group || "A",
+            prerequisite: course.prerequisites?.join(", ") || "",
+          })),
+        );
       }
     } catch (err: unknown) {
       const error = err as Error;
@@ -86,7 +89,9 @@ const ManageCourses: React.FC = () => {
         capacity: 30,
         major: formData.major || undefined,
         studentYear: formData.studentYear || undefined,
-        prerequisites: formData.prerequisite ? formData.prerequisite.split(",").map(p => p.trim()) : [],
+        prerequisites: formData.prerequisite
+          ? formData.prerequisite.split(",").map((p) => p.trim())
+          : [],
       });
 
       if (response.success) {
@@ -129,6 +134,16 @@ const ManageCourses: React.FC = () => {
     });
   };
 
+  const filteredCourses = courses.filter((course) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      course.courseCode.toLowerCase().includes(query) ||
+      course.courseName.toLowerCase().includes(query) ||
+      course.major.toLowerCase().includes(query) ||
+      (course.instructorName && course.instructorName.toLowerCase().includes(query))
+    );
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -138,14 +153,14 @@ const ManageCourses: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
       <AdminSidebar />
 
       {/* Main Content */}
-      <main className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 p-8 flex flex-col min-w-0 min-h-0">
+        <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col min-h-0">
           {/* Header */}
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex justify-between items-center mb-8 shrink-0">
             <div>
               <h1 className="text-3xl font-bold text-gray-800">
                 Manage Courses
@@ -161,19 +176,29 @@ const ManageCourses: React.FC = () => {
               <span className="text-xl">+</span> Add New Course
             </button>
           </div>
+          
+          <div className="mb-6 shrink-0">
+            <input
+              type="text"
+              placeholder="Search by course code, name, major or instructor..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            />
+          </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 shrink-0">
               {error}
             </div>
           )}
 
           {/* Courses Table */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-indigo-600 border-b border-indigo-700">
+          <div className="bg-white rounded-lg shadow-sm flex-1 flex flex-col min-h-0 border border-gray-200 overflow-hidden">
+            <div className="overflow-auto flex-1">
+              <table className="w-full relative">
+                <thead className="bg-indigo-600 border-b border-indigo-700 sticky top-0 z-10">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Course Code
@@ -211,17 +236,17 @@ const ManageCourses: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {courses.length === 0 ? (
+                  {filteredCourses.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={11}
                         className="px-6 py-12 text-center text-gray-500"
                       >
                         No courses found. Click "Add New Course" to get started.
                       </td>
                     </tr>
                   ) : (
-                    courses.map((course) => (
+                    filteredCourses.map((course) => (
                       <tr
                         key={course._id}
                         className="hover:bg-gray-50 transition"

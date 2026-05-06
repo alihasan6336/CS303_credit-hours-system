@@ -2,11 +2,25 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { adminApi } from "../../utils/api";
 import AdminSidebar from "../../components/admin/AdminSidebar";
+import {
+  Users,
+  ShieldCheck,
+  BookOpen,
+  GraduationCap,
+  Calendar,
+  ClipboardList,
+  Layout,
+  ArrowRight,
+  Activity,
+  Briefcase,
+  Database,
+} from "lucide-react";
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [currentTime] = useState(new Date());
 
   useEffect(() => {
     const fetchData = async () => {
@@ -24,59 +38,180 @@ const SuperAdminDashboard: React.FC = () => {
     fetchData();
   }, []);
 
+  const formatGreeting = () => {
+    const hour = currentTime.getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
+
+  const statCards = [
+    {
+      label: "Total Students",
+      value: stats?.totalStudents || 0,
+      icon: <GraduationCap className="w-6 h-6 text-blue-600" />,
+      bgColor: "bg-blue-50",
+      color: "text-blue-600",
+    },
+    {
+      label: "Total Staff",
+      value: stats?.totalAdmins || 0,
+      icon: <ShieldCheck className="w-6 h-6 text-emerald-600" />,
+      bgColor: "bg-emerald-50",
+      color: "text-emerald-600",
+    },
+    {
+      label: "Active Courses",
+      value: stats?.totalCourses || 0,
+      icon: <BookOpen className="w-6 h-6 text-amber-600" />,
+      bgColor: "bg-amber-50",
+      color: "text-amber-600",
+    },
+    {
+      label: "Total Enrollments",
+      value: stats?.totalEnrollments || 0,
+      icon: <Briefcase className="w-6 h-6 text-indigo-600" />,
+      bgColor: "bg-indigo-50",
+      color: "text-indigo-600",
+    },
+  ];
+
+  const moduleCards = [
+    {
+      title: "Account Management",
+      desc: "Manage student and admin accounts, system roles, and access permissions.",
+      path: "/admin/accounts",
+      icon: <Users className="w-8 h-8 text-indigo-600" />,
+      color: "group-hover:border-indigo-200 group-hover:bg-indigo-50/50",
+    },
+    {
+      title: "Course Catalog",
+      desc: "Create and edit university courses, adjust parameters and prerequisites.",
+      path: "/admin/manage-courses",
+      icon: <Database className="w-8 h-8 text-blue-600" />,
+      color: "group-hover:border-blue-200 group-hover:bg-blue-50/50",
+    },
+    {
+      title: "Course Assignments",
+      desc: "Map existing courses to appropriate academic levels, semesters, and majors.",
+      path: "/admin/courses",
+      icon: <ClipboardList className="w-8 h-8 text-emerald-600" />,
+      color: "group-hover:border-emerald-200 group-hover:bg-emerald-50/50",
+    },
+    {
+      title: "Timetable Dashboard",
+      desc: "Manage scheduling, resolve physical room conflicts, and adjust active timeslots.",
+      path: "/admin/tables",
+      icon: <Calendar className="w-8 h-8 text-amber-600" />,
+      color: "group-hover:border-amber-200 group-hover:bg-amber-50/50",
+    },
+  ];
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+      <div className="flex h-screen bg-gray-50 flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 mb-4"></div>
+        <p className="text-gray-500 font-medium tracking-wide">
+          Initializing Command Center...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFF] font-sans">
+    <div className="flex h-screen bg-gray-50/50 font-sans overflow-hidden">
       <AdminSidebar />
 
-      <main className="flex-1 p-10 overflow-y-auto">
-        <header className="mb-12">
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">System Command</h1>
-          <p className="text-slate-400 font-medium mt-1">Full administrative control and global oversight</p>
-        </header>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          {[
-            { label: "Students", val: stats?.totalStudents, color: "blue" },
-            { label: "Admins", val: stats?.totalAdmins, color: "amber" },
-            { label: "Courses", val: stats?.totalCourses, color: "emerald" },
-            { label: "Enrollments", val: stats?.totalEnrollments, color: "indigo" }
-          ].map((item, idx) => (
-            <div key={idx} className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-100 border border-slate-50">
-               <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">{item.label}</p>
-               <p className={`text-4xl font-black text-${item.color}-600`}>{item.val || 0}</p>
+      <main className="flex-1 p-6 lg:p-12 overflow-y-auto">
+        <div className="max-w-7xl mx-auto">
+          {/* Top Banner */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold shadow-sm">
+                  <Activity className="w-3.5 h-3.5" /> Systems Operational
+                </span>
+                <span className="text-gray-400 text-sm font-medium">
+                  {currentTime.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">
+                {formatGreeting()}, Admin
+              </h1>
+              <p className="text-gray-500 mt-2 font-medium text-lg">
+                Here's what's happening across your platform today.
+              </p>
             </div>
-          ))}
-        </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate("/admin/accounts")}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm shadow-indigo-200 flex items-center gap-2"
+              >
+                <Users className="w-4 h-4" /> Add Users
+              </button>
+            </div>
+          </div>
 
-        <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-slate-200/30 border border-slate-50">
-          <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
-             <span className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center text-lg">⚙️</span>
-             Master Portals
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-             {[
-               { label: "Accounts", path: "/admin/accounts", icon: "👥" },
-               { label: "Catalog", path: "/admin/manage-courses", icon: "📚" },
-               { label: "Assignments", path: "/admin/courses", icon: "📋" },
-               { label: "Timetable", path: "/admin/tables", icon: "📅" }
-             ].map((btn, idx) => (
-               <button
-                 key={idx}
-                 onClick={() => navigate(btn.path)}
-                 className="flex flex-col items-center justify-center p-8 bg-slate-50 hover:bg-white hover:shadow-xl transition-all rounded-[2rem] border border-transparent hover:border-slate-100 group"
-               >
-                 <span className="text-3xl mb-4 group-hover:scale-125 transition-transform">{btn.icon}</span>
-                 <span className="font-black text-slate-800 text-xs uppercase tracking-widest">{btn.label}</span>
-               </button>
-             ))}
+          {/* Statistics Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {statCards.map((stat, idx) => (
+              <div
+                key={idx}
+                className="bg-white rounded-2xl flex flex-col p-6 border border-gray-200/75 shadow-sm hover:shadow-md hover:border-gray-300 transition-all"
+              >
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${stat.bgColor}`}
+                >
+                  {stat.icon}
+                </div>
+                <div>
+                  <h3 className="text-3xl font-extrabold text-gray-900 mb-1">
+                    {stat.value}
+                  </h3>
+                  <p className="text-gray-500 text-sm font-semibold tracking-wide uppercase">
+                    {stat.label}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Modules Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <Layout className="w-5 h-5 text-gray-400" />
+              <h2 className="text-xl font-bold text-gray-800">
+                Management Modules
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {moduleCards.map((module, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => navigate(module.path)}
+                  className={`group flex items-start p-6 md:p-8 bg-white rounded-2xl border border-gray-200/75 shadow-sm transition-all text-left w-full hover:shadow-md ${module.color}`}
+                >
+                  <div className="mr-5 mt-1 shrink-0 bg-gray-50/50 group-hover:bg-white rounded-xl p-3 transition-colors">
+                    {module.icon}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-indigo-700 transition-colors mb-2">
+                      {module.title}
+                    </h3>
+                    <p className="text-gray-500 text-sm leading-relaxed mb-4">
+                      {module.desc}
+                    </p>
+                    <div className="flex items-center text-sm font-semibold text-indigo-600 opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0">
+                      Access Module <ArrowRight className="w-4 h-4 ml-1" />
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </main>

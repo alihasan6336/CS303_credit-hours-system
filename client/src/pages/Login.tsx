@@ -25,7 +25,7 @@ const Login: React.FC = () => {
   // Redirect already logged-in users based on role
   const storedUser = localStorage.getItem("student");
   const token = localStorage.getItem("authToken");
-  
+
   if (token && storedUser) {
     try {
       const user = JSON.parse(storedUser);
@@ -149,10 +149,8 @@ const Login: React.FC = () => {
   };
 
   const isFormValid = useMemo(() => {
-    return (
-      Object.keys(errors).length === 0 && formData.email && formData.password
-    );
-  }, [errors, formData.email, formData.password]);
+    return formData.email.trim() !== "" && formData.password !== "";
+  }, [formData.email, formData.password]);
 
   return (
     <AuthLayout
@@ -236,7 +234,6 @@ const Login: React.FC = () => {
           {isSubmitting ? "Signing In..." : "Sign In"}
         </SubmitButton>
       </form>
-
     </AuthLayout>
   );
 };

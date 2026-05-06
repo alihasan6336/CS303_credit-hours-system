@@ -48,7 +48,16 @@ const TableManagement: React.FC = () => {
   };
 
   const filteredCourses = courses.filter((c) => {
-    if (filterYear !== "all" && c.studentYear !== filterYear) return false;
+    if (filterYear !== "all") {
+      const match = c.code.match(/\d{3}/);
+      if (match) {
+        const num = parseInt(match[0], 10);
+        const courseLevel = Math.floor(num / 100);
+        if (courseLevel !== filterYear) return false;
+      } else if (c.studentYear !== filterYear) {
+        return false;
+      }
+    }
     if (filterMajor !== "all" && c.major !== filterMajor) return false;
     return true;
   });
@@ -56,12 +65,14 @@ const TableManagement: React.FC = () => {
   const getCoursesForSlot = (day: string, time: string) => {
     // Basic time matching (can be improved based on exact time overlap logic)
     return filteredCourses.filter(
-      (c) => c.day === day && c.time.includes(time.split(" ")[0])
+      (c) => c.day === day && c.time.includes(time.split(" ")[0]),
     );
   };
 
   // Extract unique majors
-  const uniqueMajors = Array.from(new Set(courses.map((c) => c.major).filter(Boolean)));
+  const uniqueMajors = Array.from(
+    new Set(courses.map((c) => c.major).filter(Boolean)),
+  );
 
   if (loading) {
     return (
@@ -79,13 +90,19 @@ const TableManagement: React.FC = () => {
       <main className="flex-1 p-8 overflow-y-auto">
         <header className="mb-8 flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Table Management</h1>
-            <p className="text-gray-500 mt-1">View and manage course schedules and conflicts.</p>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Table Management
+            </h1>
+            <p className="text-gray-500 mt-1">
+              View and manage course schedules and conflicts.
+            </p>
           </div>
-          
+
           <div className="flex gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Major</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Major
+              </label>
               <select
                 value={filterMajor}
                 onChange={(e) => setFilterMajor(e.target.value)}
@@ -93,20 +110,30 @@ const TableManagement: React.FC = () => {
               >
                 <option value="all">All Majors</option>
                 {uniqueMajors.map((m) => (
-                  <option key={m} value={m}>{m}</option>
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Level / Year</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Level / Year
+              </label>
               <select
                 value={filterYear}
-                onChange={(e) => setFilterYear(e.target.value === "all" ? "all" : Number(e.target.value))}
+                onChange={(e) =>
+                  setFilterYear(
+                    e.target.value === "all" ? "all" : Number(e.target.value),
+                  )
+                }
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
               >
                 <option value="all">All Levels</option>
                 {[1, 2, 3, 4].map((y) => (
-                  <option key={y} value={y}>Year {y}</option>
+                  <option key={y} value={y}>
+                    Year {y}
+                  </option>
                 ))}
               </select>
             </div>
@@ -122,7 +149,10 @@ const TableManagement: React.FC = () => {
                     Day / Time
                   </th>
                   {TIME_SLOTS.map((time) => (
-                    <th key={time} className="border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-600 text-center w-1/5">
+                    <th
+                      key={time}
+                      className="border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-600 text-center w-1/5"
+                    >
                       {time}
                     </th>
                   ))}
@@ -130,7 +160,10 @@ const TableManagement: React.FC = () => {
               </thead>
               <tbody>
                 {DAYS.map((day) => (
-                  <tr key={day} className="border-b border-gray-200 last:border-0">
+                  <tr
+                    key={day}
+                    className="border-b border-gray-200 last:border-0"
+                  >
                     <td className="border-r border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-700 text-center">
                       {day}
                     </td>
@@ -139,7 +172,10 @@ const TableManagement: React.FC = () => {
                       const isConflict = coursesInSlot.length > 1;
 
                       return (
-                        <td key={`${day}-${time}`} className="border-r border-gray-200 last:border-0 p-2 align-top h-32">
+                        <td
+                          key={`${day}-${time}`}
+                          className="border-r border-gray-200 last:border-0 p-2 align-top h-32"
+                        >
                           <div className="flex flex-col gap-2 h-full">
                             {coursesInSlot.map((c) => (
                               <div
@@ -150,9 +186,15 @@ const TableManagement: React.FC = () => {
                                     : "bg-indigo-50 border-indigo-200 text-indigo-800"
                                 }`}
                               >
-                                <span className="font-bold block">{c.code}</span>
-                                <span className="truncate block" title={c.name}>{c.name}</span>
-                                <span className="text-gray-500 mt-1 block">{c.room}</span>
+                                <span className="font-bold block">
+                                  {c.code}
+                                </span>
+                                <span className="truncate block" title={c.name}>
+                                  {c.name}
+                                </span>
+                                <span className="text-gray-500 mt-1 block">
+                                  {c.room}
+                                </span>
                               </div>
                             ))}
                             {coursesInSlot.length === 0 && (

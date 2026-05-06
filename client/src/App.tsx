@@ -15,11 +15,6 @@ import AcademicHistoryPage from "./pages/student/AcademicHistoryPage";
 
 import ManageCourses from "./pages/admin/ManageCourses";
 import TableManagement from "./pages/admin/TableManagement";
-import ITAdminDashboard from "./pages/admin/ITAdminDashboard";
-import TableAdminDashboard from "./pages/admin/TableAdminDashboard";
-import CoursesAdminDashboard from "./pages/admin/CoursesAdminDashboard";
-import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
-import EnrollmentAdminDashboard from "./pages/admin/EnrollmentAdminDashboard";
 import StudentSchedules from "./pages/admin/StudentSchedules";
 import {
   canAccessPath,
@@ -52,7 +47,13 @@ function AdminRoute() {
   return <Outlet />;
 }
 
-function AdminFeatureRoute({ path, element }: { path: string; element: ReactNode }) {
+function AdminFeatureRoute({
+  path,
+  element,
+}: {
+  path: string;
+  element: ReactNode;
+}) {
   const user = getStoredAdminUser();
   if (!canAccessPath(user, path)) {
     return <Navigate to={getDashboardPathForAdmin(user)} replace />;
@@ -94,50 +95,23 @@ function App() {
         <Route path="/gpa-calculator" element={<GpaCalculatorPage />} />
         <Route path="/academic-history" element={<AcademicHistoryPage />} />
         <Route path="/ai-schedule" element={<AIScheduleGenerator />} />
-
       </Route>
 
       {/* Protected admin routes */}
       <Route element={<AdminRoute />}>
-        <Route
-          path="/admin"
-          element={<AdminDashboard />}
-        />
-        <Route
-          path="/admin/it"
-          element={
-            <AdminFeatureRoute
-              path="/admin/accounts"
-              element={<ITAdminDashboard />}
-            />
-          }
-        />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/it" element={<Navigate to="/admin" replace />} />
         <Route
           path="/admin/enrollment"
-          element={
-            <AdminFeatureRoute
-              path="/admin/accounts"
-              element={<EnrollmentAdminDashboard />}
-            />
-          }
+          element={<Navigate to="/admin" replace />}
         />
         <Route
           path="/admin/schedule"
-          element={
-            <AdminFeatureRoute
-              path="/admin/tables"
-              element={<TableAdminDashboard />}
-            />
-          }
+          element={<Navigate to="/admin" replace />}
         />
         <Route
           path="/admin/courses-admin"
-          element={
-            <AdminFeatureRoute
-              path="/admin/manage-courses"
-              element={<CoursesAdminDashboard />}
-            />
-          }
+          element={<Navigate to="/admin" replace />}
         />
         <Route
           path="/admin/accounts"

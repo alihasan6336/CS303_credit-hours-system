@@ -59,7 +59,7 @@ const ScheduleAdminDashboard: React.FC = () => {
 
   const getCoursesForSlot = (day: string, time: string) => {
     return filteredCourses.filter(
-      (c) => c.day === day && c.time && c.time.includes(time)
+      (c) => c.day === day && c.time && c.time.includes(time),
     );
   };
 
@@ -75,7 +75,7 @@ const ScheduleAdminDashboard: React.FC = () => {
   });
 
   const uniqueMajors = Array.from(
-    new Set(courses.map((c) => c.major).filter(Boolean))
+    new Set(courses.map((c) => c.major).filter(Boolean)),
   );
 
   if (loading) {
@@ -131,7 +131,7 @@ const ScheduleAdminDashboard: React.FC = () => {
                 value={filterYear}
                 onChange={(e) =>
                   setFilterYear(
-                    e.target.value === "all" ? "all" : Number(e.target.value)
+                    e.target.value === "all" ? "all" : Number(e.target.value),
                   )
                 }
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 bg-white"
@@ -192,8 +192,8 @@ const ScheduleAdminDashboard: React.FC = () => {
                   <strong>
                     {c.day} at {c.time}
                   </strong>
-                  : {c.courses.map((cr) => cr.code).join(", ")} ({c.courses.length}{" "}
-                  courses overlapping)
+                  : {c.courses.map((cr) => cr.code).join(", ")} (
+                  {c.courses.length} courses overlapping)
                 </div>
               ))}
             </div>

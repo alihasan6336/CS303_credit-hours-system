@@ -45,6 +45,22 @@ const CourseAssignmentPage: React.FC = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState("");
 
+  const [expandedLevels, setExpandedLevels] = useState<Record<string, boolean>>(
+    {
+      "1": false,
+      "2": false,
+      "3": false,
+      "4": false,
+    },
+  );
+
+  const toggleLevelExpansion = (level: number) => {
+    setExpandedLevels((prev) => ({
+      ...prev,
+      [level]: !prev[level],
+    }));
+  };
+
   useEffect(() => {
     fetchData();
   }, [filters]);
@@ -193,76 +209,107 @@ const CourseAssignmentPage: React.FC = () => {
 
         {/* Level Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map((level) => (
-            <div
-              key={level}
-              className="bg-white rounded-xl shadow-sm overflow-hidden"
-            >
-              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white">
-                    Level {level}
-                  </h2>
-                  <p className="text-indigo-200 text-sm">
-                    {byLevel[level]?.length || 0} courses assigned
-                  </p>
-                </div>
-                <button
-                  onClick={() => openAssignModal(level)}
-                  className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-white text-sm transition-colors"
-                >
-                  + Assign Course
-                </button>
-              </div>
+          {[1, 2, 3, 4].map((level) => {
+            const courseList = byLevel[level] || [];
+            const isExpanded = expandedLevels[level];
+            const displayedCourses = isExpanded
+              ? courseList
+              : courseList.slice(0, 3);
 
-              <div className="p-4">
-                {byLevel[level]?.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">
-                    No courses assigned to this level
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {byLevel[level]?.map((assignment) => (
-                      <div
-                        key={assignment._id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-indigo-600 font-semibold">
-                              {assignment.course.code}
-                            </span>
-                            <span className="text-gray-700">
-                              {assignment.course.name}
-                            </span>
-                          </div>
-                          <div className="text-sm text-gray-500 mt-1">
-                            {assignment.course.day} • {assignment.course.time} •
-                            Room {assignment.course.room}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {assignment.course.instructor} •{" "}
-                            {assignment.course.credits} credits
-                          </div>
-                        </div>
-                        <button
-                          onClick={() =>
-                            handleRemoveAssignment(
-                              assignment._id,
-                              assignment.course.name,
-                            )
-                          }
-                          className="text-red-600 hover:text-red-800 text-sm ml-4"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
+            return (
+              <div
+                key={level}
+                className="bg-white rounded-xl shadow-sm overflow-hidden"
+              >
+                <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">
+                      Level {level}
+                    </h2>
+                    <p className="text-indigo-200 text-sm">
+                      {courseList.length} courses assigned
+                    </p>
                   </div>
-                )}
+                  <button
+                    onClick={() => openAssignModal(level)}
+                    className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-white text-sm transition-colors"
+                  >
+                    + Assign Course
+                  </button>
+                </div>
+
+                <div className="p-4">
+                  {courseList.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">
+                      No courses assigned to this level
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {displayedCourses.map((assignment) => (
+                        <div
+                          key={assignment._id}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-indigo-600 font-semibold">
+                                {assignment.course.code}
+                              </span>
+                              <span className="text-gray-700">
+                                {assignment.course.name}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1 flex flex-wrap gap-2">
+                              <span className="bg-gray-200 px-2 py-0.5 rounded text-xs">
+                                {assignment.course.day}
+                              </span>
+                              <span className="bg-gray-200 px-2 py-0.5 rounded text-xs">
+                                {assignment.course.time}
+                              </span>
+                              <span className="bg-gray-200 px-2 py-0.5 rounded text-xs">
+                                Room {assignment.course.room}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-500 mt-2">
+                              <span className="font-medium text-gray-700">
+                                Instructor:
+                              </span>{" "}
+                              {assignment.course.instructor} •{" "}
+                              <span className="font-medium text-indigo-600">
+                                {assignment.course.credits} Credits
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() =>
+                              handleRemoveAssignment(
+                                assignment._id,
+                                assignment.course.name,
+                              )
+                            }
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition-colors text-sm ml-4"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+
+                      {courseList.length > 3 && (
+                        <button
+                          onClick={() => toggleLevelExpansion(level)}
+                          className="w-full py-2 mt-2 text-indigo-600 font-medium hover:bg-indigo-50 rounded-lg transition-colors border border-indigo-100"
+                        >
+                          {isExpanded
+                            ? "Show Less"
+                            : `Show ${courseList.length - 3} More Courses`}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </main>
 
