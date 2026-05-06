@@ -72,18 +72,7 @@ export default function SuperAdminDashboard() {
         </View>
       </View>
 
-      <View style={styles.adminCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>SA</Text>
-        </View>
-        <View>
-          <Text style={styles.adminName}>Super Admin</Text>
-          <Text style={styles.adminEmail}>Full Control Panel</Text>
-        </View>
-        <View style={styles.adminBadge}>
-          <Text style={styles.adminBadgeText}>👑 Super Admin</Text>
-        </View>
-      </View>
+
 
       <View style={styles.statsGrid}>
         {[

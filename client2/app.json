@@ -38,6 +38,13 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Credit Hours System to access your photos to set a profile picture.",
+          "cameraPermission": "Allow Credit Hours System to use your camera to take a profile picture."
+        }
       ]
     ],
     "experiments": {

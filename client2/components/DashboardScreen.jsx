@@ -6,10 +6,13 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
 } from "react-native";
 import { useState, useEffect } from "react";
-import { authApi, courseApi, gpaApi } from "../utils/api";
-import { Modal } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { authApi, courseApi, gpaApi, userApi } from "../utils/api";
 
 const { width } = Dimensions.get("window");
 
@@ -18,9 +21,8 @@ export default function DashboardScreen({ onNavigateCourses }) {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [recordModalVisible, setRecordModalVisible] = useState(false);
-  const [transcript, setTranscript] = useState([]);
-  const [loadingTranscript, setLoadingTranscript] = useState(false);
+  const [avatar, setAvatar] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -57,18 +59,46 @@ export default function DashboardScreen({ onNavigateCourses }) {
     fetchDashboardData();
   }, []);
 
-  const fetchTranscript = async () => {
+  useEffect(() => {
+    if (student?._id) {
+      userApi.getAvatar(student._id).then(res => { if (res.avatarUrl) setAvatar(res.avatarUrl); }).catch(() => {});
+    }
+  }, [student?._id]);
+
+  const pickAvatar = () => {
+    Alert.alert("Profile Photo", "Choose an option", [
+      { text: "📷 Take Photo", onPress: openCamera },
+      { text: "🖼️ Choose from Gallery", onPress: openGallery },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const openCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") { Alert.alert("Permission needed", "Camera access required."); return; }
+    const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+    if (!result.canceled) handleUpload(result.assets[0].uri);
+  };
+
+  const openGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") { Alert.alert("Permission needed", "Gallery access required."); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+    if (!result.canceled) handleUpload(result.assets[0].uri);
+  };
+
+  const handleUpload = async (uri) => {
     try {
-      setLoadingTranscript(true);
-      const res = await gpaApi.getBreakdown();
-      setTranscript(res.breakdown || []);
-      setRecordModalVisible(true);
+      setUploading(true);
+      const res = await userApi.uploadAvatar(student._id, uri);
+      setAvatar(res.avatarUrl);
     } catch (err) {
-      Alert.alert("Error", err.message);
+      Alert.alert("Error", err.message || "Upload failed");
     } finally {
-      setLoadingTranscript(false);
+      setUploading(false);
     }
   };
+
 
   if (isLoading) {
     return (
@@ -101,16 +131,23 @@ export default function DashboardScreen({ onNavigateCourses }) {
           <Text style={styles.headerTitle}>Hello, {student.fullName}</Text>
           <Text style={styles.headerSub}>{student.currentSemester} — {student.major}</Text>
         </View>
-        <TouchableOpacity style={styles.recordBtn} onPress={fetchTranscript} disabled={loadingTranscript}>
-          {loadingTranscript ? <ActivityIndicator size="small" color="#2554e8" /> : <Text style={styles.recordBtnText}>View Record</Text>}
-        </TouchableOpacity>
+
       </View>
 
       {/* USER CARD */}
       <View style={styles.userCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{student.fullName?.substring(0, 2).toUpperCase() || "🧑‍🎓"}</Text>
-        </View>
+        <TouchableOpacity style={styles.avatarWrapper} onPress={pickAvatar} disabled={uploading}>
+          {avatar ? (
+            <Image source={{ uri: avatar }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{student.fullName?.substring(0, 2).toUpperCase() || "🧑‍🎓"}</Text>
+            </View>
+          )}
+          <View style={styles.avatarCamBadge}>
+            {uploading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ fontSize: 10 }}>✏️</Text>}
+          </View>
+        </TouchableOpacity>
         <View>
           <Text style={styles.userName}>{student.fullName}</Text>
           <Text style={styles.userId}>{student.universityId || student.id}</Text>
@@ -212,47 +249,7 @@ export default function DashboardScreen({ onNavigateCourses }) {
 
       <View style={{ height: 100 }} />
 
-      <Modal visible={recordModalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Academic Record</Text>
-              <TouchableOpacity onPress={() => setRecordModalVisible(false)}>
-                <Text style={styles.closeIcon}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryVal}>{student.gpa?.toFixed(2) || "0.00"}</Text>
-                  <Text style={styles.summaryLab}>GPA</Text>
-                </View>
-                <View style={[styles.summaryItem, { borderLeftWidth: 1, borderLeftColor: "#e5e7eb" }]}>
-                  <Text style={styles.summaryVal}>{student.completedCreditHours || 0}</Text>
-                  <Text style={styles.summaryLab}>Credits</Text>
-                </View>
-              </View>
-              {transcript.length === 0 ? (
-                <Text style={styles.emptyTrans}>No completed courses found.</Text>
-              ) : (
-                transcript.map((e, i) => (
-                  <View key={i} style={styles.transRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.transCode}>{e.code}</Text>
-                      <Text style={styles.transName}>{e.name}</Text>
-                      <Text style={styles.transSem}>{e.semester} {e.academicYear}</Text>
-                    </View>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Text style={styles.transGrade}>{e.grade}%</Text>
-                      <Text style={styles.transGP}>{e.gradePoints?.toFixed(1)} GP</Text>
-                    </View>
-                  </View>
-                ))
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+
     </ScrollView>
   );
 }
@@ -311,6 +308,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  avatarWrapper: { position: "relative" },
+  avatarImage: {
+    width: 48, height: 48, borderRadius: 24,
+    borderWidth: 2, borderColor: "rgba(255,255,255,0.5)",
+  },
+  avatarCamBadge: {
+    position: "absolute", bottom: -2, right: -2,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: "#fff", alignItems: "center", justifyContent: "center",
+    borderWidth: 1.5, borderColor: "#2554e8",
+  },
   userName: { color: "#fff", fontWeight: "700", fontSize: 16 },
   userId: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 2 },
 

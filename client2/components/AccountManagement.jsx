@@ -11,6 +11,16 @@ import {
   View,
 } from "react-native";
 import { adminApi } from "../utils/api";
+import { ADMIN_ROLES, ALL_PERMISSIONS } from "../constants/data";
+
+const PERMISSION_LABELS = {
+  dashboard: { icon: "📊", label: "Stats" },
+  courses: { icon: "📚", label: "Courses" },
+  accounts: { icon: "👥", label: "Users" },
+  enrollment: { icon: "📝", label: "Enroll" },
+  grading: { icon: "🎓", label: "Degrees" },
+  table: { icon: "📅", label: "Table" },
+};
 
 export default function AccountManagement() {
   const [accounts, setAccounts] = useState([]);
@@ -26,6 +36,10 @@ export default function AccountManagement() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [academicRecord, setAcademicRecord] = useState(null);
   const [loadingRecord, setLoadingRecord] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingAccount, setEditingAccount] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
 
   const fetchAccounts = async () => {
     try {
@@ -42,13 +56,22 @@ export default function AccountManagement() {
   useEffect(() => { fetchAccounts(); }, []);
 
   const students = accounts.filter(a => a.role === "student");
-  const admins = accounts.filter(a => a.role === "superadmin");
+  const admins = accounts.filter(a => a.role === "superadmin" || a.role === "admin");
   const filtered = tab === "student" ? students : admins;
 
   const openAddModal = (type) => {
     setAccountType(type);
-    setForm({ name: "", email: "", password: "", studentId: "", level: "1st Year", major: "Computer Science", currentSemester: "Fall" });
+    setForm({ name: "", email: "", password: "", studentId: "", level: "1st Year", major: "Computer Science", currentSemester: "Fall", adminRole: "", permissions: [] });
     setModalVisible(true);
+  };
+
+  const togglePermission = (perm) => {
+    const current = form.permissions || [];
+    if (current.includes(perm)) {
+      setForm({ ...form, permissions: current.filter(p => p !== perm) });
+    } else {
+      setForm({ ...form, permissions: [...current, perm] });
+    }
   };
 
   const saveAccount = async () => {
@@ -62,8 +85,22 @@ export default function AccountManagement() {
         fullName: form.name,
         email: form.email,
         password: form.password,
-        role: accountType === "admin" ? "superadmin" : "student",
+        role: accountType === "admin" ? "admin" : "student",
       };
+      if (accountType === "admin") {
+        if (!form.adminRole) {
+          Alert.alert("Error", "Please select an admin role");
+          setSaving(false);
+          return;
+        }
+        if (!form.permissions || form.permissions.length === 0) {
+          Alert.alert("Error", "Please select at least one permission");
+          setSaving(false);
+          return;
+        }
+        payload.adminRole = form.adminRole;
+        payload.permissions = form.permissions;
+      }
       if (accountType === "student") {
         payload.universityId = form.studentId || undefined;
         payload.academicYear = form.level;
@@ -121,6 +158,63 @@ export default function AccountManagement() {
     }
   };
 
+  const openEditModal = (account) => {
+    setEditingAccount(account);
+    if (account.role === "student") {
+      setEditForm({
+        fullName: account.fullName || "",
+        email: account.email || "",
+        universityId: account.universityId || "",
+        major: account.major || "Computer Science",
+        level: account.level ? `${account.level === 1 ? "1st" : account.level === 2 ? "2nd" : account.level === 3 ? "3rd" : "4th"} Year` : "1st Year",
+        currentSemester: account.currentSemester || "Fall",
+      });
+    } else {
+      setEditForm({
+        fullName: account.fullName || "",
+        email: account.email || "",
+        adminRole: account.adminRole || "",
+        permissions: account.permissions || [],
+      });
+    }
+    setEditModalVisible(true);
+  };
+
+  const toggleEditPermission = (perm) => {
+    const current = editForm.permissions || [];
+    setEditForm({ ...editForm, permissions: current.includes(perm) ? current.filter(p => p !== perm) : [...current, perm] });
+  };
+
+  const saveEdit = async () => {
+    if (!editForm.fullName || !editForm.email) {
+      Alert.alert("Error", "Name and email are required");
+      return;
+    }
+    try {
+      setEditSaving(true);
+      const payload = { fullName: editForm.fullName, email: editForm.email };
+      if (editingAccount.role === "student") {
+        const levelMap = { "1st Year": 1, "2nd Year": 2, "3rd Year": 3, "4th Year": 4 };
+        payload.universityId = editForm.universityId;
+        payload.major = editForm.major;
+        payload.level = levelMap[editForm.level] || 1;
+        payload.currentSemester = editForm.currentSemester;
+      } else {
+        if (!editForm.adminRole) { Alert.alert("Error", "Please select an admin role"); setEditSaving(false); return; }
+        if (!editForm.permissions || editForm.permissions.length === 0) { Alert.alert("Error", "Please select at least one permission"); setEditSaving(false); return; }
+        payload.adminRole = editForm.adminRole;
+        payload.permissions = editForm.permissions;
+      }
+      await adminApi.updateAccount(editingAccount._id, payload);
+      setEditModalVisible(false);
+      await fetchAccounts();
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   if (isLoading) {
     return <View style={styles.centerBox}><ActivityIndicator size="large" color="#2554e8" /></View>;
   }
@@ -172,7 +266,23 @@ export default function AccountManagement() {
                   )}
                   {account.role === "superadmin" && (
                     <View style={styles.roleBadge}>
-                      <Text style={styles.roleBadgeText}>🛡️ Admin</Text>
+                      <Text style={styles.roleBadgeText}>👑 Super Admin</Text>
+                    </View>
+                  )}
+                  {account.role === "admin" && (
+                    <View>
+                      <View style={[styles.roleBadge, { backgroundColor: "#06b6d420" }]}>
+                        <Text style={[styles.roleBadgeText, { color: "#06b6d4" }]}>🛡️ {account.adminRole || "Admin"}</Text>
+                      </View>
+                      {account.permissions && account.permissions.length > 0 && (
+                        <View style={styles.permissionTags}>
+                          {account.permissions.map(p => (
+                            <View key={p} style={styles.permTag}>
+                              <Text style={styles.permTagText}>{PERMISSION_LABELS[p]?.icon} {PERMISSION_LABELS[p]?.label}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
                     </View>
                   )}
                   <View style={styles.accountActionsRow}>
@@ -184,6 +294,11 @@ export default function AccountManagement() {
                     {account.role === "student" && (
                       <TouchableOpacity onPress={() => viewRecord({ id: account.id || account._id, ...account })}>
                         <Text style={styles.viewRecordText}>View Record</Text>
+                      </TouchableOpacity>
+                    )}
+                    {account.role !== "superadmin" && (
+                      <TouchableOpacity onPress={() => openEditModal(account)}>
+                        <Text style={styles.editText}>✏️ Edit</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -227,6 +342,42 @@ export default function AccountManagement() {
                   />
                 </View>
               ))}
+
+              {accountType === "admin" && (
+                <>
+                  <Text style={styles.fieldLabel}>Admin Role</Text>
+                  <View style={styles.pillRow}>
+                    {ADMIN_ROLES.map((r) => (
+                      <TouchableOpacity
+                        key={r}
+                        style={[styles.pill, form.adminRole === r && styles.pillSelected]}
+                        onPress={() => setForm({ ...form, adminRole: r })}
+                      >
+                        <Text style={[styles.pillText, form.adminRole === r && styles.pillTextSelected]}>{r}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Permissions</Text>
+                  <View style={styles.pillRow}>
+                    {ALL_PERMISSIONS.map((perm) => {
+                      const isSelected = (form.permissions || []).includes(perm);
+                      const info = PERMISSION_LABELS[perm];
+                      return (
+                        <TouchableOpacity
+                          key={perm}
+                          style={[styles.permPill, isSelected && styles.permPillSelected]}
+                          onPress={() => togglePermission(perm)}
+                        >
+                          <Text style={styles.permPillIcon}>{info?.icon}</Text>
+                          <Text style={[styles.permPillText, isSelected && styles.permPillTextSelected]}>{info?.label}</Text>
+                          {isSelected && <Text style={styles.permPillCheck}>✓</Text>}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
 
               {accountType === "student" && (
                 <>
@@ -341,6 +492,140 @@ export default function AccountManagement() {
           </View>
         </View>
       </Modal>
+
+      {/* ===== EDIT MODAL ===== */}
+      <Modal visible={editModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <Text style={styles.modalTitle}>Edit {editingAccount?.role === "student" ? "Student" : "Admin"}</Text>
+                <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                  <Text style={styles.closeIcon}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.fieldLabel}>Full Name *</Text>
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="Full name"
+                placeholderTextColor="#aaa"
+                value={editForm.fullName}
+                onChangeText={v => setEditForm({ ...editForm, fullName: v })}
+              />
+
+              <Text style={styles.fieldLabel}>Email *</Text>
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="Email"
+                placeholderTextColor="#aaa"
+                value={editForm.email}
+                onChangeText={v => setEditForm({ ...editForm, email: v })}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              {editingAccount?.role === "student" && (
+                <>
+                  <Text style={styles.fieldLabel}>University ID</Text>
+                  <TextInput
+                    style={styles.fieldInput}
+                    placeholder="University ID"
+                    placeholderTextColor="#aaa"
+                    value={editForm.universityId}
+                    onChangeText={v => setEditForm({ ...editForm, universityId: v })}
+                  />
+
+                  <Text style={styles.fieldLabel}>Academic Year</Text>
+                  <View style={styles.pillRow}>
+                    {["1st Year", "2nd Year", "3rd Year", "4th Year"].map(l => (
+                      <TouchableOpacity
+                        key={l}
+                        style={[styles.pill, editForm.level === l && styles.pillSelected]}
+                        onPress={() => setEditForm({ ...editForm, level: l })}
+                      >
+                        <Text style={[styles.pillText, editForm.level === l && styles.pillTextSelected]}>{l}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Major</Text>
+                  <View style={styles.pillRow}>
+                    {["Computer Science", "Information Technology", "Software Engineering", "Cybersecurity", "Data Science", "Computer Engineering"].map(m => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[styles.pill, editForm.major === m && styles.pillSelected]}
+                        onPress={() => setEditForm({ ...editForm, major: m })}
+                      >
+                        <Text style={[styles.pillText, editForm.major === m && styles.pillTextSelected]}>{m}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Semester</Text>
+                  <View style={styles.pillRow}>
+                    {["Fall", "Spring", "Summer"].map(s => (
+                      <TouchableOpacity
+                        key={s}
+                        style={[styles.pill, editForm.currentSemester === s && styles.pillSelected]}
+                        onPress={() => setEditForm({ ...editForm, currentSemester: s })}
+                      >
+                        <Text style={[styles.pillText, editForm.currentSemester === s && styles.pillTextSelected]}>{s}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {editingAccount?.role === "admin" && (
+                <>
+                  <Text style={styles.fieldLabel}>Admin Role</Text>
+                  <View style={styles.pillRow}>
+                    {ADMIN_ROLES.map(r => (
+                      <TouchableOpacity
+                        key={r}
+                        style={[styles.pill, editForm.adminRole === r && styles.pillSelected]}
+                        onPress={() => setEditForm({ ...editForm, adminRole: r })}
+                      >
+                        <Text style={[styles.pillText, editForm.adminRole === r && styles.pillTextSelected]}>{r}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Permissions</Text>
+                  <View style={styles.pillRow}>
+                    {ALL_PERMISSIONS.map(perm => {
+                      const isSelected = (editForm.permissions || []).includes(perm);
+                      const info = PERMISSION_LABELS[perm];
+                      return (
+                        <TouchableOpacity
+                          key={perm}
+                          style={[styles.permPill, isSelected && styles.permPillSelected]}
+                          onPress={() => toggleEditPermission(perm)}
+                        >
+                          <Text style={styles.permPillIcon}>{info?.icon}</Text>
+                          <Text style={[styles.permPillText, isSelected && styles.permPillTextSelected]}>{info?.label}</Text>
+                          {isSelected && <Text style={styles.permPillCheck}>✓</Text>}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditModalVisible(false)}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.saveBtn} onPress={saveEdit} disabled={editSaving}>
+                  {editSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
+                </TouchableOpacity>
+              </View>
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -429,4 +714,18 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 12, fontWeight: "700", color: "#888" },
   pillSelected: { backgroundColor: "#2554e820", borderColor: "#2554e8" },
   pillTextSelected: { color: "#2554e8" },
+  permissionTags: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 },
+  permTag: { backgroundColor: "#f0f2f5", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  permTagText: { fontSize: 10, fontWeight: "600", color: "#666" },
+  permPill: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10,
+    borderWidth: 1.5, borderColor: "#e0e0e0", backgroundColor: "#fafafa",
+  },
+  permPillSelected: { backgroundColor: "#2554e820", borderColor: "#2554e8" },
+  permPillIcon: { fontSize: 14 },
+  permPillText: { fontSize: 12, fontWeight: "700", color: "#888" },
+  permPillTextSelected: { color: "#2554e8" },
+  permPillCheck: { fontSize: 12, fontWeight: "800", color: "#2554e8" },
+  editText: { fontSize: 11, fontWeight: "700", color: "#8b5cf6" },
 });

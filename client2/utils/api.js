@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
-const API_BASE_URL = Platform.OS === "android" ? "http://192.168.1.6:5000" : "http://localhost:5000";
+
+const API_BASE_URL = Platform.OS === "android" ? "http://192.168.1.47:5000" : "http://localhost:5000";
 
 
 async function request(path, options = {}) {
@@ -155,6 +156,10 @@ export const adminApi = {
             body: JSON.stringify({ grade }),
         });
     },
+
+    updateAccount(id, payload) {
+        return request(`/api/admin/accounts/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+    },
 };
 
 export const gpaApi = {
@@ -173,3 +178,30 @@ export const gpaApi = {
         });
     },
 };
+
+export const userApi = {
+    async uploadAvatar(userId, imageUri) {
+        const token = await AsyncStorage.getItem("authToken");
+        const formData = new FormData();
+        const fileName = imageUri.split("/").pop();
+        const fileType = fileName.split(".").pop();
+        formData.append("avatar", {
+            uri: imageUri,
+            name: fileName,
+            type: `image/${fileType}`,
+        });
+        const res = await fetch(`${API_BASE_URL}/api/users/avatar`, {
+            method: "PATCH",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Upload failed");
+        return data;
+    },
+
+    async getAvatar(userId) {
+        return request(`/api/users/${userId}/avatar`);
+    },
+};
+
