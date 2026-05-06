@@ -58,19 +58,6 @@ export const isAdminUser = (user: AdminUser): boolean => {
 };
 
 export const getDashboardPathForAdmin = (user: AdminUser): string => {
-  const role = normalize(user.role);
-  const email = normalize(user.email);
-  if (role === "superadmin" || email === "admin@admin.com") return "/admin";
-  
-  // The role might actually BE the admin type (e.g. "It_admin")
-  // Or it might be "admin" with a separate "adminType" field.
-  const type = (user.adminType || (role !== "admin" ? role : "")).toLowerCase();
-  
-  if (type.includes("it_admin") || type.includes("it")) return "/admin/it";
-  if (type.includes("table") || type.includes("schedule")) return "/admin/schedule";
-  if (type.includes("courses")) return "/admin/courses-admin";
-  if (type.includes("enrollment")) return "/admin/enrollment";
-  
   return "/admin";
 };
 

@@ -106,8 +106,8 @@ const ForgotPassword: React.FC = () => {
   };
 
   const isFormValid = useMemo(() => {
-    return Object.keys(errors).length === 0 && formData.email;
-  }, [errors, formData.email]);
+    return formData.email.trim() !== "";
+  }, [formData.email]);
 
   return (
     <AuthLayout

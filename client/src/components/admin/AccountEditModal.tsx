@@ -20,6 +20,7 @@ interface AccountEditModalProps {
   onClose: () => void;
   onSave: (id: string, data: Partial<StudentAccount>) => Promise<void>;
   isLoading: boolean;
+  isSuperAdmin?: boolean;
 }
 
 const majors = [
@@ -41,6 +42,7 @@ const AccountEditModal: React.FC<AccountEditModalProps> = ({
   onClose,
   onSave,
   isLoading,
+  isSuperAdmin = false,
 }) => {
   const [formData, setFormData] = useState<Partial<StudentAccount>>({});
   const [error, setError] = useState("");
@@ -63,13 +65,16 @@ const AccountEditModal: React.FC<AccountEditModalProps> = ({
 
   if (!isOpen || !account) return null;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "level" || name === "gpa" || name === "completedCreditHours"
-        ? Number(value)
-        : value,
+      [name]:
+        name === "level" || name === "gpa" || name === "completedCreditHours"
+          ? Number(value)
+          : value,
     }));
   };
 
@@ -133,6 +138,37 @@ const AccountEditModal: React.FC<AccountEditModalProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
+
+            {account.role !== "student" &&
+              (isSuperAdmin ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Admin Role
+                  </label>
+                  <select
+                    name="role"
+                    value={formData.role || "admin"}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="admin">General Admin</option>
+                    <option value="superadmin">Super Admin</option>
+                    <option value="it_admin">IT Admin</option>
+                    <option value="table_admin">Table Admin</option>
+                    <option value="courses_admin">Courses Admin</option>
+                    <option value="enrollment_admin">Enrollment Admin</option>
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Admin Role
+                  </label>
+                  <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-500 capitalize">
+                    {account.role.replace("_", " ")}
+                  </div>
+                </div>
+              ))}
 
             {account.role === "student" && (
               <>

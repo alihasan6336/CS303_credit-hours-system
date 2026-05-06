@@ -29,14 +29,14 @@ const AccountManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "student" | "admin" | "superadmin"
   >("student");
-  
+
   // Pagination state
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalStudents, setTotalStudents] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Actual total counts for KPI
   const [kpiStats, setKpiStats] = useState({
     totalStudents: 0,
@@ -49,24 +49,30 @@ const AccountManagement: React.FC = () => {
   >("student");
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
-  
-  const [editingAccount, setEditingAccount] = useState<StudentAccount | null>(null);
+
+  const [editingAccount, setEditingAccount] = useState<StudentAccount | null>(
+    null,
+  );
   const [showEditModal, setShowEditModal] = useState(false);
-  
-  const [managingEnrollmentStudent, setManagingEnrollmentStudent] = useState<{id: string, name: string} | null>(null);
+
+  const [managingEnrollmentStudent, setManagingEnrollmentStudent] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
 
   const user = getStoredAdminUser();
   const userRole = (user.role || "").toLowerCase();
   const userEmail = (user.email || "").toLowerCase();
-  
+
   // High-level logic for superadmin access
-  const isSuperAdmin = userRole === "superadmin" || userEmail === "admin@admin.com";
+  const isSuperAdmin =
+    userRole === "superadmin" || userEmail === "admin@admin.com";
   const role = isSuperAdmin ? "superadmin" : userRole;
-  
+
   const isItAdmin = role === "it_admin";
   const isEnrollmentAdmin = role === "enrollment_admin";
-  
+
   const canManageUsers = isSuperAdmin || isItAdmin || isEnrollmentAdmin;
 
   const getPermissionMessage = () => {
@@ -91,7 +97,12 @@ const AccountManagement: React.FC = () => {
   const fetchStudents = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await adminApi.getStudents(activeTab, page, limit, searchQuery);
+      const response = await adminApi.getStudents(
+        activeTab,
+        page,
+        limit,
+        searchQuery,
+      );
       if (response.success) {
         setStudents(response.students);
         setTotalPages(response.pages);
@@ -103,7 +114,7 @@ const AccountManagement: React.FC = () => {
       setLoading(false);
     }
   }, [activeTab, page, limit, searchQuery]);
-  
+
   const fetchKpiStats = useCallback(async () => {
     try {
       const response = await adminApi.getStats();
@@ -118,7 +129,7 @@ const AccountManagement: React.FC = () => {
       console.warn("Failed to load KPI stats:", err.message);
     }
   }, []);
-  
+
   useEffect(() => {
     setPage(1);
   }, [activeTab, searchQuery]);
@@ -126,11 +137,11 @@ const AccountManagement: React.FC = () => {
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
-  
+
   useEffect(() => {
     fetchKpiStats();
   }, [fetchKpiStats, activeTab]);
-  
+
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setPage(newPage);
@@ -145,10 +156,13 @@ const AccountManagement: React.FC = () => {
     try {
       setFormLoading(true);
       setError("");
-      
+
       // Use createAccount which exists in api.ts
-      const response = await adminApi.createAccount({ ...data, role: registerRole });
-      
+      const response = await adminApi.createAccount({
+        ...data,
+        role: registerRole,
+      });
+
       if (response.success) {
         setShowRegisterForm(false);
         fetchStudents();
@@ -176,7 +190,7 @@ const AccountManagement: React.FC = () => {
   };
 
   const handleEditClick = (account: StudentAccount) => {
-    if (!isSuperAdmin && (account.role || "").toLowerCase() === 'superadmin') {
+    if (!isSuperAdmin && (account.role || "").toLowerCase() === "superadmin") {
       alert("You do not have permission to edit a Superadmin account.");
       return;
     }
@@ -186,14 +200,18 @@ const AccountManagement: React.FC = () => {
 
   const handleUpdateAccount = async (id: string, data: any) => {
     try {
+      setFormLoading(true);
       const response = await adminApi.updateAccount(id, data);
       if (response.success) {
         setShowEditModal(false);
         setEditingAccount(null);
         fetchStudents();
+        fetchKpiStats();
       }
     } catch (err: any) {
       alert(err.message || "Failed to update account");
+    } finally {
+      setFormLoading(false);
     }
   };
 
@@ -204,9 +222,13 @@ const AccountManagement: React.FC = () => {
       <main className="flex-1 p-8">
         <header className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Manage Accounts</h1>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Manage Accounts
+            </h1>
             <p className="text-gray-500 mt-1">
-              {showRegisterForm ? `Register new ${registerRole}s` : `Manage ${activeTab} accounts`}
+              {showRegisterForm
+                ? `Register new ${registerRole}s`
+                : `Manage ${activeTab} accounts`}
             </p>
           </div>
         </header>
@@ -229,10 +251,18 @@ const AccountManagement: React.FC = () => {
                   setShowRegisterForm(false);
                 }}
                 className={`px-4 py-2 rounded-lg capitalize transition-colors ${
-                  activeTab === tab ? "bg-indigo-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+                  activeTab === tab
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
                 }`}
               >
-                {tab}s ({tab === "student" ? kpiStats.totalStudents : tab === "admin" ? kpiStats.totalAdmins : kpiStats.totalSuperAdmins})
+                {tab}s (
+                {tab === "student"
+                  ? kpiStats.totalStudents
+                  : tab === "admin"
+                    ? kpiStats.totalAdmins
+                    : kpiStats.totalSuperAdmins}
+                )
               </button>
             );
           })}
@@ -249,7 +279,8 @@ const AccountManagement: React.FC = () => {
                   }}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center gap-2"
                 >
-                  <span>+</span> Register New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                  <span>+</span> Register New{" "}
+                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
                 </button>
               ) : (
                 <div />
@@ -258,7 +289,9 @@ const AccountManagement: React.FC = () => {
               {(() => {
                 const { text, color } = getPermissionMessage();
                 return (
-                  <div className={`text-xs px-3 py-1.5 rounded border ${color} max-w-xs`}>
+                  <div
+                    className={`text-xs px-3 py-1.5 rounded border ${color} max-w-xs`}
+                  >
                     {text}
                   </div>
                 );
@@ -274,8 +307,18 @@ const AccountManagement: React.FC = () => {
                   onChange={handleSearchChange}
                   className="w-80 px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
                 />
-                <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg
+                  className="absolute left-3 top-2.5 w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
                 </svg>
               </div>
               <div className="text-sm text-gray-600">
@@ -289,7 +332,7 @@ const AccountManagement: React.FC = () => {
                 onDelete={canManageUsers ? handleDeleteAccount : undefined}
                 onEdit={canManageUsers ? handleEditClick : undefined}
                 onManageEnrollments={(id, name) => {
-                  setManagingEnrollmentStudent({id, name});
+                  setManagingEnrollmentStudent({ id, name });
                   setShowEnrollmentModal(true);
                 }}
                 showActions={true}
@@ -302,23 +345,37 @@ const AccountManagement: React.FC = () => {
                   <thead>
                     <tr className="bg-gray-50 border-b">
                       {canManageUsers && (
-                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 w-32">Manage</th>
+                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 w-32">
+                          Manage
+                        </th>
                       )}
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Name</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Email</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Role</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                        Name
+                      </th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                        Email
+                      </th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                        Role
+                      </th>
                       {canManageUsers && (
-                        <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Delete</th>
+                        <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">
+                          Delete
+                        </th>
                       )}
                     </tr>
                   </thead>
                   <tbody>
                     {students.map((student) => {
-                      const isTargetSuper = (student.role || "").toLowerCase() === 'superadmin';
+                      const isTargetSuper =
+                        (student.role || "").toLowerCase() === "superadmin";
                       const canModifyThis = isSuperAdmin || !isTargetSuper;
-                      
+
                       return (
-                        <tr key={student.id} className="border-b last:border-0 hover:bg-gray-50">
+                        <tr
+                          key={student.id}
+                          className="border-b last:border-0 hover:bg-gray-50"
+                        >
                           {canManageUsers && (
                             <td className="px-6 py-4">
                               {canModifyThis ? (
@@ -329,23 +386,38 @@ const AccountManagement: React.FC = () => {
                                   Edit
                                 </button>
                               ) : (
-                                <span className="text-gray-400 text-xs italic">Restricted</span>
+                                <span className="text-gray-400 text-xs italic">
+                                  Restricted
+                                </span>
                               )}
                             </td>
                           )}
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 text-xs font-bold">
-                                {student.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                                {student.fullName
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .slice(0, 2)
+                                  .toUpperCase()}
                               </div>
-                              <span className="font-medium text-gray-900">{student.fullName}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.fullName}
+                              </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-gray-600 text-sm">{student.email}</td>
+                          <td className="px-6 py-4 text-gray-600 text-sm">
+                            {student.email}
+                          </td>
                           <td className="px-6 py-4">
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                              isTargetSuper ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                            }`}>
+                            <span
+                              className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                isTargetSuper
+                                  ? "bg-purple-100 text-purple-700"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
                               {student.role}
                             </span>
                           </td>
@@ -353,13 +425,20 @@ const AccountManagement: React.FC = () => {
                             <td className="px-6 py-4 text-right">
                               {canModifyThis ? (
                                 <button
-                                  onClick={() => handleDeleteAccount(student.id, student.fullName)}
+                                  onClick={() =>
+                                    handleDeleteAccount(
+                                      student.id,
+                                      student.fullName,
+                                    )
+                                  }
                                   className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-semibold"
                                 >
                                   Delete
                                 </button>
                               ) : (
-                                <span className="text-gray-400 text-xs italic">Restricted</span>
+                                <span className="text-gray-400 text-xs italic">
+                                  Restricted
+                                </span>
                               )}
                             </td>
                           )}
@@ -374,7 +453,9 @@ const AccountManagement: React.FC = () => {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="mt-6 flex items-center justify-between">
-                <p className="text-sm text-gray-600">Page {page} of {totalPages}</p>
+                <p className="text-sm text-gray-600">
+                  Page {page} of {totalPages}
+                </p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => handlePageChange(page - 1)}
@@ -397,12 +478,19 @@ const AccountManagement: React.FC = () => {
         ) : (
           <div className="bg-white rounded-xl shadow-sm p-8 max-w-2xl mx-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Register New {registerRole}</h2>
-              <button onClick={() => setShowRegisterForm(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+              <h2 className="text-2xl font-bold text-gray-800">
+                Register New {registerRole}
+              </h2>
+              <button
+                onClick={() => setShowRegisterForm(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
             </div>
-            <StudentRegisterForm 
-              onSubmit={handleRegister} 
-              onCancel={() => setShowRegisterForm(false)} 
+            <StudentRegisterForm
+              onSubmit={handleRegister}
+              onCancel={() => setShowRegisterForm(false)}
               isLoading={formLoading}
               role={registerRole}
               error={error}
@@ -422,6 +510,7 @@ const AccountManagement: React.FC = () => {
           }}
           onSave={handleUpdateAccount}
           isLoading={formLoading}
+          isSuperAdmin={isSuperAdmin}
         />
       )}
 

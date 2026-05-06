@@ -118,6 +118,9 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
         
         // If role is any type of admin, fetch from AdminUser collection
         if (role === 'admin' || role === 'superadmin' || adminRoles.includes(role as string) || !role) {
+            // Define which roles map to the generic "admin" tab
+            const adminTabRoles = ['admin', 'it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'];
+            
             // Build filter for AdminUser query
             const adminFilter: any = {};
             if (search) {
@@ -126,15 +129,14 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
                     { email: { $regex: search, $options: 'i' } },
                 ];
             }
-            // If specific role requested, filter by it.
+            
+            // Apply role filtering
             if (role === 'admin') {
-                // When "admin" tab is selected, show all specialized assistants + regular admins
-                adminFilter.role = { $in: ['admin', 'it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'] };
+                adminFilter.role = { $in: adminTabRoles };
             } else if (role) {
                 adminFilter.role = role;
             } else {
-                // If no role specified, get all admins including superadmin for total count
-                adminFilter.role = { $in: ['admin', 'superadmin', 'it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'] };
+                adminFilter.role = { $in: [...adminTabRoles, 'superadmin'] };
             }
 
             const admins = await AdminUser.find(adminFilter)
@@ -293,8 +295,8 @@ export const createAdminAccount = async (req: Request, res: Response): Promise<v
             }
         }
 
-        // Check if specialized admin already exists (only one per type)
-        if (['it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'].includes(adminRole)) {
+        // Check if specialized admin already exists (only one per type for superadmin)
+        if (adminRole === 'superadmin') {
             const existingSpecialized = await AdminUser.findOne({ role: adminRole });
             if (existingSpecialized) {
                 res.status(409).json({ 
@@ -383,6 +385,19 @@ export const updateAccount = async (req: Request, res: Response): Promise<void> 
         if (email) user.email = email;
         if (isActive !== undefined) user.isActive = isActive;
         if (major) user.major = major;
+        
+        // If changing role of an existing specialized admin, enforce "one per role" rule
+        if (role && role !== user.role && role === 'superadmin') {
+            const existingSpecialized = await AdminUser.findOne({ role });
+            if (existingSpecialized && existingSpecialized._id.toString() !== id) {
+                res.status(409).json({
+                    success: false,
+                    message: `A ${role} already exists. Only one ${role} is allowed.`
+                });
+                return;
+            }
+        }
+        
         if (role) user.role = role;
         
         if (!isAdmin) {
