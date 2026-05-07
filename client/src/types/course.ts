@@ -9,6 +9,8 @@ export interface Course {
   creditHours: number;
   instructorName?: string;
   group?: string;
+  courseType: 'Lecture' | 'Lab';
+  capacity?: number;
   prerequisite?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -24,8 +26,12 @@ export interface CourseFormData {
   creditHours: number;
   instructorName: string;
   group: string;
+  courseType: 'Lecture' | 'Lab';
+  capacity: number;
   prerequisite: string;
 }
+
+export const COURSE_TYPES = ['Lecture', 'Lab'] as const;
 
 export const MAJORS = [
   "Computer Science",

@@ -13,12 +13,12 @@ export const getAssignments = async (req: Request, res: Response): Promise<void>
     if (semester) filter.semester = semester;
 
     const assignments = await CourseAssignment.find(filter)
-      .populate('course', 'code name day time room credits instructor capacity enrolledCount')
+      .populate('course', 'code name day time room credits instructor capacity enrolledCount type')
       .sort({ level: 1, 'course.code': 1 });
 
     res.status(200).json({ success: true, assignments });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(200).json({ success: false, message: error.message });
   }
 };
 
@@ -57,7 +57,7 @@ export const assignCourse = async (req: Request, res: Response): Promise<void> =
       semester,
     });
 
-    await assignment.populate('course', 'code name day time room credits instructor capacity enrolledCount');
+    await assignment.populate('course', 'code name day time room credits instructor capacity enrolledCount type');
 
     // Audit log
     const caller = (req as any).adminUser;
@@ -121,7 +121,7 @@ export const getAvailableCourses = async (req: Request, res: Response): Promise<
 
     if (!level || !semester) {
       const courses = await Course.find({ isActive: true })
-        .select('code name credits day time room instructor capacity enrolledCount')
+        .select('code name credits day time room instructor capacity enrolledCount type')
         .sort({ code: 1 });
       res.status(200).json({ 
         success: true, 
@@ -136,6 +136,7 @@ export const getAvailableCourses = async (req: Request, res: Response): Promise<
           instructor: c.instructor,
           capacity: c.capacity,
           enrolledCount: c.enrolledCount,
+          type: c.type,
         }))
       });
       return;
@@ -154,7 +155,7 @@ export const getAvailableCourses = async (req: Request, res: Response): Promise<
       isActive: true,
       _id: { $nin: assignedIds },
     })
-      .select('code name credits day time room instructor capacity enrolledCount')
+      .select('code name credits day time room instructor capacity enrolledCount type')
       .sort({ code: 1 });
 
     res.status(200).json({ 
@@ -170,6 +171,7 @@ export const getAvailableCourses = async (req: Request, res: Response): Promise<
         instructor: c.instructor,
         capacity: c.capacity,
         enrolledCount: c.enrolledCount,
+        type: c.type,
       }))
     });
   } catch (error: any) {
@@ -186,7 +188,7 @@ export const getAssignmentsByLevel = async (req: Request, res: Response): Promis
     if (semester) filter.semester = semester;
 
     const assignments = await CourseAssignment.find(filter)
-      .populate('course', 'code name day time room credits instructor capacity enrolledCount')
+      .populate('course', 'code name day time room credits instructor capacity enrolledCount type')
       .sort({ level: 1, 'course.code': 1 });
 
     // Group by level and transform for frontend

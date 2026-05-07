@@ -1,16 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { courseApi } from "../../utils/api";
 import type { Course, CourseFormData } from "../../types/course";
-import { MAJORS, STUDENT_YEARS, DAYS } from "../../types/course";
+import { MAJORS, STUDENT_YEARS, DAYS, COURSE_TYPES } from "../../types/course";
 import AdminSidebar from "../../components/admin/AdminSidebar";
+import { getStoredAdminUser } from "../../utils/adminAccess";
 
 const ManageCourses: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set());
+
+  const user = getStoredAdminUser();
+  const canEditCourses = user.role === "superadmin" || (user.adminType || "").toLowerCase() === "courses_admin";
 
   const [formData, setFormData] = useState<CourseFormData>({
     courseName: "",
@@ -22,7 +30,18 @@ const ManageCourses: React.FC = () => {
     creditHours: 3,
     instructorName: "",
     group: "A",
+    courseType: "Lecture",
+    capacity: 30,
     prerequisite: "",
+  });
+
+  const [bulkEditData, setBulkEditData] = useState({
+    day: "Sunday",
+    time: "09:00 - 10:30",
+    instructorName: "",
+    major: "",
+    capacity: "",
+    courseType: "",
   });
 
   useEffect(() => {
@@ -46,6 +65,8 @@ const ManageCourses: React.FC = () => {
             creditHours: course.credits,
             instructorName: course.instructor,
             group: course.group || "A",
+            courseType: course.type || "Lecture",
+            capacity: course.capacity || 30,
             prerequisite: course.prerequisites?.join(", ") || "",
           })),
         );
@@ -65,7 +86,7 @@ const ManageCourses: React.FC = () => {
     setFormData((prev) => ({
       ...prev,
       [name]:
-        name === "studentYear" || name === "creditHours"
+        name === "studentYear" || name === "creditHours" || name === "capacity"
           ? parseInt(value)
           : value,
     }));
@@ -77,31 +98,61 @@ const ManageCourses: React.FC = () => {
     setError("");
 
     try {
-      const response = await courseApi.createCourse({
-        code: formData.courseCode,
-        name: formData.courseName,
-        day: formData.day,
-        time: formData.time,
-        room: "TBA",
-        credits: formData.creditHours,
-        instructor: formData.instructorName,
-        group: formData.group,
-        capacity: 30,
-        major: formData.major || undefined,
-        studentYear: formData.studentYear || undefined,
-        prerequisites: formData.prerequisite
-          ? formData.prerequisite.split(",").map((p) => p.trim())
-          : [],
-      });
+      if (editingCourse) {
+        // Update existing course
+        const response = await courseApi.updateCourse(editingCourse._id!, {
+          code: formData.courseCode,
+          name: formData.courseName,
+          day: formData.day,
+          time: formData.time,
+          room: "TBA",
+          credits: formData.creditHours,
+          instructor: formData.instructorName,
+          group: formData.group,
+          type: formData.courseType,
+          capacity: formData.capacity,
+          major: formData.major || undefined,
+          level: formData.studentYear || undefined,
+          prerequisites: formData.prerequisite
+            ? formData.prerequisite.split(",").map((p) => p.trim())
+            : [],
+        });
 
-      if (response.success) {
-        await fetchCourses();
-        setShowModal(false);
-        resetForm();
+        if (response.success) {
+          await fetchCourses();
+          setShowEditModal(false);
+          setEditingCourse(null);
+          resetForm();
+        }
+      } else {
+        // Create new course
+        const response = await courseApi.createCourse({
+          code: formData.courseCode,
+          name: formData.courseName,
+          day: formData.day,
+          time: formData.time,
+          room: "TBA",
+          credits: formData.creditHours,
+          instructor: formData.instructorName,
+          group: formData.group,
+          type: formData.courseType,
+          capacity: formData.capacity,
+          major: formData.major || undefined,
+          level: formData.studentYear || undefined,
+          prerequisites: formData.prerequisite
+            ? formData.prerequisite.split(",").map((p) => p.trim())
+            : [],
+        });
+
+        if (response.success) {
+          await fetchCourses();
+          setShowModal(false);
+          resetForm();
+        }
       }
     } catch (err: unknown) {
       const error = err as Error;
-      setError(error.message || "Failed to add course");
+      setError(error.message || "Failed to save course");
     } finally {
       setFormLoading(false);
     }
@@ -119,6 +170,89 @@ const ManageCourses: React.FC = () => {
     }
   };
 
+  const handleEditCourse = (course: Course) => {
+    setEditingCourse(course);
+    setFormData({
+      courseName: course.courseName,
+      courseCode: course.courseCode,
+      major: course.major || "",
+      studentYear: course.studentYear || 1,
+      day: course.day,
+      time: course.time,
+      creditHours: course.creditHours,
+      instructorName: course.instructorName || "",
+      group: course.group || "A",
+      courseType: course.courseType || "Lecture",
+      capacity: course.capacity || 30,
+      prerequisite: course.prerequisite || "",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingCourse(null);
+    resetForm();
+  };
+
+  const handleBulkEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedCourses.size === 0) {
+      setError("Please select at least one course");
+      return;
+    }
+
+    setFormLoading(true);
+    setError("");
+
+    try {
+      const coursesToUpdate = filteredCourses
+        .filter((c) => selectedCourses.has(c._id!))
+        .map((c) => {
+          const update: any = { _id: c._id! };
+          if (bulkEditData.day) update.day = bulkEditData.day;
+          if (bulkEditData.time) update.time = bulkEditData.time;
+          if (bulkEditData.instructorName) update.instructor = bulkEditData.instructorName;
+          if (bulkEditData.major) update.major = bulkEditData.major;
+          if (bulkEditData.capacity) update.capacity = parseInt(bulkEditData.capacity);
+          if (bulkEditData.courseType) update.type = bulkEditData.courseType;
+          return update;
+        });
+
+      const response = await courseApi.bulkUpdate(coursesToUpdate);
+
+      if (response.success) {
+        await fetchCourses();
+        setShowBulkEditModal(false);
+        setSelectedCourses(new Set());
+        setBulkEditData({ day: "Sunday", time: "09:00 - 10:30", instructorName: "", major: "", capacity: "", courseType: "" });
+      }
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message || "Failed to bulk update courses");
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const toggleSelectCourse = (courseId: string) => {
+    const newSelected = new Set(selectedCourses);
+    if (newSelected.has(courseId)) {
+      newSelected.delete(courseId);
+    } else {
+      newSelected.add(courseId);
+    }
+    setSelectedCourses(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedCourses.size === filteredCourses.length) {
+      setSelectedCourses(new Set());
+    } else {
+      setSelectedCourses(new Set(filteredCourses.map((c) => c._id!)));
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       courseName: "",
@@ -130,6 +264,8 @@ const ManageCourses: React.FC = () => {
       creditHours: 3,
       instructorName: "",
       group: "A",
+      courseType: "Lecture",
+      capacity: 30,
       prerequisite: "",
     });
   };
@@ -169,12 +305,22 @@ const ManageCourses: React.FC = () => {
                 Add and manage courses for different majors and years
               </p>
             </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center gap-2"
-            >
-              <span className="text-xl">+</span> Add New Course
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowModal(true)}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center gap-2"
+              >
+                <span className="text-xl">+</span> Add New Course
+              </button>
+              {canEditCourses && selectedCourses.size > 0 && (
+                <button
+                  onClick={() => setShowBulkEditModal(true)}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                >
+                  <span className="text-xl">✎</span> Bulk Edit ({selectedCourses.size})
+                </button>
+              )}
+            </div>
           </div>
           
           <div className="mb-6 shrink-0">
@@ -200,6 +346,16 @@ const ManageCourses: React.FC = () => {
               <table className="w-full relative">
                 <thead className="bg-indigo-600 border-b border-indigo-700 sticky top-0 z-10">
                   <tr>
+                    {canEditCourses && (
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                        <input
+                          type="checkbox"
+                          checked={selectedCourses.size > 0 && selectedCourses.size === filteredCourses.length}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 rounded cursor-pointer"
+                        />
+                      </th>
+                    )}
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Course Code
                     </th>
@@ -214,6 +370,12 @@ const ManageCourses: React.FC = () => {
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Credits
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      Capacity
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Day
@@ -239,7 +401,7 @@ const ManageCourses: React.FC = () => {
                   {filteredCourses.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={11}
+                        colSpan={canEditCourses ? 14 : 12}
                         className="px-6 py-12 text-center text-gray-500"
                       >
                         No courses found. Click "Add New Course" to get started.
@@ -251,6 +413,16 @@ const ManageCourses: React.FC = () => {
                         key={course._id}
                         className="hover:bg-gray-50 transition"
                       >
+                        {canEditCourses && (
+                          <td className="px-6 py-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedCourses.has(course._id!)}
+                              onChange={() => toggleSelectCourse(course._id!)}
+                              className="w-4 h-4 rounded cursor-pointer"
+                            />
+                          </td>
+                        )}
                         <td className="px-6 py-4 text-sm font-medium text-gray-900">
                           {course.courseCode}
                         </td>
@@ -265,6 +437,14 @@ const ManageCourses: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
                           {course.creditHours}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${course.courseType === 'Lab' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {course.courseType}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-700">
+                          {course.capacity || 30}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
                           {course.day}
@@ -282,12 +462,22 @@ const ManageCourses: React.FC = () => {
                           {course.prerequisite || "-"}
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          <button
-                            onClick={() => handleDelete(course._id!)}
-                            className="text-red-600 hover:text-red-800 transition"
-                          >
-                            Delete
-                          </button>
+                          <div className="flex gap-2">
+                            {canEditCourses && (
+                              <button
+                                onClick={() => handleEditCourse(course)}
+                                className="text-blue-600 hover:text-blue-800 transition"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDelete(course._id!)}
+                              className="text-red-600 hover:text-red-800 transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -299,19 +489,23 @@ const ManageCourses: React.FC = () => {
         </div>
       </main>
 
-      {/* Add Course Modal */}
-      {showModal && (
+      {/* Add/Edit Course Modal */}
+      {(showModal || showEditModal) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-gray-800">
-                  Add New Course
+                  {editingCourse ? "Edit Course" : "Add New Course"}
                 </h2>
                 <button
                   onClick={() => {
-                    setShowModal(false);
-                    resetForm();
+                    if (editingCourse) {
+                      handleCloseEditModal();
+                    } else {
+                      setShowModal(false);
+                      resetForm();
+                    }
                   }}
                   className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
                 >
@@ -412,6 +606,44 @@ const ManageCourses: React.FC = () => {
                 </div>
               </div>
 
+              {/* Course Type and Capacity */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Course Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="courseType"
+                    value={formData.courseType}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    {COURSE_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Capacity <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="capacity"
+                    value={formData.capacity}
+                    onChange={handleInputChange}
+                    required
+                    min="1"
+                    max="500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
               {/* Day and Time */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -504,8 +736,12 @@ const ManageCourses: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowModal(false);
-                    resetForm();
+                    if (editingCourse) {
+                      handleCloseEditModal();
+                    } else {
+                      setShowModal(false);
+                      resetForm();
+                    }
                   }}
                   className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
                 >
@@ -516,7 +752,156 @@ const ManageCourses: React.FC = () => {
                   disabled={formLoading}
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {formLoading ? "Adding..." : "Add Course"}
+                  {formLoading ? (editingCourse ? "Updating..." : "Adding...") : (editingCourse ? "Update Course" : "Add Course")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Edit Modal */}
+      {showBulkEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Bulk Edit Courses ({selectedCourses.size} selected)
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowBulkEditModal(false);
+                    setSelectedCourses(new Set());
+                  }}
+                  className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleBulkEdit} className="p-6 space-y-4">
+              <p className="text-sm text-gray-500">Leave a field empty to keep the current value unchanged.</p>
+
+              {/* Major */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Major
+                </label>
+                <select
+                  value={bulkEditData.major}
+                  onChange={(e) => setBulkEditData({ ...bulkEditData, major: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="">— Keep current —</option>
+                  {MAJORS.map((major) => (
+                    <option key={major} value={major}>
+                      {major}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Course Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Course Type (Lecture / Lab)
+                </label>
+                <select
+                  value={bulkEditData.courseType}
+                  onChange={(e) => setBulkEditData({ ...bulkEditData, courseType: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="">— Keep current —</option>
+                  {COURSE_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Capacity */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Capacity
+                </label>
+                <input
+                  type="number"
+                  value={bulkEditData.capacity}
+                  onChange={(e) => setBulkEditData({ ...bulkEditData, capacity: e.target.value })}
+                  min="1"
+                  max="500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Leave empty to keep current"
+                />
+              </div>
+
+              {/* Day */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Day
+                </label>
+                <select
+                  value={bulkEditData.day}
+                  onChange={(e) => setBulkEditData({ ...bulkEditData, day: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  {DAYS.map((day) => (
+                    <option key={day} value={day}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Time */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Time Slot
+                </label>
+                <input
+                  type="text"
+                  value={bulkEditData.time}
+                  onChange={(e) => setBulkEditData({ ...bulkEditData, time: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="e.g., 09:00 - 10:30"
+                />
+              </div>
+
+              {/* Instructor */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Instructor Name
+                </label>
+                <input
+                  type="text"
+                  value={bulkEditData.instructorName}
+                  onChange={(e) => setBulkEditData({ ...bulkEditData, instructorName: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Leave empty to keep current"
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBulkEditModal(false);
+                    setSelectedCourses(new Set());
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={formLoading}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {formLoading ? "Updating..." : `Update ${selectedCourses.size} Courses`}
                 </button>
               </div>
             </form>

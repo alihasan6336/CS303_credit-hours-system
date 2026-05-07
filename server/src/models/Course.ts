@@ -11,6 +11,7 @@ export interface ICourse extends Document {
   credits:    number;
   instructor: string;
   group?:      string; // e.g. "Group A"
+  type:       'Lecture' | 'Lab';
   capacity:      number;
   enrolledCount: number;
   major?:        string;
@@ -81,6 +82,12 @@ const CourseSchema = new Schema<ICourse>(
       type: String,
       trim: true,
       default: 'A',
+    },
+
+    type: {
+      type: String,
+      enum: ['Lecture', 'Lab'],
+      default: 'Lecture',
     },
 
     capacity: {

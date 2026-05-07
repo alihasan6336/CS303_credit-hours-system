@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { authApi } from "../../utils/api";
 import {
@@ -10,7 +10,25 @@ import {
 const AdminSidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const user = getStoredAdminUser();
+  const [user, setUser] = useState(getStoredAdminUser());
+  
+  // Listen for localStorage changes to update photo and other user data
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const updatedUser = getStoredAdminUser();
+      setUser(updatedUser);
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  // Also refresh user data when returning to admin pages (for same-tab updates)
+  useEffect(() => {
+    const updatedUser = getStoredAdminUser();
+    setUser(updatedUser);
+  }, [location.pathname]);
+
   const isSuperAdmin = user.role === "superadmin";
   const userType = (user.adminType || user.role || "").toLowerCase();
 

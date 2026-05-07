@@ -52,7 +52,7 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
     }
 
     const courses = await Course.find(filter)
-      .select('code name day time startTime endTime room credits instructor capacity enrolledCount major level group prerequisites isActive')
+      .select('code name day time startTime endTime room credits instructor capacity enrolledCount major level group type prerequisites isActive')
       .lean();
 
     res.status(200).json({
@@ -68,6 +68,7 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
         credits: c.credits,
         instructor: c.instructor,
         group: c.group,
+        type: c.type,
         capacity: c.capacity,
         enrolledCount: c.enrolledCount,
         major: c.major,
@@ -114,7 +115,7 @@ export const getMyCourses = async (req: Request, res: Response): Promise<void> =
     const enrollments = await Enrollment.find(filter)
       .populate({
         path: 'course',
-        select: 'code name day time room credits instructor capacity enrolledCount major level prerequisites',
+        select: 'code name day time room credits instructor capacity enrolledCount major level group type prerequisites',
       })
       .sort({ enrolledAt: -1 })
       .lean();
@@ -132,7 +133,7 @@ export const getMyCourses = async (req: Request, res: Response): Promise<void> =
 // POST /api/courses
 export const createCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { code, name, day, time, room, credits, instructor, capacity, major,group, level,studentYear, prerequisites } = req.body;
+    const { code, name, day, time, room, credits, instructor, capacity, major,group, level,studentYear, type, prerequisites } = req.body;
     const creator = req.adminUser;
 
     const timeStr = time || '08:00 - 09:30';
@@ -149,6 +150,7 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
       credits,
       instructor,
       group: group || 'A',
+      type: type || 'Lecture',
       capacity: capacity || 30,
       major,
       level,
@@ -177,6 +179,8 @@ export const createCourse = async (req: Request, res: Response): Promise<void> =
         room: course.room,
         credits: course.credits,
         instructor: course.instructor,
+        group: course.group,
+        type: course.type,
         capacity: course.capacity,
         enrolledCount: course.enrolledCount,
         major: course.major,
@@ -245,7 +249,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const { code, name, day, time, room, credits, instructor,group,level, capacity, major, studentYear, prerequisites } = req.body;
+    const { code, name, day, time, room, credits, instructor,group,level, capacity, major, studentYear, type, prerequisites } = req.body;
 
     // Guard: cannot reduce capacity below current enrollment
     if (capacity !== undefined) {
@@ -272,7 +276,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
 
     const course = await Course.findByIdAndUpdate(
       id,
-      { code, name, day, time, room, credits, instructor, capacity, major,group, level, studentYear, prerequisites },
+      { code, name, day, time, room, credits, instructor, capacity, major,group, level, studentYear, type, prerequisites },
       { new: true, runValidators: true }
     );
 
@@ -303,6 +307,8 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
         room: course.room,
         credits: course.credits,
         instructor: course.instructor,
+        group: course.group,
+        type: course.type,
         capacity: course.capacity,
         enrolledCount: course.enrolledCount,
         major: course.major,

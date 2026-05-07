@@ -407,6 +407,7 @@ interface CourseResponse {
     credits: number;
     instructor: string;
     group?: string;
+    type?: 'Lecture' | 'Lab';
     capacity: number;
     enrolledCount: number;
     major?: string;
@@ -439,9 +440,10 @@ export const courseApi = {
     credits: number;
     instructor: string;
     group?: string;
+    type?: 'Lecture' | 'Lab';
     capacity?: number;
     major?: string;
-    studentYear?: number;
+    level?: number;
     prerequisites?: string[];
   }): Promise<CourseResponse> {
     return request<CourseResponse>("/api/courses", {
@@ -459,9 +461,10 @@ export const courseApi = {
     credits?: number;
     instructor?: string;
     group?: string;
+    type?: 'Lecture' | 'Lab';
     capacity?: number;
     major?: string;
-    studentYear?: number;
+    level?: number;
     prerequisites?: string[];
     isActive?: boolean;
   }): Promise<CourseResponse> {

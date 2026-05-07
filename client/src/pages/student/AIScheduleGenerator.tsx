@@ -3,6 +3,8 @@ import StudentLayout from "../../layout/StudentLayout";
 import { courseApi } from "../../utils/api";
 import { Sparkles, Calendar, Clock, MapPin, User, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+
 interface OptimizedSchedule {
   courses: OptimizedCourse[];
   totalCredits: number;
@@ -72,7 +74,7 @@ const AIScheduleGenerator: React.FC = () => {
     setError(null);
     setProgress({ explored: 0, bestDayCount: null, hasBest: false });
     try {
-      const response = await fetch('/api/schedule/generate', {
+      const response = await fetch(`${API_BASE_URL}/api/schedule/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
