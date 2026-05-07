@@ -23,6 +23,8 @@ const buildStudentPayload = (student: InstanceType<typeof Student>) => ({
   phoneNumber: student.phoneNumber,
   gpa: student.gpa,
   role: student.role || 'student',
+  photoUrl: student.photoUrl || '',
+  creditLimitOverride: student.creditLimitOverride || { min: 14, max: 19, isActive: false, reason: '' },
 });
 
 // Admin payload builder
@@ -33,6 +35,7 @@ const buildAdminPayload = (admin: InstanceType<typeof AdminUser>) => ({
   role: admin.role,
   adminType: resolveAdminType(admin._id.toString(), admin.email, admin.role),
   isActive: admin.isActive,
+  photoUrl: admin.photoUrl || '',
 });
 
 // POST /api/auth/register

@@ -14,6 +14,7 @@ interface StudentFromApi {
   gpa: number;
   level: number;
   role: string;
+  photoUrl?: string;
 }
 
 interface AuthResponse {
@@ -409,7 +410,7 @@ interface CourseResponse {
     capacity: number;
     enrolledCount: number;
     major?: string;
-    studentYear?: number;
+    level?: number;
     prerequisites?: string[];
     isActive: boolean;
   };
@@ -494,6 +495,23 @@ export const courseApi = {
       method: "DELETE",
     });
   },
+
+  getMyCreditLimit(): Promise<{
+    success: boolean;
+    creditLimit: {
+      minCredits: number;
+      maxCredits: number;
+      currentCredits: number;
+      remainingCredits: number;
+      reason: string;
+      isSummer: boolean;
+      isOverride: boolean;
+      semester: string;
+      gpa: number;
+    };
+  }> {
+    return request("/api/courses/my-credit-limit");
+  },
 };
 
 interface ScheduleResponse {
@@ -512,6 +530,72 @@ export const scheduleApi = {
     return request<ScheduleResponse>("/api/schedule/generate", {
       method: "POST",
       body: body ? JSON.stringify(body) : undefined,
+    });
+  },
+};
+
+interface PhotoResponse {
+  success: boolean;
+  photoUrl: string;
+  message?: string;
+}
+
+export const photoApi = {
+  upload(file: File): Promise<PhotoResponse> {
+    const formData = new FormData();
+    formData.append("photo", file);
+    return fetch(`${API_BASE_URL}/api/photos/upload`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("authToken") || ""}`,
+      },
+      body: formData,
+    }).then((res) => res.json());
+  },
+
+  getMyPhoto(): Promise<PhotoResponse> {
+    return request<PhotoResponse>("/api/photos/me");
+  },
+
+  deletePhoto(): Promise<PhotoResponse> {
+    return request<PhotoResponse>("/api/photos/me", { method: "DELETE" });
+  },
+};
+
+interface CreditLimitOverrideBody {
+  min: number;
+  max: number;
+  isActive: boolean;
+  reason?: string;
+}
+
+export const adminCreditLimitApi = {
+  getStudentCreditLimit(studentId: string): Promise<{
+    success: boolean;
+    creditLimit: {
+      minCredits: number;
+      maxCredits: number;
+      currentCredits: number;
+      remainingCredits: number;
+      reason: string;
+      isSummer: boolean;
+      isOverride: boolean;
+      semester: string;
+      gpa: number;
+      override: { min: number; max: number; isActive: boolean; reason: string };
+    };
+  }> {
+    return request(`/api/admin/users/${studentId}/credit-limit`);
+  },
+
+  updateCreditOverride(studentId: string, body: CreditLimitOverrideBody): Promise<{
+    success: boolean;
+    message: string;
+    creditLimitOverride: { min: number; max: number; isActive: boolean; reason: string };
+  }> {
+    return request(`/api/admin/users/${studentId}/credit-override`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
     });
   },
 };

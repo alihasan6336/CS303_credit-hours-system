@@ -10,10 +10,12 @@ export interface IAdminUser extends Document {
   phoneNumber?: string;
   role: 'admin' | 'superadmin' | 'it_admin' | 'table_admin' | 'courses_admin' | 'enrollment_admin';
   isActive: boolean;
+  permissions?: string[]; // Array of permission strings: 'dashboard', 'courses', 'accounts', 'enrollment', 'grading', 'table'
   createdBy?: mongoose.Types.ObjectId;
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
+  photoUrl?: string;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -64,6 +66,15 @@ const AdminUserSchema = new Schema<IAdminUser>(
     },
     lastLogin: {
       type: Date,
+    },
+    photoUrl: {
+      type: String,
+      default: '',
+    },
+    permissions: {
+      type: [String],
+      default: [],
+      enum: ['dashboard', 'courses', 'accounts', 'enrollment', 'grading', 'table'],
     },
   },
   {

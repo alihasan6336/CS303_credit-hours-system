@@ -1,7 +1,14 @@
 import React, { useState } from "react";
 import StudentLayout from "../../layout/StudentLayout";
-import { scheduleApi } from "../../utils/api";
+import { scheduleApi, courseApi } from "../../utils/api";
 import { Sparkles, Calendar, Clock, MapPin, User, ChevronRight, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+
+interface OptimizedSchedule {
+  courses: OptimizedCourse[];
+  totalCredits: number;
+  dayCount: number;
+  uniqueDays: string[];
+}
 
 interface OptimizedCourse {
   _id: string;
@@ -15,17 +22,16 @@ interface OptimizedCourse {
   group: string;
 }
 
-interface OptimizedSchedule {
-  courses: OptimizedCourse[];
-  totalCredits: number;
-  dayCount: number;
-  uniqueDays: string[];
-}
-
 interface AIAdvice {
   summary: string;
   reasoning: string;
   tips: string[];
+}
+
+interface ProgressState {
+  explored: number;
+  bestDayCount: number | null;
+  hasBest: boolean;
 }
 
 const AIScheduleGenerator: React.FC = () => {
@@ -38,17 +44,19 @@ const AIScheduleGenerator: React.FC = () => {
   const [enrolling, setEnrolling] = useState(false);
   const [enrollSuccess, setEnrollSuccess] = useState(false);
   const [step, setStep] = useState(1); // 1: Selection, 2: Result
+  const [progress, setProgress] = useState<ProgressState>({
+    explored: 0,
+    bestDayCount: null,
+    hasBest: false
+  });
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
 
   const fetchAvailable = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/courses`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-      });
-      const data = await response.json();
+      const data = await courseApi.getAllCourses();
       if (data.success) {
-        setAvailableCourses(data.courses);
+        setAvailableCourses(data.courses as any);
       }
     } catch (err) {
       console.error("Failed to fetch courses", err);
@@ -62,21 +70,73 @@ const AIScheduleGenerator: React.FC = () => {
   const handleGenerate = async () => {
     setLoading(true);
     setError(null);
+    setProgress({ explored: 0, bestDayCount: null, hasBest: false });
     try {
-      const response = await scheduleApi.generate({
-        preferredCourseIds: selectedCourseIds.length > 0 ? selectedCourseIds : undefined
-      } as any);
-      if (response.success) {
-        setSchedule(response.schedule);
-        setAdvice((response as any).aiAdvice);
-        setStep(2);
-      } else {
-        setError(response.message || "Failed to generate schedule.");
+      const response = await fetch('/api/schedule/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          preferredCourseIds: selectedCourseIds.length > 0 ? selectedCourseIds : undefined
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate schedule');
       }
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.");
-    } finally {
+
+      // Handle Server-Sent Events
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      if (!reader) throw new Error('No response body');
+
+      // Show result step immediately
+      setStep(2);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === 'progress') {
+                // Update progress display
+                setProgress({
+                  explored: data.explored,
+                  bestDayCount: data.bestDayCount,
+                  hasBest: data.hasBest
+                });
+              } else if (data.type === 'success') {
+                setSchedule(data.schedule);
+                setAdvice(data.aiAdvice);
+                setError(null);
+              } else if (data.type === 'error') {
+                setError(data.message || 'An error occurred during optimization');
+                setStep(1);
+              }
+            } catch (e) {
+              console.error('Failed to parse SSE data:', e);
+            }
+          }
+        }
+      }
+
       setLoading(false);
+    } catch (err: any) {
+      setLoading(false);
+      setError(err.message || 'An unexpected error occurred.');
+      setStep(1);
     }
   };
 
@@ -207,12 +267,66 @@ const AIScheduleGenerator: React.FC = () => {
           </div>
         )}
 
-        {step === 2 && schedule && (
+        {step === 2 && loading && (
           <div className="bg-white rounded-3xl shadow-xl p-20 text-center">
-            <div className="flex flex-col items-center">
-              <Loader2 className="text-indigo-600 animate-spin mb-6" size={64} />
-              <h2 className="text-2xl font-bold text-gray-800">Calculating optimal combinations...</h2>
-              <p className="text-gray-500 mt-2">Pruning thousands of invalid schedules to find your best fit.</p>
+            <div className="flex flex-col items-center space-y-8">
+              <div className="relative w-32 h-32">
+                <svg className="w-full h-full" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" strokeWidth="2" />
+                  <circle 
+                    cx="50" 
+                    cy="50" 
+                    r="45" 
+                    fill="none" 
+                    stroke="#4f46e5" 
+                    strokeWidth="2"
+                    strokeDasharray={`${Math.min(progress.explored / 100, 100) * 283} 283`}
+                    className="transition-all duration-300"
+                    style={{ transform: 'rotate(-90deg)', transformOrigin: 'center' }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <Sparkles className="text-indigo-600 animate-spin mx-auto mb-2" size={32} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-gray-800">Calculating optimal combinations...</h2>
+                <p className="text-gray-500 text-sm max-w-lg">
+                  Pruning thousands of invalid schedules to find your best fit.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+                <div className="bg-indigo-50 rounded-xl p-4">
+                  <div className="text-2xl font-bold text-indigo-600">
+                    {(progress.explored / 1000).toFixed(1)}K
+                  </div>
+                  <div className="text-xs text-indigo-600 font-medium">Combinations Explored</div>
+                </div>
+                {progress.hasBest && (
+                  <div className="bg-green-50 rounded-xl p-4">
+                    <div className="text-2xl font-bold text-green-600">
+                      {progress.bestDayCount}
+                    </div>
+                    <div className="text-xs text-green-600 font-medium">Best Days Found</div>
+                  </div>
+                )}
+              </div>
+
+              <div className="w-full max-w-md space-y-2">
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-300"
+                    style={{ width: `${Math.min((progress.explored / 5000) * 100, 100)}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  This typically takes 5-30 seconds depending on available courses
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -339,13 +453,7 @@ const AIScheduleGenerator: React.FC = () => {
                         try {
                           // This is a simplified version; in reality you might need a bulk API
                           for (const course of schedule.courses) {
-                            await fetch(`http://localhost:3001/api/courses/${course._id}/enroll`, {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                              }
-                            });
+                            await courseApi.enroll(course._id);
                           }
                           setEnrollSuccess(true);
                         } catch (err) {

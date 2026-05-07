@@ -45,6 +45,24 @@ const StudentDashboard: React.FC = () => {
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
 
+  // Ensure photoUrl is synced when home API returns updated data
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    const storedStudent = localStorage.getItem("student");
+    if (!token || !storedStudent) return;
+
+    authApi.me()
+      .then((res) => {
+        if (res.success && res.student?.photoUrl) {
+          const updated = { ...user, photoUrl: res.student.photoUrl };
+          localStorage.setItem("student", JSON.stringify(updated));
+        }
+      })
+      .catch(() => {
+        // silently ignore if me endpoint fails
+      });
+  }, []);
+
   const totalCredits = currentStudent.courses.reduce(
     (sum, c) => sum + c.credits,
     0,

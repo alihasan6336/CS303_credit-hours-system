@@ -15,7 +15,7 @@ import Enrollment from '../models/Enrollment';
 import AuditLog from '../models/AuditLog';
 import SystemSettings from '../models/SystemSettings';
 import Student from '../models/Student';
-import { AppError } from '../middleware/errorHandler';
+import { getCreditLimitForStudent } from '../utils/creditLimitCalculator';
 
 // GET /api/courses
 export const getCourses = async (req: Request, res: Response): Promise<void> => {
@@ -23,12 +23,10 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
     const student = req.student; // From protect middleware
     const { level, major } = req.query;
     
-    // Build filter based on query params
+    // Build filter based on query params (admin/advisor use)
     const filter: any = { isActive: true };
-    if (level) filter.level = Number(level);
-    if (major) filter.major = major;
-    
-    // If a student is requesting, filter by major and student level
+
+    // If a student is requesting, override query params with student context
     if (student) {
       // Must match major (or be general) AND match level (or be general/unspecified)
       filter.$and = [
@@ -41,16 +39,20 @@ export const getCourses = async (req: Request, res: Response): Promise<void> => 
         },
         {
           $or: [
-            { studentYear: student.level },
-            { studentYear: { $exists: false } },
-            { studentYear: 0 } // Assuming 0 means all years
+            { level: student.level },
+            { level: { $exists: false } },
+            { level: null }
           ]
         }
       ];
+    } else {
+      // Admin/advisor can filter by query params
+      if (level) filter.level = Number(level);
+      if (major) filter.major = major;
     }
 
-    const courses = await Course.find(filter)   
-      .select('code name day time room credits instructor capacity enrolledCount major studentYear prerequisites')
+    const courses = await Course.find(filter)
+      .select('code name day time startTime endTime room credits instructor capacity enrolledCount major level group prerequisites isActive')
       .lean();
 
     res.status(200).json({
@@ -444,13 +446,7 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
     }
 
     // === CREDIT HOUR LIMIT CHECK ===
-    const settings = await SystemSettings.findOne().lean();
-    const minLimit = student.creditLimitOverride?.isActive 
-      ? student.creditLimitOverride.min 
-      : (settings?.minCreditHoursDefault || 14);
-    const maxLimit = student.creditLimitOverride?.isActive 
-      ? student.creditLimitOverride.max 
-      : (settings?.maxCreditHoursDefault || 19);
+    const creditLimit = await getCreditLimitForStudent(student);
 
     const enrolledEnrollments = await Enrollment.find({
       student: student._id,
@@ -460,12 +456,13 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
 
     const currentTotalCredits = enrolledEnrollments.reduce((sum, e) => sum + ((e.course as any).credits || 0), 0);
     
-    if (currentTotalCredits + course.credits > maxLimit) {
+    if (currentTotalCredits + course.credits > creditLimit.maxCredits) {
       res.status(403).json({
         success: false,
-        message: `Credit hour limit exceeded. Your maximum is ${maxLimit} credits. Current: ${currentTotalCredits}, Adding: ${course.credits}.`,
-        limit: maxLimit,
-        current: currentTotalCredits
+        message: `Credit hour limit exceeded. ${creditLimit.reason}. Current: ${currentTotalCredits}, Adding: ${course.credits}, Maximum: ${creditLimit.maxCredits}.`,
+        limit: creditLimit.maxCredits,
+        current: currentTotalCredits,
+        reason: creditLimit.reason,
       });
       return;
     }
@@ -623,6 +620,40 @@ export const dropCourse = async (req: Request, res: Response): Promise<void> => 
     });
 
     res.status(200).json({ success: true, message: 'Course dropped successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GET /api/courses/my-credit-limit - Get current student's credit hour limits
+export const getMyCreditLimit = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const student = req.student!;
+
+    const creditLimit = await getCreditLimitForStudent(student);
+
+    const enrolledEnrollments = await Enrollment.find({
+      student: student._id,
+      semester: student.currentSemester,
+      status: 'active',
+    }).populate('course', 'credits');
+
+    const currentTotalCredits = enrolledEnrollments.reduce((sum, e) => sum + ((e.course as any).credits || 0), 0);
+
+    res.status(200).json({
+      success: true,
+      creditLimit: {
+        minCredits: creditLimit.minCredits,
+        maxCredits: creditLimit.maxCredits,
+        currentCredits: currentTotalCredits,
+        remainingCredits: creditLimit.maxCredits - currentTotalCredits,
+        reason: creditLimit.reason,
+        isSummer: creditLimit.isSummer,
+        isOverride: creditLimit.isOverride,
+        semester: student.currentSemester,
+        gpa: student.gpa,
+      },
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

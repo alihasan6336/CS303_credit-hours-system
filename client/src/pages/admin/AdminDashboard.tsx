@@ -216,7 +216,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-3xl font-extrabold text-gray-900 mb-1">
-                    {isSuperAdmin ? stat.value : "---"}
+                    {stat.value}
                   </h3>
                   <p className="text-gray-500 text-sm font-semibold tracking-wide uppercase">
                     {stat.label}

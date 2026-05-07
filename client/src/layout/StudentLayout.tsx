@@ -1,5 +1,5 @@
-import { NavLink } from "react-router-dom";
-import { Home, BookOpen, LogOut, GraduationCap, Calculator, History } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { Home, BookOpen, LogOut, GraduationCap, Calculator, History, Camera } from "lucide-react";
 import { authApi } from "../utils/api";
 
 interface StudentLayoutProps {
@@ -8,10 +8,13 @@ interface StudentLayoutProps {
     fullName?: string;
     major?: string;
     role?: string;
+    photoUrl?: string;
   };
 }
 
 const StudentLayout: React.FC<StudentLayoutProps> = ({ children, user = {} }) => {
+  const navigate = useNavigate();
+
   const handleLogout = () => {
     authApi.logout();
     window.location.href = "/login";
@@ -50,9 +53,26 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children, user = {} }) =>
         {/* User Profile */}
         <div className="px-4 py-3 mx-4 bg-indigo-700/50 rounded-lg mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-semibold text-sm">
-              {initials}
-            </div>
+            <button
+              onClick={() => navigate("/profile-photo")}
+              className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 cursor-pointer group"
+              title="Click to change photo"
+            >
+              {user.photoUrl ? (
+                <img
+                  src={user.photoUrl}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-white/20 flex items-center justify-center font-semibold text-sm">
+                  {initials}
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera size={14} className="text-white" />
+              </div>
+            </button>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{displayName}</p>
               <p className="text-xs text-indigo-200 truncate">{user.major || "Student"}</p>

@@ -5,6 +5,7 @@ import Course from '../models/Course';
 import Enrollment from '../models/Enrollment';
 import AuditLog from '../models/AuditLog';
 import { recalculateStudentGPA } from '../utils/gpaCalculator';
+import { getCreditLimitForStudent } from '../utils/creditLimitCalculator';
 import AdminUser from '../models/AdminUser';
 
 // Helper to format student response
@@ -23,7 +24,7 @@ const formatStudent = (s: any) => {
             completedCreditHours: s.completedCreditHours || 0,
         }),
         role: s.role,
-        gpa: s.gpa,    
+        gpa: s.gpa,
         creditLimitOverride: s.creditLimitOverride || {
             min: 14,
             max: 19,
@@ -35,18 +36,10 @@ const formatStudent = (s: any) => {
 
 export const getAdminStats = async (req: Request, res: Response): Promise<void> => {
     try {
-        const totalStudents = await Student.countDocuments({ role: { $ne: 'superadmin' } });
+        const totalStudents = await Student.countDocuments({ role: 'student' });
         const totalCourses = await Course.countDocuments({ isActive: true });
-        // Count regular admins
-        const totalAdmins = await AdminUser.countDocuments({ role: 'admin' });
-        // Count superadmins
-        const totalSuperAdmins = await AdminUser.countDocuments({ role: 'superadmin' });
-        // Count specialized admins (it_admin, table_admin, courses_admin, enrollment_admin)
-        const totalSpecializedAdmins = await AdminUser.countDocuments({
-            role: { $in: ['it_admin', 'table_admin', 'courses_admin', 'enrollment_admin'] }
-        });
-        // Total admins shown in UI = only specialized admins (not superadmin, not regular admin)
-        const totalAllAdmins = totalSpecializedAdmins;
+        // Count all staff (admins + specialized admins + superadmins)
+        const totalAdmins = await AdminUser.countDocuments();
         const totalEnrollments = await Enrollment.countDocuments();
 
         // Recent logins in last 24 hours
@@ -71,8 +64,8 @@ export const getAdminStats = async (req: Request, res: Response): Promise<void> 
             stats: { 
                 totalStudents, 
                 totalCourses, 
-                totalAdmins: totalSpecializedAdmins,  // Only 4 specialized admins
-                totalSuperAdmins, 
+                totalAdmins,
+                totalSuperAdmins: await AdminUser.countDocuments({ role: 'superadmin' }), 
                 totalEnrollments, 
                 recentLogins 
             },
@@ -146,7 +139,7 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
                 .lean();
             total = await AdminUser.countDocuments(adminFilter);
 
-            // Format admins with all fields
+            // Format admins with all fields including permissions
             students = admins.map((admin: any) => ({
                 id: admin._id,
                 fullName: admin.fullName,
@@ -155,6 +148,7 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
                 major: admin.major,
                 role: admin.role,
                 isActive: admin.isActive ?? true,
+                permissions: admin.permissions || [],
                 createdAt: admin.createdAt,
                 createdBy: admin.createdBy,
             }));
@@ -190,16 +184,44 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
 export const getStudentById = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const student = await Student.findById(id)
-            .populate('permissionsDoc', 'permissions grantedBy note updatedAt')
-            .lean();
+        let user: any = await Student.findById(id).lean();
+        let isAdmin = false;
 
-        if (!student) {
-            res.status(404).json({ success: false, message: 'Student not found' });
+        // If not found in Student, try AdminUser
+        if (!user) {
+            user = await AdminUser.findById(id).lean();
+            if (user) {
+                isAdmin = true;
+            }
+        }
+
+        if (!user) {
+            res.status(404).json({ success: false, message: 'Account not found' });
             return;
         }
 
-        res.status(200).json({ success: true, student: formatStudent(student) });
+        const response: any = {
+            id: user._id,
+            fullName: user.fullName,
+            email: user.email,
+            universityId: user.universityId,
+            major: user.major,
+            role: user.role,
+            isActive: user.isActive ?? true,
+        };
+
+        // Add admin-specific fields
+        if (isAdmin) {
+            response.permissions = user.permissions || [];
+        } else {
+            // Add student-specific fields
+            response.level = user.level;
+            response.currentSemester = user.currentSemester;
+            response.completedCreditHours = user.completedCreditHours;
+            response.gpa = user.gpa;
+        }
+
+        res.status(200).json({ success: true, user: response });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -254,7 +276,7 @@ export const createStudentAccount = async (req: Request, res: Response): Promise
 
 export const createAdminAccount = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { fullName, universityId, email, password, major, phoneNumber, role } = req.body;
+        const { fullName, universityId, email, password, major, phoneNumber, role, permissions } = req.body;
         const creator = req.adminUser;
 
         if (!fullName || !email || !password) {
@@ -307,6 +329,13 @@ export const createAdminAccount = async (req: Request, res: Response): Promise<v
             }
         }
 
+        // Validate and filter permissions
+        const validPermissions = ['dashboard', 'courses', 'accounts', 'enrollment', 'grading', 'table'];
+        let adminPermissions: string[] = [];
+        if (Array.isArray(permissions)) {
+            adminPermissions = permissions.filter(p => validPermissions.includes(p));
+        }
+
         const admin = await AdminUser.create({
             fullName,
             universityId: universityId || `ADMIN-${Date.now()}`,
@@ -315,6 +344,7 @@ export const createAdminAccount = async (req: Request, res: Response): Promise<v
             major: major || 'Administration',
             phoneNumber: phoneNumber || '',
             role: adminRole,
+            permissions: adminPermissions,
             createdBy: creator?._id,
         });
 
@@ -324,7 +354,7 @@ export const createAdminAccount = async (req: Request, res: Response): Promise<v
                 actor: creator._id,
                 action: 'admin:create',
                 targetUser: admin._id,
-                details: { role: admin.role, email: admin.email, type: adminRole },
+                details: { role: admin.role, email: admin.email, type: adminRole, permissions: adminPermissions },
                 ipAddress: req.ip,
             });
         }
@@ -335,7 +365,8 @@ export const createAdminAccount = async (req: Request, res: Response): Promise<v
                 id: admin._id, 
                 fullName: admin.fullName, 
                 email: admin.email, 
-                role: admin.role 
+                role: admin.role,
+                permissions: admin.permissions
             },
             message: `${adminRole} account created successfully` 
         });
@@ -360,7 +391,7 @@ export const createAccountUnified = async (req: Request, res: Response): Promise
 export const updateAccount = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const { fullName, email, isActive, major, level, role, gpa, completedCreditHours, currentSemester } = req.body;
+        const { fullName, email, isActive, major, level, role, gpa, completedCreditHours, currentSemester, permissions } = req.body;
         const caller = req.adminUser;
 
         let user = await Student.findById(id);
@@ -400,6 +431,13 @@ export const updateAccount = async (req: Request, res: Response): Promise<void> 
         
         if (role) user.role = role;
         
+        // Update permissions if provided (only for admins)
+        if (isAdmin && Array.isArray(permissions)) {
+            const validPermissions = ['dashboard', 'courses', 'accounts', 'enrollment', 'grading', 'table'];
+            const filteredPermissions = permissions.filter(p => validPermissions.includes(p));
+            (user as any).permissions = filteredPermissions;
+        }
+        
         if (!isAdmin) {
             const student = user as any;
             if (level !== undefined) student.level = level;
@@ -416,7 +454,7 @@ export const updateAccount = async (req: Request, res: Response): Promise<void> 
                 actor: caller._id,
                 action: isAdmin ? 'admin:update' : 'user:update',
                 targetUser: user._id,
-                details: { fullName, email, isActive, role: user.role },
+                details: { fullName, email, isActive, role: user.role, permissions: (user as any).permissions },
                 ipAddress: req.ip,
             });
         }
@@ -429,6 +467,7 @@ export const updateAccount = async (req: Request, res: Response): Promise<void> 
                 email: user.email,
                 role: user.role,
                 isActive: user.isActive ?? true,
+                permissions: isAdmin ? ((user as any).permissions || []) : undefined,
                 ...(isSpecializedAdmin ? { isSpecializedAdmin: true } : {})
             }
         });
@@ -515,7 +554,15 @@ export const toggleAccountStatus = async (req: Request, res: Response): Promise<
             });
         }
 
-        res.status(200).json({ success: true, isActive: user.isActive, message: `Account ${user.isActive ? 'activated' : 'deactivated'}` });
+        res.status(200).json({ 
+            success: true, 
+            user: {
+                id: user._id,
+                isActive: user.isActive,
+                permissions: isAdmin ? ((user as any).permissions || []) : undefined,
+            },
+            message: `Account ${user.isActive ? 'activated' : 'deactivated'}` 
+        });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -625,6 +672,26 @@ export const adminEnroll = async (req: Request, res: Response): Promise<void> =>
         const exists = await Enrollment.findOne({ student: studentId, course: courseId, semester: student.currentSemester });
         if (exists) {
             res.status(409).json({ success: false, message: 'Already enrolled' });
+            return;
+        }
+
+        // Credit limit validation
+        const creditLimit = await getCreditLimitForStudent(student);
+        const currentEnrollments = await Enrollment.find({
+            student: studentId,
+            semester: student.currentSemester,
+            status: 'active',
+        }).populate('course', 'credits');
+        const currentTotalCredits = currentEnrollments.reduce((sum, e) => sum + ((e.course as any).credits || 0), 0);
+
+        if (currentTotalCredits + course.credits > creditLimit.maxCredits) {
+            res.status(403).json({
+                success: false,
+                message: `Credit hour limit exceeded for this student. ${creditLimit.reason}. Current: ${currentTotalCredits}, Adding: ${course.credits}, Maximum: ${creditLimit.maxCredits}. Use credit-override to bypass if needed.`,
+                limit: creditLimit.maxCredits,
+                current: currentTotalCredits,
+                reason: creditLimit.reason,
+            });
             return;
         }
 
@@ -794,6 +861,47 @@ export const updateStudentCreditOverride = async (req: Request, res: Response): 
             success: true,
             message: 'Credit limit override updated successfully',
             creditLimitOverride: student.creditLimitOverride,
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// GET /api/admin/users/:id/credit-limit - Get a student's effective credit limit
+export const getStudentCreditLimit = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const student = await Student.findById(id);
+        if (!student) {
+            res.status(404).json({ success: false, message: 'Student not found' });
+            return;
+        }
+
+        const creditLimit = await getCreditLimitForStudent(student);
+
+        const currentEnrollments = await Enrollment.find({
+            student: id,
+            semester: student.currentSemester,
+            status: 'active',
+        }).populate('course', 'credits');
+
+        const currentTotalCredits = currentEnrollments.reduce((sum, e) => sum + ((e.course as any).credits || 0), 0);
+
+        res.status(200).json({
+            success: true,
+            creditLimit: {
+                minCredits: creditLimit.minCredits,
+                maxCredits: creditLimit.maxCredits,
+                currentCredits: currentTotalCredits,
+                remainingCredits: creditLimit.maxCredits - currentTotalCredits,
+                reason: creditLimit.reason,
+                isSummer: creditLimit.isSummer,
+                isOverride: creditLimit.isOverride,
+                semester: student.currentSemester,
+                gpa: student.gpa,
+                override: student.creditLimitOverride,
+            },
         });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });

@@ -13,6 +13,7 @@ import auditRoutes from './routes/auditRoutes';
 import enrollmentRoutes from './routes/enrollmentRoutes';
 import gpaRoutes from './routes/gpaRoutes';
 import scheduleRoutes from './routes/scheduleRoutes';
+import photoRoutes from './routes/photoRoutes';
 import { apiLimiter, authLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -65,9 +66,8 @@ app.use(sanitizeBody); // Custom sanitizer for Express 5 compatibility
 
 // Request logging
 app.use((req, res, next) => {
-  console.log(`🚀 [${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log(` [${new Date().toISOString()}] ${req.method} ${req.url}`);
   if (req.method !== 'GET') {
-    console.log('📦 Body:', JSON.stringify(req.body, null, 2));
   }
   next();
 });
@@ -79,7 +79,7 @@ app.use('/api', apiLimiter);
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
-    message: 'Server is running',
+    message: 'Server is start sucsse',
     timestamp: new Date().toISOString()
   });
 });
@@ -99,6 +99,7 @@ app.use('/api/admin/permissions', permissionRoutes);
 app.use('/api/admin/audit', auditRoutes);
 app.use('/api/admin/enrollments', enrollmentRoutes);
 app.use('/api/gpa', gpaRoutes);
+app.use('/api/photos', photoRoutes);
 app.use('/api/schedule', scheduleRoutes);
 
 // 404 handler
@@ -114,7 +115,7 @@ app.use(errorHandler);
 
 // Start server with graceful shutdown
 const server = app.listen(PORT, () => {
-  console.log(`✅ Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
 
 // Graceful shutdown handlers

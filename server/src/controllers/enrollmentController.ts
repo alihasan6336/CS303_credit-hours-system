@@ -4,6 +4,7 @@ import Student from '../models/Student';
 import Course from '../models/Course';
 import AuditLog from '../models/AuditLog';
 import { recalculateStudentGPA } from '../utils/gpaCalculator';
+import { getCreditLimitForStudent } from '../utils/creditLimitCalculator';
 
 // GET /api/admin/enrollments - List all enrollments (admin)
 export const listEnrollments = async (req: Request, res: Response): Promise<void> => {
@@ -91,6 +92,26 @@ export const createEnrollment = async (req: Request, res: Response): Promise<voi
 
     if (existingEnrollment) {
       res.status(409).json({ success: false, message: 'Student is already enrolled in this course' });
+      return;
+    }
+
+    // Credit limit validation
+    const creditLimit = await getCreditLimitForStudent(student);
+    const currentEnrollments = await Enrollment.find({
+      student: studentId,
+      semester: enrollmentSemester,
+      status: 'active',
+    }).populate('course', 'credits');
+    const currentTotalCredits = currentEnrollments.reduce((sum, e) => sum + ((e.course as any).credits || 0), 0);
+
+    if (currentTotalCredits + course.credits > creditLimit.maxCredits) {
+      res.status(403).json({
+        success: false,
+        message: `Credit hour limit exceeded. ${creditLimit.reason}. Current: ${currentTotalCredits}, Adding: ${course.credits}, Maximum: ${creditLimit.maxCredits}. Use credit-override to bypass if needed.`,
+        limit: creditLimit.maxCredits,
+        current: currentTotalCredits,
+        reason: creditLimit.reason,
+      });
       return;
     }
 

@@ -15,6 +15,7 @@ import {
   updateGrade,
   createAccountUnified,
   updateStudentCreditOverride,
+  getStudentCreditLimit,
   resetPassword,
 } from '../controllers/adminController';
 import { adminProtect, requireRole, requirePermission } from '../middleware/adminProtect';
@@ -46,6 +47,7 @@ router.patch('/users/:id/toggle', requireRole( 'superadmin', 'it_admin'), adminA
 router.get('/users/:id/record', requireRole( 'superadmin', 'it_admin'), requirePermission('users:view'), asyncWrap(getStudentAcademicRecord));
 router.post('/users/:id/reset-password', requireRole( 'superadmin', 'it_admin'), adminActionLimiter, requirePermission('users:password_reset'), asyncWrap(resetPassword));
 router.patch('/users/:id/credit-override', requireRole('admin', 'superadmin'), adminActionLimiter, requirePermission('users:update'), asyncWrap(updateStudentCreditOverride));
+router.get('/users/:id/credit-limit', requireRole(...ALL_ADMIN_ROLES), requirePermission('users:view'), asyncWrap(getStudentCreditLimit));
 
 // Legacy path aliases
 router.get('/students', requireRole(...ALL_ADMIN_ROLES), requirePermission('users:list'), asyncWrap(getStudents));

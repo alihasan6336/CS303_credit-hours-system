@@ -5,6 +5,9 @@ export interface ISystemSettings extends Document {
     academicYear: string;
     minCreditHoursDefault: number;
     maxCreditHoursDefault: number;
+    maxCreditHoursGpaBelow1: number;
+    maxCreditHoursGpaAbove3: number;
+    maxCreditHoursSummer: number;
     isRegistrationOpen: boolean;
     tableVisible: boolean;
     enrollmentStartDate?: Date;
@@ -31,6 +34,18 @@ const SystemSettingsSchema: Schema = new Schema(
         maxCreditHoursDefault: {
             type: Number,
             default: 19,
+        },
+        maxCreditHoursGpaBelow1: {
+            type: Number,
+            default: 12,
+        },
+        maxCreditHoursGpaAbove3: {
+            type: Number,
+            default: 21,
+        },
+        maxCreditHoursSummer: {
+            type: Number,
+            default: 9,
         },
         isRegistrationOpen: {
             type: Boolean,

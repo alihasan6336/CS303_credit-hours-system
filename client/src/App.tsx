@@ -12,6 +12,7 @@ import AvailableCourses from "./pages/student/AvailableCourses";
 import GpaCalculatorPage from "./pages/student/GpaCalculatorPage";
 import AIScheduleGenerator from "./pages/student/AIScheduleGenerator";
 import AcademicHistoryPage from "./pages/student/AcademicHistoryPage";
+import ProfilePhotoPage from "./pages/student/ProfilePhotoPage";
 
 import ManageCourses from "./pages/admin/ManageCourses";
 import TableManagement from "./pages/admin/TableManagement";
@@ -95,6 +96,7 @@ function App() {
         <Route path="/gpa-calculator" element={<GpaCalculatorPage />} />
         <Route path="/academic-history" element={<AcademicHistoryPage />} />
         <Route path="/ai-schedule" element={<AIScheduleGenerator />} />
+        <Route path="/profile-photo" element={<ProfilePhotoPage />} />
       </Route>
 
       {/* Protected admin routes */}

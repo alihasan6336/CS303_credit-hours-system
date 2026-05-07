@@ -40,7 +40,7 @@ const ManageCourses: React.FC = () => {
             courseName: course.name,
             courseCode: course.code,
             major: course.major || "",
-            studentYear: course.studentYear || 1,
+            studentYear: course.level || 1,
             day: course.day,
             time: course.time,
             creditHours: course.credits,

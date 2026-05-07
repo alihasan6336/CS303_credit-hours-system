@@ -227,7 +227,19 @@ const generateTestCourses = () => {
   return courses;
 };
 
-const TEST_COURSES = generateTestCourses();
+// Helper: parse "HH:MM - HH:MM" into start/end minutes from midnight
+function parseTimeRange(timeStr: string): { startTime: number; endTime: number } {
+  const [start, end] = timeStr.split(' - ').map((t) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  });
+  return { startTime: start, endTime: end };
+}
+
+const TEST_COURSES = generateTestCourses().map((c) => {
+  const { startTime, endTime } = parseTimeRange(c.time);
+  return { ...c, startTime, endTime };
+});
 
 const createTestData = async () => {
   try {

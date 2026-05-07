@@ -27,6 +27,7 @@ export interface IStudent extends Document {
     isActive: boolean;
     reason: string;
   };
+  photoUrl?: string;
 }
 
 const StudentSchema: Schema = new Schema(
@@ -137,9 +138,13 @@ const StudentSchema: Schema = new Schema(
       isActive: { type: Boolean, default: false },
       reason: { type: String, default: '' },
     },
+    photoUrl: {
+      type: String,
+      default: '',
+    },
   },
   {
-    timestamps: true, 
+    timestamps: true,
   }
 );
                          // hash pass // 

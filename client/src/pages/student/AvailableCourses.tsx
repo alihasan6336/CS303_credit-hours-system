@@ -40,7 +40,7 @@ const AvailableCourses: React.FC = () => {
           courseName: c.name,
           courseCode: c.code,
           major: c.major || "Computer Science",
-          studentYear: c.studentYear || 1,
+          studentYear: c.level || 0,
           day: c.day,
           time: c.time,
           creditHours: c.credits,

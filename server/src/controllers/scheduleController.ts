@@ -2,9 +2,14 @@ import { Request, Response } from 'express';
 import Course from '../models/Course';
 import Student from '../models/Student';
 import SystemSettings from '../models/SystemSettings';
-import { optimizeSchedule } from '../utils/scheduleOptimizer';
+import { optimizeSchedule, OptimizedSchedule } from '../utils/scheduleOptimizer';
 import { getAIAdviceForSchedule } from '../utils/aiScheduleAssistant';
+import { getCreditLimitForStudent } from '../utils/creditLimitCalculator';
 
+/**
+ * Auto-generate an optimized schedule with progress updates via Server-Sent Events
+ * Supports timeout and real-time progress reporting
+ */
 export const autoGenerateSchedule = async (req: Request, res: Response): Promise<void> => {
   try {
     const student = req.student!;
@@ -15,31 +20,36 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
     const level = student.level;
 
     // 2. Fetch context-aware available courses
-    const query: any = { 
+    const query: any = {
       isActive: true,
-      $or: [
-        { major: major },
-        { major: { $exists: false } },
-        { major: '' }
+      $and: [
+        {
+          $or: [
+            { major: major },
+            { major: { $exists: false } },
+            { major: '' }
+          ]
+        },
+        {
+          $or: [
+            { level: level },
+            { level: { $exists: false } },
+            { level: null }
+          ]
+        }
       ]
     };
 
     if (preferredCourseIds && Array.isArray(preferredCourseIds) && preferredCourseIds.length > 0) {
-      query.code = { $in: preferredCourseIds };
+      query.$and.push({ code: { $in: preferredCourseIds } });
     }
 
     const availableCourses = await Course.find(query).lean();
-    
-    // 3. Fetch System Settings for default limits
-    const settings = await SystemSettings.findOne().lean();
-    
-    // 4. Determine Credit Limits
-    const minCredits = student.creditLimitOverride?.isActive 
-      ? student.creditLimitOverride.min 
-      : (settings?.minCreditHoursDefault || 14);
-    const maxCredits = student.creditLimitOverride?.isActive 
-      ? student.creditLimitOverride.max 
-      : (settings?.maxCreditHoursDefault || 19);
+
+    // 3. Determine Credit Limits using centralized calculator (GPA-based + summer + override)
+    const creditLimit = await getCreditLimitForStudent(student);
+    const minCredits = creditLimit.minCredits;
+    const maxCredits = creditLimit.maxCredits;
 
     // Only courses for the student's level and major (if applicable)
     if (availableCourses.length === 0) {
@@ -50,27 +60,58 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
       return;
     }
 
-    // 4. Run Optimizer
-    // We need to cast availableCourses to ICourse[] as optimizeSchedule expects
-    const optimized = optimizeSchedule(availableCourses as any, minCredits, maxCredits);
+    // Set SSE headers for streaming progress
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    let lastProgressUpdate = Date.now();
+    let optimized: OptimizedSchedule | null = null;
+
+    // Run Optimizer with progress callback
+    optimized = optimizeSchedule(
+      availableCourses as any,
+      minCredits,
+      maxCredits,
+      (explored, best) => {
+        // Send progress update every 500ms to avoid flooding
+        const now = Date.now();
+        if (now - lastProgressUpdate > 500 || !best) {
+          res.write(`data: ${JSON.stringify({
+            type: 'progress',
+            explored,
+            hasBest: !!best,
+            bestDayCount: best?.dayCount || null,
+            bestCredits: best?.totalCredits || null
+          })}\n\n`);
+          lastProgressUpdate = now;
+        }
+      },
+      30000 // 30 second timeout
+    );
 
     if (!optimized) {
-      res.status(400).json({
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
         success: false,
         message: `I couldn't find ANY conflict-free combination from your selection.`,
         details: `Your current selection might have too many overlapping classes. Try picking courses at different times.`,
         constraints: { minCredits, maxCredits }
-      });
+      })}\n\n`);
+      res.end();
       return;
     }
 
     if (optimized && !optimized.inRange) {
-      res.status(400).json({
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
         success: false,
         message: `Your selection only totals ${optimized.totalCredits} credits.`,
         details: `The system requires a minimum of ${minCredits} credits. Please select 1 or 2 more courses to reach the requirement.`,
         constraints: { minCredits, maxCredits }
-      });
+      })}\n\n`);
+      res.end();
       return;
     }
 
@@ -81,8 +122,9 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
       optimized.uniqueDays
     );
 
-    // 6. Return Result
-    res.status(200).json({
+    // 6. Send Final Result
+    res.write(`data: ${JSON.stringify({
+      type: 'success',
       success: true,
       message: 'Schedule optimized for minimum days on campus.',
       schedule: {
@@ -92,9 +134,16 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
         uniqueDays: optimized.uniqueDays
       },
       aiAdvice: advice
-    });
+    })}\n\n`);
+    
+    res.end();
 
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    res.write(`data: ${JSON.stringify({
+      type: 'error',
+      success: false,
+      message: error.message
+    })}\n\n`);
+    res.end();
   }
 };
