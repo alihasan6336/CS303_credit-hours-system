@@ -83,7 +83,7 @@ const AccountManagement: React.FC = () => {
       };
     } else if (isItAdmin || isEnrollmentAdmin) {
       return {
-        text: "✅ Management authority granted (Students & Admins).",
+        text: "✅ Management authority granted (Students only).",
         color: "bg-green-50 border-green-200 text-green-700",
       };
     } else {
@@ -242,7 +242,7 @@ const AccountManagement: React.FC = () => {
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           {(["student", "admin", "superadmin"] as const).map((tab) => {
-            if (tab === "superadmin" && !isSuperAdmin) return null;
+            if ((tab === "superadmin" || tab === "admin") && !isSuperAdmin) return null;
             return (
               <button
                 key={tab}
