@@ -33,7 +33,11 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
                 .filter(e => e.status === 'completed' && e.grade >= (e.course?.passingGrade || 50))
                 .map(e => e.course?._id);
 
-            const filteredAvailable = (responseAll.courses || []).filter(c => !passedCoursesIds.includes(c._id));
+            const studentLevel = parseInt(responseEnrolled.student?.level || responseEnrolled.user?.level || 1, 10);
+            const filteredAvailable = (responseAll.courses || []).filter(c => 
+                !passedCoursesIds.includes(c._id) && 
+                (parseInt(c.level || 1, 10) <= studentLevel)
+            );
             setAvailableCourses(filteredAvailable);
 
             const enrolledData = (responseEnrolled.data || [])
@@ -105,6 +109,12 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
                         }
                     }
                 }
+            }
+
+            const currentCH = myCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
+            if (currentCH + (course.credits || 0) > 19) {
+                Alert.alert("Limit Exceeded", "You cannot enroll in more than 19 credit hours per semester.");
+                return;
             }
 
             setActionLoadingId(courseId);

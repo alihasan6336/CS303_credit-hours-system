@@ -16,7 +16,7 @@ import { authApi, courseApi, gpaApi, userApi } from "../utils/api";
 
 const { width } = Dimensions.get("window");
 
-export default function DashboardScreen({ onNavigateCourses }) {
+export default function DashboardScreen({ onNavigateCourses, onUpdateUser }) {
   const [student, setStudent] = useState(null);
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,7 +61,12 @@ export default function DashboardScreen({ onNavigateCourses }) {
 
   useEffect(() => {
     if (student?._id) {
-      userApi.getAvatar(student._id).then(res => { if (res.avatarUrl) setAvatar(res.avatarUrl); }).catch(() => {});
+      userApi.getAvatar(student._id).then(res => { 
+        if (res.photoUrl) {
+          setAvatar(res.photoUrl);
+          if (onUpdateUser) onUpdateUser({ photoUrl: res.photoUrl });
+        }
+      }).catch(() => {});
     }
   }, [student?._id]);
 
@@ -91,7 +96,8 @@ export default function DashboardScreen({ onNavigateCourses }) {
     try {
       setUploading(true);
       const res = await userApi.uploadAvatar(student._id, uri);
-      setAvatar(res.avatarUrl);
+      setAvatar(res.photoUrl);
+      if (onUpdateUser) onUpdateUser({ photoUrl: res.photoUrl });
     } catch (err) {
       Alert.alert("Error", err.message || "Upload failed");
     } finally {

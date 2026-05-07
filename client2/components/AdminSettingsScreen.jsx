@@ -12,12 +12,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { userApi } from "../utils/api";
 
-const ROLE_BADGE = {
-  superadmin: { label: "👑 Super Admin", bg: "#f59e0b20", color: "#f59e0b" },
-  admin: { label: "🛡️ Admin", bg: "#06b6d420", color: "#06b6d4" },
-};
-
-export default function SettingsScreen({ user, onLogout }) {
+export default function SettingsScreen({ user, onLogout, onUpdateUser }) {
   const [avatar, setAvatar] = useState(null);
   const [uploading, setUploading] = useState(false);
 
@@ -28,7 +23,10 @@ export default function SettingsScreen({ user, onLogout }) {
   const loadAvatar = async () => {
     try {
       const res = await userApi.getAvatar(user._id);
-      if (res.avatarUrl) setAvatar(res.avatarUrl);
+      if (res.photoUrl) {
+        setAvatar(res.photoUrl);
+        if (onUpdateUser) onUpdateUser({ photoUrl: res.photoUrl });
+      }
     } catch (_) {}
   };
 
@@ -73,7 +71,8 @@ export default function SettingsScreen({ user, onLogout }) {
     try {
       setUploading(true);
       const res = await userApi.uploadAvatar(user._id, uri);
-      setAvatar(res.avatarUrl);
+      setAvatar(res.photoUrl);
+      if (onUpdateUser) onUpdateUser({ photoUrl: res.photoUrl });
     } catch (err) {
       Alert.alert("Error", err.message || "Failed to upload photo");
     } finally {
@@ -87,17 +86,19 @@ export default function SettingsScreen({ user, onLogout }) {
     student: { label: "🎓 Student", bg: "#2554e820", color: "#2554e8" },
   };
 
-  const badge = ROLE_BADGE[user.role] || ROLE_BADGE.student;
+  const isAdmin = user.role && (user.role === "admin" || user.role === "superadmin" || user.role.includes("_admin"));
+  const isStudent = !isAdmin;
+  const badge = isAdmin 
+    ? (user.role === "superadmin" ? ROLE_BADGE.superadmin : ROLE_BADGE.admin)
+    : ROLE_BADGE.student;
   const initials = user.fullName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "?";
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Account Settings</Text>
       </View>
 
-      {/* Avatar Section */}
       <View style={styles.avatarSection}>
         <TouchableOpacity style={styles.avatarWrapper} onPress={pickImage} disabled={uploading}>
           {avatar ? (
@@ -117,7 +118,6 @@ export default function SettingsScreen({ user, onLogout }) {
         <Text style={styles.avatarHint}>Tap to change profile photo</Text>
       </View>
 
-      {/* Profile Card */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Profile Information</Text>
 
@@ -131,18 +131,22 @@ export default function SettingsScreen({ user, onLogout }) {
           <Text style={styles.infoLabel}>Email Address</Text>
           <Text style={styles.infoValue}>{user.email || "—"}</Text>
         </View>
-        <View style={styles.divider} />
 
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Account Role</Text>
-          <View style={[styles.roleBadge, { backgroundColor: badge.bg }]}>
-            <Text style={[styles.roleBadgeText, { color: badge.color }]}>
-              {user.role === "admin" && user.adminRole ? `🛡️ ${user.adminRole}` : badge.label}
-            </Text>
-          </View>
-        </View>
+        {!isStudent && (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Account Role</Text>
+              <View style={[styles.roleBadge, { backgroundColor: badge.bg }]}>
+                <Text style={[styles.roleBadgeText, { color: badge.color }]}>
+                  {user.role === "admin" && user.adminRole ? `🛡️ ${user.adminRole}` : badge.label}
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
 
-        {user.role === "student" && (
+        {isStudent && (
           <>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
@@ -156,8 +160,8 @@ export default function SettingsScreen({ user, onLogout }) {
             </View>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Academic Year</Text>
-              <Text style={styles.infoValue}>{user.academicYear || "—"}</Text>
+            <Text style={styles.infoLabel}>Academic Year / Level</Text>
+            <Text style={styles.infoValue}>{user.level || user.academicYear || "—"}</Text>
             </View>
           </>
         )}
@@ -173,10 +177,11 @@ export default function SettingsScreen({ user, onLogout }) {
         )}
       </View>
 
-      {/* Sign Out */}
-      <TouchableOpacity style={styles.signOutBtn} onPress={onLogout}>
-        <Text style={styles.signOutText}>🚪 Sign Out</Text>
-      </TouchableOpacity>
+      {!isStudent && (
+        <TouchableOpacity style={styles.signOutBtn} onPress={onLogout}>
+          <Text style={styles.signOutText}>🚪 Sign Out</Text>
+        </TouchableOpacity>
+      )}
 
       <View style={{ height: 100 }} />
     </ScrollView>

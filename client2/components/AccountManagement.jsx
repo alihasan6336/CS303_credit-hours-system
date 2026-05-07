@@ -22,7 +22,7 @@ const PERMISSION_LABELS = {
   table: { icon: "📅", label: "Table" },
 };
 
-export default function AccountManagement() {
+export default function AccountManagement({ onViewStudent, onViewAdmin, user }) {
   const [accounts, setAccounts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tab, setTab] = useState("student");
@@ -44,8 +44,16 @@ export default function AccountManagement() {
   const fetchAccounts = async () => {
     try {
       setIsLoading(true);
-      const response = await adminApi.getStudents();
-      setAccounts(response.students || []);
+      const [studentsRes, adminsRes] = await Promise.all([
+        adminApi.getStudents("student"),
+        adminApi.getStudents()
+      ]);
+      const allAccounts = [
+        ...(studentsRes.students || []),
+        ...(adminsRes.students || [])
+      ];
+      const uniqueAccounts = Array.from(new Map(allAccounts.map(a => [a.id || a._id, a])).values());
+      setAccounts(uniqueAccounts);
     } catch (err) {
       Alert.alert("Error", err.message);
     } finally {
@@ -56,8 +64,10 @@ export default function AccountManagement() {
   useEffect(() => { fetchAccounts(); }, []);
 
   const students = accounts.filter(a => a.role === "student");
-  const admins = accounts.filter(a => a.role === "superadmin" || a.role === "admin");
-  const filtered = tab === "student" ? students : admins;
+  const admins = accounts.filter(a => (a.role && (a.role.includes("_admin") || a.role === "admin")));
+  const superadmins = user?.role === "superadmin" ? accounts.filter(a => a.role === "superadmin") : [];
+  
+  const filtered = tab === "student" ? students : tab === "admin" ? admins : superadmins;
 
   const openAddModal = (type) => {
     setAccountType(type);
@@ -85,20 +95,16 @@ export default function AccountManagement() {
         fullName: form.name,
         email: form.email,
         password: form.password,
-        role: accountType === "admin" ? "admin" : "student",
+        role: accountType === "admin" ? (form.role || "admin") : "student",
       };
       if (accountType === "admin") {
-        if (!form.adminRole) {
+        if (!form.role) {
           Alert.alert("Error", "Please select an admin role");
           setSaving(false);
           return;
         }
-        if (!form.permissions || form.permissions.length === 0) {
-          Alert.alert("Error", "Please select at least one permission");
-          setSaving(false);
-          return;
-        }
-        payload.adminRole = form.adminRole;
+        payload.role = form.role;
+        payload.adminRole = ADMIN_ROLES.find(r => r.key === form.role)?.label || "Admin";
         payload.permissions = form.permissions;
       }
       if (accountType === "student") {
@@ -158,6 +164,14 @@ export default function AccountManagement() {
     }
   };
 
+  const handleAccountPress = (account) => {
+    if (account.role === "student") {
+      onViewStudent && onViewStudent(account.id || account._id);
+    } else {
+      onViewAdmin && onViewAdmin(account.id || account._id);
+    }
+  };
+
   const openEditModal = (account) => {
     setEditingAccount(account);
     if (account.role === "student") {
@@ -175,6 +189,7 @@ export default function AccountManagement() {
         email: account.email || "",
         adminRole: account.adminRole || "",
         permissions: account.permissions || [],
+        role: account.role || "admin",
       });
     }
     setEditModalVisible(true);
@@ -200,13 +215,16 @@ export default function AccountManagement() {
         payload.level = levelMap[editForm.level] || 1;
         payload.currentSemester = editForm.currentSemester;
       } else {
-        if (!editForm.adminRole) { Alert.alert("Error", "Please select an admin role"); setEditSaving(false); return; }
+        if (!editForm.role) { Alert.alert("Error", "Please select an admin role"); setEditSaving(false); return; }
         if (!editForm.permissions || editForm.permissions.length === 0) { Alert.alert("Error", "Please select at least one permission"); setEditSaving(false); return; }
-        payload.adminRole = editForm.adminRole;
+        
+        payload.role = editForm.role;
+        payload.adminRole = ADMIN_ROLES.find(r => r.key === editForm.role)?.label || editForm.adminRole || "Admin";
         payload.permissions = editForm.permissions;
       }
-      await adminApi.updateAccount(editingAccount._id, payload);
+      await adminApi.updateAccount(editingAccount._id || editingAccount.id, payload);
       setEditModalVisible(false);
+      Alert.alert("Success", "Account updated successfully");
       await fetchAccounts();
     } catch (err) {
       Alert.alert("Error", err.message);
@@ -245,13 +263,20 @@ export default function AccountManagement() {
               Admins ({admins.length})
             </Text>
           </TouchableOpacity>
+          {user?.role === 'superadmin' && (
+            <TouchableOpacity style={[styles.tabBtn, tab === "superadmin" && styles.tabBtnActive]} onPress={() => setTab("superadmin")}>
+              <Text style={[styles.tabBtnText, tab === "superadmin" && styles.tabBtnTextActive]}>
+                Super ({superadmins.length})
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {filtered.length === 0 ? (
           <Text style={styles.emptyText}>No {tab === "student" ? "students" : "admins"} found</Text>
         ) : (
-          filtered.map((account) => (
-            <View key={account._id} style={styles.accountCard}>
+          filtered.map((account, index) => (
+            <TouchableOpacity key={account._id || account.id || `account-${index}`} style={styles.accountCard} onPress={() => handleAccountPress(account)} activeOpacity={0.7}>
               <View style={styles.accountLeft}>
                 <View style={[styles.accountAvatar, { backgroundColor: account.role === "superadmin" ? "#8b5cf620" : "#2554e820" }]}>
                   <Text style={styles.accountAvatarText}>
@@ -307,7 +332,7 @@ export default function AccountManagement() {
               <TouchableOpacity onPress={() => deleteAccount(account.id || account._id, account.fullName)}>
                 <Text style={styles.deleteIcon}>🗑️</Text>
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           ))
         )}
 
@@ -349,11 +374,11 @@ export default function AccountManagement() {
                   <View style={styles.pillRow}>
                     {ADMIN_ROLES.map((r) => (
                       <TouchableOpacity
-                        key={r}
-                        style={[styles.pill, form.adminRole === r && styles.pillSelected]}
-                        onPress={() => setForm({ ...form, adminRole: r })}
+                        key={r.key}
+                        style={[styles.pill, form.role === r.key && styles.pillSelected]}
+                        onPress={() => setForm({ ...form, role: r.key })}
                       >
-                        <Text style={[styles.pillText, form.adminRole === r && styles.pillTextSelected]}>{r}</Text>
+                        <Text style={[styles.pillText, form.role === r.key && styles.pillTextSelected]}>{r.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -493,7 +518,6 @@ export default function AccountManagement() {
         </View>
       </Modal>
 
-      {/* ===== EDIT MODAL ===== */}
       <Modal visible={editModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
@@ -577,20 +601,21 @@ export default function AccountManagement() {
                 </>
               )}
 
-              {editingAccount?.role === "admin" && (
+              {(editingAccount?.role === "admin" || editingAccount?.role === "superadmin" || editingAccount?.role?.includes("_admin")) && (
                 <>
-                  <Text style={styles.fieldLabel}>Admin Role</Text>
+                  <Text style={styles.fieldLabel}>Specialized Role</Text>
                   <View style={styles.pillRow}>
                     {ADMIN_ROLES.map(r => (
                       <TouchableOpacity
-                        key={r}
-                        style={[styles.pill, editForm.adminRole === r && styles.pillSelected]}
-                        onPress={() => setEditForm({ ...editForm, adminRole: r })}
+                        key={r.key}
+                        style={[styles.pill, editForm.role === r.key && styles.pillSelected]}
+                        onPress={() => setEditForm({ ...editForm, role: r.key, adminRole: r.label })}
                       >
-                        <Text style={[styles.pillText, editForm.adminRole === r && styles.pillTextSelected]}>{r}</Text>
+                        <Text style={[styles.pillText, editForm.role === r.key && styles.pillTextSelected]}>{r.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
+
 
                   <Text style={styles.fieldLabel}>Permissions</Text>
                   <View style={styles.pillRow}>

@@ -16,8 +16,9 @@ import { TIME_SLOTS } from "../constants/data";
 
 const { width } = Dimensions.get("window");
 
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+const DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 const DAY_COLORS = {
+  Saturday: "#6366f1",
   Sunday: "#3b82f6",
   Monday: "#8b5cf6",
   Tuesday: "#f59e0b",
@@ -29,7 +30,7 @@ const COURSE_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#22c55e", "#ef4444", "#
 export default function TableManagement() {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState("list"); // "list" or "weekly"
+  const [viewMode, setViewMode] = useState("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
@@ -41,7 +42,7 @@ export default function TableManagement() {
     try {
       setIsLoading(true);
       const response = await courseApi.getAll();
-      setCourses(response.data || []);
+      setCourses(response.courses || []);
     } catch (err) {
       Alert.alert("Error", err.message);
     } finally {
@@ -53,7 +54,7 @@ export default function TableManagement() {
     fetchCourses();
   }, []);
 
-  // Search filter
+  
   const filteredCourses = courses.filter((c) => {
     const q = searchQuery.toLowerCase();
     return (
@@ -63,14 +64,14 @@ export default function TableManagement() {
     );
   });
 
-  // Sort by day then time
+  
   const sortedCourses = [...filteredCourses].sort((a, b) => {
     const dayOrder = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
     if (dayOrder !== 0) return dayOrder;
     return (a.time || "").localeCompare(b.time || "");
   });
 
-  // Open edit modal
+  
   const openEdit = (course) => {
     setEditingCourse(course);
     setEditForm({
@@ -84,11 +85,11 @@ export default function TableManagement() {
     setEditModalVisible(true);
   };
 
-  // Check conflicts
+  
   const checkConflicts = (form, courseId) => {
-    const otherCourses = courses.filter((c) => c._id !== courseId);
+    const otherCourses = courses.filter((c) => (c._id || c.id) !== courseId);
 
-    // Room conflict
+    
     const roomConflict = otherCourses.find(
       (c) => c.room === form.room && c.day === form.day && c.time === form.time
     );
@@ -96,7 +97,7 @@ export default function TableManagement() {
       return `🏫 Room conflict: ${form.room} is already occupied by ${roomConflict.code} on ${form.day} at ${form.time}`;
     }
 
-    // Instructor conflict
+    
     const instructorConflict = otherCourses.find(
       (c) => c.instructor === form.instructor && c.day === form.day && c.time === form.time
     );
@@ -107,7 +108,7 @@ export default function TableManagement() {
     return null;
   };
 
-  // Save changes
+  
   const saveSchedule = async () => {
     const cap = parseInt(editForm.capacity, 10);
     if (!cap || cap < 1) {
@@ -127,7 +128,7 @@ export default function TableManagement() {
       return;
     }
 
-    const conflictMsg = checkConflicts(editForm, editingCourse._id);
+    const conflictMsg = checkConflicts(editForm, editingCourse._id || editingCourse.id);
     if (conflictMsg) {
       setConflict(conflictMsg);
       return;
@@ -135,7 +136,7 @@ export default function TableManagement() {
 
     try {
       setSaving(true);
-      await courseApi.update(editingCourse._id, {
+      await courseApi.update(editingCourse._id || editingCourse.id, {
         day: editForm.day,
         time: editForm.time,
         room: editForm.room.trim(),
@@ -151,18 +152,18 @@ export default function TableManagement() {
     }
   };
 
-  // Re-check conflict whenever form changes
+  
   const updateForm = (key, value) => {
     const newForm = { ...editForm, [key]: value };
     setEditForm(newForm);
     if (editingCourse) {
-      setConflict(checkConflicts(newForm, editingCourse._id));
+      setConflict(checkConflicts(newForm, editingCourse._id || editingCourse.id));
     }
   };
 
-  // Get course color by index
+  
   const getCourseColor = (courseId) => {
-    const idx = courses.findIndex((c) => c._id === courseId);
+    const idx = courses.findIndex((c) => (c._id || c.id) === courseId);
     return COURSE_COLORS[idx % COURSE_COLORS.length];
   };
 
@@ -174,71 +175,81 @@ export default function TableManagement() {
     );
   }
 
-  // ========== WEEKLY VIEW ==========
+  
   const renderWeeklyView = () => {
-    const getCourseForSlot = (day, timeSlot) => {
-      return courses.find((c) => c.day === day && c.time === timeSlot);
+    const getCoursesForSlot = (day, timeSlot) => {
+      return courses.filter((c) => c.day === day && c.time === timeSlot);
     };
 
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View>
-          {/* Header row */}
-          <View style={styles.weeklyRow}>
-            <View style={styles.weeklyDayCell}>
-              <Text style={styles.weeklyDayText}>Day / Time</Text>
-            </View>
-            {TIME_SLOTS.map((slot) => (
-              <View key={slot.value} style={styles.weeklyHeaderCell}>
-                <Text style={styles.weeklyHeaderText}>{slot.label}</Text>
+      <View style={{ flex: 1 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+          <View style={{ width: 800, flex: 1 }}>
+            {/* Sticky-like Header */}
+            <View style={styles.weeklyHeaderRow}>
+              <View style={styles.weeklyDayHeaderCell}>
+                <Text style={styles.weeklyDayHeaderText}>Day</Text>
               </View>
-            ))}
-          </View>
+              {TIME_SLOTS.map((slot) => (
+                <View key={slot.value} style={styles.weeklySlotHeaderCell}>
+                  <Text style={styles.weeklySlotHeaderText}>{slot.label.split(' ')[1]}</Text>
+                  <Text style={styles.weeklySlotTimeText}>{slot.value}</Text>
+                </View>
+              ))}
+            </View>
 
-          {/* Day rows */}
-          {DAYS.map((day) => (
-            <View key={day} style={styles.weeklyRow}>
-              <View style={[styles.weeklyDayCell, { backgroundColor: DAY_COLORS[day] + "15" }]}>
-                <Text style={[styles.weeklyDayText, { color: DAY_COLORS[day] }]}>{day.substring(0, 3)}</Text>
-              </View>
-              {TIME_SLOTS.map((slot) => {
-                const course = getCourseForSlot(day, slot.value);
-                if (course) {
-                  const color = getCourseColor(course._id);
-                  // Check for conflicts
-                  const hasConflict = courses.filter(
-                    (c) => c._id !== course._id && c.day === day && c.time === slot.value && c.room === course.room
-                  ).length > 0;
-                  return (
-                    <TouchableOpacity
-                      key={slot.value}
-                      style={[
-                        styles.weeklyCell,
-                        styles.weeklyCellFilled,
-                        { backgroundColor: color + "18", borderColor: color },
-                        hasConflict && styles.weeklyCellConflict,
-                      ]}
-                      onPress={() => openEdit(course)}
-                    >
-                      <Text style={[styles.weeklyCourseCode, { color }]}>{course.code}</Text>
-                      <Text style={styles.weeklyCourseRoom}>{course.room}</Text>
-                    </TouchableOpacity>
-                  );
-                }
-                return (
-                  <View key={slot.value} style={styles.weeklyCell}>
-                    <Text style={styles.weeklyCellEmpty}>—</Text>
+            {/* Scrollable Body */}
+            <ScrollView 
+              style={{ flex: 1 }} 
+              contentContainerStyle={{ paddingBottom: 120 }}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
+              {DAYS.map((day) => (
+                <View key={day} style={styles.weeklyRow}>
+                  <View style={[styles.weeklyDayCell, { borderLeftColor: DAY_COLORS[day] }]}>
+                    <Text style={[styles.weeklyDayText, { color: DAY_COLORS[day] }]}>{day.substring(0, 3)}</Text>
                   </View>
-                );
-              })}
-            </View>
-          ))}
-        </View>
-      </ScrollView>
+                  {TIME_SLOTS.map((slot) => {
+                    const slotCourses = getCoursesForSlot(day, slot.value);
+                    const hasConflict = slotCourses.length > 1;
+                    
+                    return (
+                      <View key={slot.value} style={[styles.weeklyCell, hasConflict && styles.weeklyCellConflictContainer]}>
+                        {slotCourses.length > 0 ? (
+                          slotCourses.map((course) => {
+                            const color = getCourseColor(course._id || course.id);
+                            return (
+                              <TouchableOpacity
+                                key={course._id || course.id}
+                                style={[
+                                  styles.weeklyCellFilled,
+                                  { backgroundColor: color + "10", borderColor: color + "40" },
+                                  hasConflict && styles.weeklyCellConflict,
+                                ]}
+                                onPress={() => openEdit(course)}
+                              >
+                                <Text style={[styles.weeklyCourseCode, { color }]} numberOfLines={1}>{course.code}</Text>
+                                <Text style={styles.weeklyCourseRoom} numberOfLines={1}>{course.room}</Text>
+                              </TouchableOpacity>
+                            );
+                          })
+                        ) : (
+                          <Text style={styles.weeklyCellEmpty}>—</Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </ScrollView>
+      </View>
     );
   };
 
-  // ========== LIST VIEW ==========
+  
   const renderListView = () => (
     <ScrollView showsVerticalScrollIndicator={false}>
       {sortedCourses.length === 0 ? (
@@ -246,11 +257,11 @@ export default function TableManagement() {
           {searchQuery ? "No courses match your search" : "No courses found. Create courses first."}
         </Text>
       ) : (
-        sortedCourses.map((course) => {
-          const color = getCourseColor(course._id);
-          const capacityPct = Math.round((course.enrolled / course.capacity) * 100);
+        sortedCourses.map((course, index) => {
+          const color = getCourseColor(course._id || course.id);
+
           return (
-            <View key={course._id} style={styles.courseCard}>
+            <View key={course._id || course.id || `course-${index}`} style={styles.courseCard}>
               <View style={styles.courseCardTop}>
                 <View style={[styles.courseCodeBadge, { backgroundColor: color + "18" }]}>
                   <Text style={[styles.courseCodeText, { color }]}>{course.code}</Text>
@@ -284,15 +295,15 @@ export default function TableManagement() {
               <View style={styles.capacitySection}>
                 <View style={styles.capacityHeader}>
                   <Text style={styles.capacityLabel}>Capacity</Text>
-                  <Text style={styles.capacityValue}>{course.enrolled}/{course.capacity} ({capacityPct}%)</Text>
+                  <Text style={styles.capacityValue}>{course.enrolledCount || 0}/{course.capacity} ({Math.round(((course.enrolledCount || 0) / course.capacity) * 100)}%)</Text>
                 </View>
                 <View style={styles.capacityBarBg}>
                   <View
                     style={[
                       styles.capacityBarFill,
                       {
-                        width: `${capacityPct}%`,
-                        backgroundColor: capacityPct >= 90 ? "#ef4444" : capacityPct >= 70 ? "#f59e0b" : "#22c55e",
+                        width: `${Math.round(((course.enrolledCount || 0) / course.capacity) * 100)}%`,
+                        backgroundColor: (course.enrolledCount / course.capacity) >= 0.9 ? "#ef4444" : (course.enrolledCount / course.capacity) >= 0.7 ? "#f59e0b" : "#22c55e",
                       },
                     ]}
                   />
@@ -473,7 +484,6 @@ const styles = StyleSheet.create({
   centerBox: { flex: 1, justifyContent: "center", alignItems: "center" },
   emptyText: { textAlign: "center", color: "#888", marginTop: 40, fontSize: 15 },
 
-  // Header
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12, backgroundColor: "#fff",
@@ -481,7 +491,6 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: "800", color: "#111" },
   headerSub: { fontSize: 13, color: "#888", marginTop: 2 },
 
-  // Controls
   controlsRow: {
     paddingHorizontal: 16, paddingTop: 12,
   },
@@ -499,7 +508,6 @@ const styles = StyleSheet.create({
   toggleBtnText: { fontSize: 13, fontWeight: "600", color: "#888" },
   toggleBtnTextActive: { color: "#2554e8" },
 
-  // Search
   searchContainer: {
     flexDirection: "row", alignItems: "center",
     marginHorizontal: 16, marginTop: 12,
@@ -510,7 +518,6 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, paddingVertical: 12, fontSize: 14, color: "#222" },
   clearSearch: { fontSize: 16, color: "#aaa", padding: 4 },
 
-  // Course Card
   courseCard: {
     backgroundColor: "#fff", marginHorizontal: 16, marginTop: 10,
     borderRadius: 14, padding: 16,
@@ -547,34 +554,48 @@ const styles = StyleSheet.create({
   capacityBarBg: { height: 6, backgroundColor: "#e5e7eb", borderRadius: 3, overflow: "hidden" },
   capacityBarFill: { height: 6, borderRadius: 3 },
 
-  // Weekly View
-  weeklyRow: { flexDirection: "row" },
+  weeklyRow: { flexDirection: "row", borderBottomWidth: 1, borderColor: "#e5e7eb" },
+  weeklyHeaderRow: { flexDirection: "row", backgroundColor: "#f8fafc", borderBottomWidth: 2, borderColor: "#e2e8f0" },
+  weeklyDayHeaderCell: {
+    width: 70, paddingVertical: 15, alignItems: "center", justifyContent: "center",
+    borderRightWidth: 1, borderColor: "#e2e8f0",
+  },
+  weeklyDayHeaderText: { fontSize: 13, fontWeight: "800", color: "#64748b", textTransform: "uppercase" },
+  weeklySlotHeaderCell: {
+    width: 120, paddingVertical: 10, alignItems: "center", justifyContent: "center",
+    borderRightWidth: 1, borderColor: "#e2e8f0",
+  },
+  weeklySlotHeaderText: { fontSize: 11, fontWeight: "800", color: "#1e293b" },
+  weeklySlotTimeText: { fontSize: 9, color: "#94a3b8", marginTop: 2, fontWeight: "600" },
+
   weeklyDayCell: {
-    width: 60, paddingVertical: 12, alignItems: "center", justifyContent: "center",
-    borderRightWidth: 1, borderBottomWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#f8fafc",
+    width: 70, paddingVertical: 15, alignItems: "center", justifyContent: "center",
+    borderRightWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#fff",
+    borderLeftWidth: 4,
   },
-  weeklyDayText: { fontSize: 12, fontWeight: "700", color: "#555" },
-  weeklyHeaderCell: {
-    width: 110, paddingVertical: 10, alignItems: "center", justifyContent: "center",
-    borderRightWidth: 1, borderBottomWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#f0f2f5",
-  },
-  weeklyHeaderText: { fontSize: 10, fontWeight: "700", color: "#888", textAlign: "center" },
+  weeklyDayText: { fontSize: 13, fontWeight: "800" },
+
   weeklyCell: {
-    width: 110, height: 60, alignItems: "center", justifyContent: "center",
-    borderRightWidth: 1, borderBottomWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#fff",
+    width: 120, minHeight: 100, padding: 4, gap: 4,
+    borderRightWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#fff",
+    justifyContent: "center", alignItems: "center",
   },
   weeklyCellFilled: {
-    borderWidth: 1.5, borderRadius: 6, margin: 2,
-    width: 106, height: 56,
+    width: "100%", padding: 6, borderRadius: 8,
+    borderWidth: 1,
+  },
+  weeklyCellConflictContainer: {
+    backgroundColor: "#fff1f2",
   },
   weeklyCellConflict: {
-    borderColor: "#ef4444", backgroundColor: "#fef2f2",
+    borderColor: "#f43f5e",
+    backgroundColor: "#fff1f2",
+    borderWidth: 2,
   },
-  weeklyCellEmpty: { fontSize: 14, color: "#ddd" },
-  weeklyCourseCode: { fontSize: 12, fontWeight: "800" },
-  weeklyCourseRoom: { fontSize: 9, color: "#888", marginTop: 2 },
+  weeklyCellEmpty: { fontSize: 14, color: "#e2e8f0", fontWeight: "300" },
+  weeklyCourseCode: { fontSize: 11, fontWeight: "800" },
+  weeklyCourseRoom: { fontSize: 8, color: "#64748b", marginTop: 1, fontWeight: "500" },
 
-  // Modal
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalBox: {
     backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24,

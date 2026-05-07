@@ -8,10 +8,11 @@ export const TIME_SLOTS = [
 ];
 
 export const ADMIN_ROLES = [
-  "Course Administrator",
-  "Enrollment Administrator",
-  "IT Administrator",
-  "Table Management Administrator",
+  { label: "IT Administrator", key: "it_admin" },
+  { label: "Table Administrator", key: "table_admin" },
+  { label: "Course Administrator", key: "courses_admin" },
+  { label: "Enrollment Administrator", key: "enrollment_admin" },
+  { label: "Super Admin", key: "superadmin" },
 ];
 
 export const ALL_PERMISSIONS = ["dashboard", "courses", "accounts", "enrollment", "grading", "table"];

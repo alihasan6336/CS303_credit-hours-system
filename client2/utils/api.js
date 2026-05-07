@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
-
-const API_BASE_URL = Platform.OS === "android" ? "http://192.168.1.47:5000" : "http://localhost:5000";
+const API_BASE_URL =process.env.EXPO_PUBLIC_VITE_API_BASE_URL || (Platform.OS === "android" ? "http://192.168.1.5:5000" : "http://localhost:5000");
 
 
 async function request(path, options = {}) {
@@ -21,10 +20,10 @@ async function request(path, options = {}) {
         });
 
         let data;
+        const text = await res.text();
         try {
-            data = await res.json();
+            data = JSON.parse(text);
         } catch (e) {
-            const text = await res.text();
             console.log("Server returned non-JSON response:", text.slice(0, 200));
             throw new Error(`Server error (${res.status}): The server returned an unexpected response. Please check if the backend is running correctly.`);
         }
@@ -37,6 +36,12 @@ async function request(path, options = {}) {
                 if (firstKey) {
                     errorMessage = data.errors[firstKey];
                 }
+            }
+            if (res.status === 401) {
+                // If token is invalid (e.g. DB wiped), clear session
+                await authApi.logout();
+                // Emit event for UI to reset state
+                if (global.onUnauthorized) global.onUnauthorized();
             }
             throw new Error(errorMessage);
         }
@@ -52,20 +57,6 @@ export const authApi = {
         const data = await request("/api/auth/login", {
             method: "POST",
             body: JSON.stringify({ email, password, rememberMe }),
-        });
-        if (data.token) {
-            await AsyncStorage.setItem("authToken", data.token);
-        }
-        if (data.student) {
-            await AsyncStorage.setItem("student", JSON.stringify(data.student));
-        }
-        return data;
-    },
-
-    async register(payload) {
-        const data = await request("/api/auth/register", {
-            method: "POST",
-            body: JSON.stringify(payload),
         });
         if (data.token) {
             await AsyncStorage.setItem("authToken", data.token);
@@ -122,6 +113,10 @@ export const adminApi = {
         return request(`/api/admin/students${query}`);
     },
 
+    getUserById(id) {
+        return request(`/api/admin/users/${id}`);
+    },
+
     createAccount(payload) {
         return request("/api/admin/accounts", { method: "POST", body: JSON.stringify(payload) });
     },
@@ -160,6 +155,10 @@ export const adminApi = {
     updateAccount(id, payload) {
         return request(`/api/admin/accounts/${id}`, { method: "PUT", body: JSON.stringify(payload) });
     },
+
+    updateRole(id, payload) {
+        return request(`/api/admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+    },
 };
 
 export const gpaApi = {
@@ -179,19 +178,28 @@ export const gpaApi = {
     },
 };
 
+export const scheduleApi = {
+    generate(body) {
+        return request("/api/schedule/generate", {
+            method: "POST",
+            body: body ? JSON.stringify(body) : undefined,
+        });
+    },
+};
+
 export const userApi = {
     async uploadAvatar(userId, imageUri) {
         const token = await AsyncStorage.getItem("authToken");
         const formData = new FormData();
         const fileName = imageUri.split("/").pop();
         const fileType = fileName.split(".").pop();
-        formData.append("avatar", {
+        formData.append("photo", {
             uri: imageUri,
             name: fileName,
             type: `image/${fileType}`,
         });
-        const res = await fetch(`${API_BASE_URL}/api/users/avatar`, {
-            method: "PATCH",
+        const res = await fetch(`${API_BASE_URL}/api/photos/upload`, {
+            method: "POST", // Changed from PATCH to POST to match router.post('/upload')
             headers: { Authorization: `Bearer ${token}` },
             body: formData,
         });
@@ -201,7 +209,6 @@ export const userApi = {
     },
 
     async getAvatar(userId) {
-        return request(`/api/users/${userId}/avatar`);
+        return request(`/api/photos/me`);
     },
 };
-

@@ -15,7 +15,7 @@ const { width } = Dimensions.get("window");
 const LEVEL_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#22c55e"];
 const COURSE_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#22c55e", "#ef4444", "#06b6d4", "#ec4899", "#14b8a6", "#6366f1", "#f97316"];
 
-export default function SuperAdminDashboard() {
+export default function SuperAdminDashboard({ user }) {
   const [stats, setStats] = useState(null);
   const [studentsByLevel, setStudentsByLevel] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -64,7 +64,7 @@ export default function SuperAdminDashboard() {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Super Admin</Text>
+          <Text style={styles.headerTitle}>{user?.role === 'superadmin' ? 'Super Admin' : 'Admin Dashboard'}</Text>
           <Text style={styles.headerSub}>Dashboard Overview</Text>
         </View>
         <View style={styles.bellWrapper}>

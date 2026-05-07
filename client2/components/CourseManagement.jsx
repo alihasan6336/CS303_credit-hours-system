@@ -15,8 +15,7 @@ import {
 import { courseApi } from "../utils/api";
 
 const dayColors = {
-  Sunday: "#ef4444", Monday: "#3b82f6", Tuesday: "#22c55e",
-  Wednesday: "#f59e0b", Thursday: "#8b5cf6", Saturday: "#ec4899",
+  Sunday: "#3b82f6", Monday: "#8b5cf6", Tuesday: "#f59e0b", Wednesday: "#22c55e", Thursday: "#ef4444", Saturday: "#06b6d4",
 };
 
 export default function CourseManagement() {
@@ -103,7 +102,7 @@ export default function CourseManagement() {
       };
 
       if (editingCourse) {
-        await courseApi.update(editingCourse._id, payload);
+        await courseApi.update(editingCourse._id || editingCourse.id, payload);
       } else {
         await courseApi.create(payload);
       }
@@ -130,36 +129,46 @@ export default function CourseManagement() {
           </TouchableOpacity>
         </View>
 
-        {courses.length === 0 ? (
-          <Text style={styles.emptyText}>No courses found</Text>
-        ) : (
-          courses.map((course) => {
-            const dayColor = dayColors[course.day] || "#888";
-            return (
-              <View key={course._id} style={styles.courseCard}>
-                <View style={styles.courseCardTop}>
-                  <Text style={[styles.courseCode, { color: dayColor }]}>{course.code}</Text>
-                  <View style={[styles.dayBadge, { backgroundColor: dayColor + "20", borderColor: dayColor }]}>
-                    <Text style={[styles.dayText, { color: dayColor }]}>{course.day}</Text>
-                  </View>
-                  <View style={styles.creditBadge}>
-                    <Text style={styles.creditText}>{course.credits} cr</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => openEditModal(course)} style={styles.editBtn}>
-                    <Text style={styles.editBtnText}>Edit</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.courseName}>{course.name}</Text>
-                <Text style={styles.courseDetail}>👤 {course.instructor}</Text>
-                <Text style={styles.courseDetail}>🕐 {course.time}  📍 {course.room}</Text>
-                <Text style={styles.courseDetail}>👥 {course.enrolledCount}/{course.capacity} enrolled</Text>
-                {course.prerequisites?.length > 0 && (
-                  <Text style={styles.coursePrereq}>Pre: {course.prerequisites.join(", ")}</Text>
-                )}
+        {[1, 2, 3, 4].map(level => {
+          const levelCourses = courses.filter(c => parseInt(c.studentYear || 1) === level);
+          if (levelCourses.length === 0) return null;
+          return (
+            <View key={level} style={{ marginBottom: 20 }}>
+              <View style={styles.levelHeader}>
+                <Text style={styles.levelHeaderText}>Level {level}</Text>
+                <View style={styles.levelBadge}><Text style={styles.levelBadgeText}>{levelCourses.length} Courses</Text></View>
               </View>
-            );
-          })
-        )}
+              {levelCourses.map((course) => {
+                const dayColor = dayColors[course.day] || "#888";
+                const courseId = course._id || course.id;
+                return (
+                  <View key={courseId} style={styles.courseCard}>
+                    <View style={styles.courseCardTop}>
+                      <Text style={[styles.courseCode, { color: dayColor }]}>{course.code}</Text>
+                      <View style={[styles.dayBadge, { backgroundColor: dayColor + "20", borderColor: dayColor }]}>
+                        <Text style={[styles.dayText, { color: dayColor }]}>{course.day}</Text>
+                      </View>
+                      <View style={styles.creditBadge}>
+                        <Text style={styles.creditText}>{course.credits} cr</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => openEditModal(course)} style={styles.editBtn}>
+                        <Text style={styles.editBtnText}>Edit</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.courseName}>{course.name}</Text>
+                    <Text style={styles.courseDetail}>👤 {course.instructor}</Text>
+                    <Text style={styles.courseDetail}>🕐 {course.time}  📍 {course.room}</Text>
+                    <Text style={styles.courseDetail}>👥 {course.enrolledCount || 0}/{course.capacity} enrolled</Text>
+                    {course.prerequisites?.length > 0 && (
+                      <Text style={styles.coursePrereq}>Pre: {course.prerequisites.join(", ")}</Text>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          );
+        })}
+        {courses.length === 0 && <Text style={styles.emptyText}>No courses found</Text>}
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -321,6 +330,10 @@ const styles = StyleSheet.create({
   courseName: { fontSize: 15, fontWeight: "700", color: "#111", marginBottom: 6 },
   courseDetail: { fontSize: 12, color: "#666", marginBottom: 3 },
   coursePrereq: { fontSize: 11, color: "#8b5cf6", fontWeight: "700", marginTop: 4 },
+  levelHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginHorizontal: 20, marginTop: 16, marginBottom: 8 },
+  levelHeaderText: { fontSize: 16, fontWeight: "800", color: "#111" },
+  levelBadge: { backgroundColor: "#2554e810", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  levelBadgeText: { fontSize: 11, fontWeight: "700", color: "#2554e8" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalBox: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: "85%" },
   modalTitle: { fontSize: 18, fontWeight: "800", color: "#111", marginBottom: 16 },

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View, ScrollView } from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View, ScrollView, Image } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { authApi } from "../utils/api";
+import { canAccessTab } from "../utils/adminAccess";
 import { ALL_PERMISSIONS } from "../constants/data";
 import AccountManagement from "../components/AccountManagement";
 import CourseManagement from "../components/CourseManagement";
-import RegisterScreen from "../components/RegisterScreen";
 import DashboardScreen from "../components/DashboardScreen";
 import EnrollmentManagement from "../components/EnrollmentManagement";
 import GradingManagement from "../components/GradingManagement";
@@ -16,6 +17,9 @@ import GPACalculatorScreen from "../components/GPACalculatorScreen";
 import GradesScreen from "../components/GradesScreen";
 import TableManagement from "../components/TableManagement";
 import SettingsScreen from "../components/AdminSettingsScreen";
+import StudentDetailsScreen from "../components/StudentDetailsScreen";
+import AdminDetailsScreen from "../components/AdminDetailsScreen";
+import AIScheduleScreen from "../components/AIScheduleScreen";
 
 const ADMIN_TABS = [
   { key: "dashboard", icon: "📊", label: "Stats", permission: "dashboard" },
@@ -31,6 +35,7 @@ const STUDENT_TABS = [
   { key: "courses", icon: "📚", label: "Courses" },
   { key: "schedule", icon: "📅", label: "Schedule" },
   { key: "grades", icon: "📊", label: "Grades" },
+  { key: "ai", icon: "🤖", label: "AI" },
   { key: "settings", icon: "⚙️", label: "Settings" },
 ];
 
@@ -67,18 +72,25 @@ function SidebarDrawer({ isOpen, onClose, user, activeTab, onTabPress, tabs, onL
           <View style={styles.drawerHeader}>
             <View style={styles.drawerUserBox}>
               <View style={styles.drawerAvatar}>
-                <Text style={styles.drawerAvatarText}>
-                  {user.fullName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "?"}
-                </Text>
+                {user.photoUrl ? (
+                  <Image source={{ uri: user.photoUrl }} style={styles.drawerAvatarImg} />
+                ) : (
+                  <Text style={styles.drawerAvatarText}>
+                    {user.fullName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "?"}
+                  </Text>
+                )}
               </View>
               <View>
                 <Text style={styles.drawerUserName} numberOfLines={1}>{user.fullName}</Text>
-                <Text style={styles.drawerUserRole}>{user.role === 'admin' ? user.adminRole : user.role}</Text>
+                <Text style={styles.drawerUserRole}>
+                  {user.role === 'superadmin' ? 'Super Admin' : (user.adminRole || (user.role === 'admin' ? 'Admin' : 'Student'))}
+                </Text>
               </View>
             </View>
           </View>
 
           <ScrollView style={styles.drawerScroll}>
+            {user.role !== 'student' && <Text style={styles.drawerSectionLabel}>PAGES</Text>}
             {tabs.map(tab => (
               <TouchableOpacity
                 key={tab.key}
@@ -106,12 +118,18 @@ function SidebarDrawer({ isOpen, onClose, user, activeTab, onTabPress, tabs, onL
   );
 }
 
-function AppHeader({ title, onMenuPress }) {
+function AppHeader({ title, onMenuPress, showBack, onBack }) {
   return (
     <View style={styles.appHeader}>
-      <TouchableOpacity style={styles.menuBtn} onPress={onMenuPress}>
-        <Text style={styles.menuBtnText}>☰</Text>
-      </TouchableOpacity>
+      {showBack ? (
+        <TouchableOpacity style={styles.menuBtn} onPress={onBack}>
+          <Text style={styles.menuBtnText}>←</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={styles.menuBtn} onPress={onMenuPress}>
+          <Text style={styles.menuBtnText}>☰</Text>
+        </TouchableOpacity>
+      )}
       <Text style={styles.appHeaderTitle}>{title}</Text>
       <View style={{ width: 40 }} />
     </View>
@@ -121,19 +139,53 @@ function AppHeader({ title, onMenuPress }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [authScreen, setAuthScreen] = useState("login");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [detailUserId, setDetailUserId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const handleLogin = (loggedInUser) => {
     const u = { ...loggedInUser, role: loggedInUser.role || "student" };
     setUser(u);
-    // Set default tab to first available permission for admins
     if (u.role === "admin" && u.permissions && u.permissions.length > 0) {
       setActiveTab(u.permissions[0]);
     } else {
       setActiveTab("dashboard");
     }
   };
+
+  const handleUpdateUser = (updatedFields) => {
+    setUser(prev => {
+      if (!prev) return null;
+      const newUser = { ...prev, ...updatedFields };
+      AsyncStorage.setItem("student", JSON.stringify(newUser)).catch(console.error);
+      return newUser;
+    });
+  };
+
+  useEffect(() => {
+    // Check initial auth state
+    const checkAuth = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem("student");
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          handleLogin(parsed);
+        }
+      } catch (err) {
+        console.error("Auth load error:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkAuth();
+
+    // Listen for unauthorized events to auto-logout
+    global.onUnauthorized = () => {
+      setUser(null);
+      setActiveTab("dashboard");
+      setDetailUserId(null);
+    };
+  }, []);
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to log out?", [
@@ -145,61 +197,90 @@ export default function App() {
           await authApi.logout();
           setUser(null);
           setActiveTab("dashboard");
-          setAuthScreen("login");
+          setDetailUserId(null);
         },
       },
     ]);
   };
 
+  if (isLoading) return null;
+
   if (!user) {
-    if (authScreen === "register") {
-      return (
-        <RegisterScreen
-          onNavigateLogin={() => setAuthScreen("login")}
-          onRegister={(data) => handleLogin(data)}
-        />
-      );
-    }
-    return (
-      <LoginScreen
-        onLogin={handleLogin}
-        onNavigateRegister={() => setAuthScreen("register")}
-      />
-    );
+    return <LoginScreen onLogin={handleLogin} />;
   }
 
-  // Unified Navigation Content
+  
   const tabs = user.role === 'student'
     ? STUDENT_TABS
-    : ADMIN_TABS.filter(t => (user.role === 'superadmin' ? ALL_PERMISSIONS : (user.permissions || [])).includes(t.permission)).concat([{ key: "settings", icon: "⚙️", label: "Settings" }]);
+    : [
+        ...ADMIN_TABS.filter(t => canAccessTab(user, t.key)),
+        { key: "settings", icon: "⚙️", label: "Settings" }
+      ];
 
-  const activeTabLabel = tabs.find(t => t.key === activeTab)?.label || "Dashboard";
+  const isDetailScreen = ["studentDetails", "adminDetails"].includes(activeTab);
+  const activeTabLabel = isDetailScreen
+    ? (activeTab === "studentDetails" ? "Student Details" : "Admin Details")
+    : (tabs.find(t => t.key === activeTab)?.label || "Dashboard");
+
+  const navigateToStudentDetails = (id) => {
+    setDetailUserId(id);
+    setActiveTab("studentDetails");
+  };
+
+  const navigateToAdminDetails = (id) => {
+    setDetailUserId(id);
+    setActiveTab("adminDetails");
+  };
+
+  const goBackFromDetails = () => {
+    setActiveTab("accounts");
+    setDetailUserId(null);
+  };
 
   const renderScreen = () => {
     switch (activeTab) {
       case "dashboard":
         return user.role === 'student'
-          ? <DashboardScreen 
-              onNavigateCourses={() => setActiveTab("courses")} 
+          ? <DashboardScreen
+              onNavigateCourses={() => setActiveTab("courses")}
+              onUpdateUser={handleUpdateUser}
             />
-          : <SuperAdminDashboard />;
+          : <SuperAdminDashboard user={user} />;
+
       case "courses":
         return user.role === 'student' ? <StudentCoursesScreen /> : <CourseManagement />;
-      case "accounts": return <AccountManagement />;
+      case "accounts":
+        return (
+          <AccountManagement
+            user={user}
+            onViewStudent={navigateToStudentDetails}
+            onViewAdmin={navigateToAdminDetails}
+          />
+        );
       case "enrollment": return <EnrollmentManagement />;
       case "grading": return <GradingManagement />;
       case "table": return <TableManagement />;
       case "schedule": return <StudentScheduleScreen />;
       case "grades": return <GradesScreen onGoBack={() => setActiveTab("dashboard")} />;
-      case "settings": return <SettingsScreen user={user} onLogout={handleLogout} />;
+      case "settings": return <SettingsScreen user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />;
       case "gpa": return <GPACalculatorScreen onGoBack={() => setActiveTab("settings")} />;
+      case "ai": return <AIScheduleScreen />;
+      case "studentDetails":
+        return <StudentDetailsScreen userId={detailUserId} onGoBack={goBackFromDetails} />;
+      case "adminDetails":
+        return <AdminDetailsScreen userId={detailUserId} onGoBack={goBackFromDetails} />;
       default: return user.role === 'student' ? <DashboardScreen /> : <SuperAdminDashboard />;
     }
   };
 
   return (
     <View style={styles.container}>
-      <AppHeader title={activeTabLabel} onMenuPress={() => setIsDrawerOpen(true)} />
+      <AppHeader
+        title={activeTabLabel}
+        onMenuPress={() => setIsDrawerOpen(true)}
+        showBack={isDetailScreen}
+        onBack={goBackFromDetails}
+      />
       <View style={styles.screen}>{renderScreen()}</View>
       <SidebarDrawer
         isOpen={isDrawerOpen}
@@ -284,10 +365,23 @@ const styles = StyleSheet.create({
     width: 170,
   },
   drawerUserRole: {
-    fontSize: 12,
-    color: "#888",
     marginTop: 2,
     textTransform: "capitalize",
+    fontWeight: "600",
+  },
+  drawerAvatarImg: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  drawerSectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#aaa",
+    letterSpacing: 1.5,
+    marginLeft: 20,
+    marginTop: 10,
+    marginBottom: 5,
   },
   drawerScroll: {
     flex: 1,
