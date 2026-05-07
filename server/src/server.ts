@@ -18,8 +18,11 @@ import { apiLimiter, authLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
-connectDB();
-
+connectDB()
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => {
+    console.error("MongoDB connection failed:", err);
+  });
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
@@ -114,8 +117,8 @@ app.use((_req, res) => {
 app.use(errorHandler);
 
 // Start server with graceful shutdown
-const server = app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+const server = app.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT}`);
 });
 
 // Graceful shutdown handlers
