@@ -17,11 +17,11 @@ import ProfilePhotoPage from "./pages/student/ProfilePhotoPage";
 import ManageCourses from "./pages/admin/ManageCourses";
 import TableManagement from "./pages/admin/TableManagement";
 import StudentSchedules from "./pages/admin/StudentSchedules";
+import AdminProfilePhotoPage from "./pages/admin/AdminProfilePhotoPage";
 import {
   canAccessPath,
   getDashboardPathForAdmin,
   getStoredAdminUser,
-  hasResolvedAdminType,
   isAdminUser,
 } from "./utils/adminAccess";
 
@@ -62,26 +62,6 @@ function AdminFeatureRoute({
   return <>{element}</>;
 }
 
-function AdminTypeMissingPage() {
-  const user = getStoredAdminUser();
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
-      <div className="max-w-lg w-full bg-white border border-amber-200 rounded-xl shadow-sm p-6 text-center">
-        <h1 className="text-2xl font-bold text-amber-700 mb-2">
-          Admin Type Not Configured
-        </h1>
-        <p className="text-gray-700">
-          Your account is logged in as admin, but no admin type is assigned yet.
-        </p>
-        <p className="text-sm text-gray-500 mt-2">
-          Ask backend to map this account in admin identifiers:{" "}
-          <span className="font-medium">{user.email || "unknown email"}</span>
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function App() {
   return (
     <Routes>
@@ -102,6 +82,7 @@ function App() {
       {/* Protected admin routes */}
       <Route element={<AdminRoute />}>
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/profile-photo" element={<AdminProfilePhotoPage />} />
         <Route path="/admin/it" element={<Navigate to="/admin" replace />} />
         <Route
           path="/admin/enrollment"

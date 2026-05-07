@@ -21,6 +21,7 @@ interface StudentRegisterFormProps {
   error?: string;
   onClearError?: () => void;
   role?: "student" | "admin" | "superadmin";
+  onCancel?: () => void;
 }
 
 const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
@@ -29,6 +30,7 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
   error,
   onClearError,
   role = "student",
+  onCancel,
 }) => {
   const [formData, setFormData] = useState<StudentFormData>({
     fullName: "",
@@ -447,14 +449,26 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
           </>
         )}
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full mt-5 py-2.5 bg-indigo-600 text-white text-base font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
-        >
-          {buttonText}
-        </button>
+        {/* Buttons */}
+        <div className={`mt-5 flex ${onCancel ? "gap-3" : ""}`}>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={isLoading}
+              className="w-full py-2.5 bg-gray-200 text-gray-800 text-base font-medium rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-2.5 bg-indigo-600 text-white text-base font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+          >
+            {buttonText}
+          </button>
+        </div>
       </form>
     </div>
   );

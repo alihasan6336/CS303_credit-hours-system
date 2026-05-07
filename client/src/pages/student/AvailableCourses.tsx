@@ -110,15 +110,6 @@ const AvailableCourses: React.FC = () => {
     }
   };
 
-  const handleGoBack = () => {
-    navigate("/home");
-  };
-
-  const handleSignOut = () => {
-    authApi.logout();
-    navigate("/login");
-  };
-
   if (loading) {
     return (
       <StudentLayout user={user}>

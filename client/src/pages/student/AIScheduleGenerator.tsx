@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import StudentLayout from "../../layout/StudentLayout";
-import { scheduleApi, courseApi } from "../../utils/api";
-import { Sparkles, Calendar, Clock, MapPin, User, ChevronRight, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { courseApi } from "../../utils/api";
+import { Sparkles, Calendar, Clock, MapPin, User, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface OptimizedSchedule {
   courses: OptimizedCourse[];

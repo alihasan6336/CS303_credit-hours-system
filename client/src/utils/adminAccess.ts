@@ -13,6 +13,7 @@ interface AdminUser {
   adminType?: string; // Can be mixed case from DB
   fullName?: string;
   email?: string;
+  photoUrl?: string;
 }
 
 // Normalize role/type for logic
@@ -57,7 +58,7 @@ export const isAdminUser = (user: AdminUser): boolean => {
   return isAdminRole(user.role);
 };
 
-export const getDashboardPathForAdmin = (user: AdminUser): string => {
+export const getDashboardPathForAdmin = (_user: AdminUser): string => {
   return "/admin";
 };
 

@@ -77,10 +77,14 @@ const AdminSidebar: React.FC = () => {
         <p className="text-indigo-200 text-sm">Credit Hours System</p>
       </div>
 
-      <div className="px-4 py-3 mx-4 bg-indigo-700/50 rounded-lg">
+      <div className="px-4 py-3 mx-4 bg-indigo-700/50 rounded-lg group hover:bg-indigo-700/70 transition-colors cursor-pointer relative" onClick={() => navigate("/admin/profile-photo")}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-semibold">
-            {user.fullName?.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-semibold overflow-hidden border border-indigo-500/30">
+            {user.photoUrl ? (
+              <img src={user.photoUrl} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              user.fullName?.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+            )}
           </div>
           <div>
             <p className="font-medium truncate max-w-[120px]">{user.fullName}</p>
@@ -88,6 +92,9 @@ const AdminSidebar: React.FC = () => {
               {isSuperAdmin ? "Super Admin" : userType.replace("_", " ") || "Admin"}
             </p>
           </div>
+        </div>
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-lg flex justify-end items-center px-4 transition-colors">
+          <span className="text-white/0 group-hover:text-white/70 text-xs text-right">Edit Photo</span>
         </div>
       </div>
 
