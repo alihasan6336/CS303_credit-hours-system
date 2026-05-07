@@ -76,7 +76,8 @@ const AdminProfilePhotoPage: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to remove your profile photo?")) return;
+    if (!window.confirm("Are you sure you want to remove your profile photo?"))
+      return;
 
     setLoading(true);
     setError(null);
@@ -120,7 +121,9 @@ const AdminProfilePhotoPage: React.FC = () => {
             >
               <ArrowLeft size={20} />
             </button>
-            <h1 className="text-2xl font-bold text-gray-800">Admin Profile Photo</h1>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Admin Profile Photo
+            </h1>
           </div>
 
           {/* Photo Card */}
@@ -164,9 +167,16 @@ const AdminProfilePhotoPage: React.FC = () => {
                 />
               </div>
 
-              {loading && <p className="text-gray-500 text-sm mb-4 flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Loading photo...</p>}
-              
-              <h2 className="text-xl font-bold text-gray-800 mb-1">{displayName}</h2>
+              {loading && (
+                <p className="text-gray-500 text-sm mb-4 flex items-center gap-2">
+                  <Loader2 size={14} className="animate-spin" /> Loading
+                  photo...
+                </p>
+              )}
+
+              <h2 className="text-xl font-bold text-gray-800 mb-1">
+                {displayName}
+              </h2>
               <p className="text-gray-500 mb-8">{user.email}</p>
 
               {/* Status Messages */}
@@ -191,7 +201,7 @@ const AdminProfilePhotoPage: React.FC = () => {
                   <Camera size={18} />
                   {photoUrl ? "Change Photo" : "Upload Photo"}
                 </button>
-                
+
                 {photoUrl && (
                   <button
                     onClick={handleDelete}
