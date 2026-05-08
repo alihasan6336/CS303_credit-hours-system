@@ -492,6 +492,13 @@ export const courseApi = {
       method: "POST",
     });
   },
+  
+  bulkEnroll(courseIds: string[], replaceExisting: boolean = false): Promise<{ success: boolean; message: string; enrolledCount: number }> {
+    return request("/api/courses/bulk-enroll", {
+      method: "POST",
+      body: JSON.stringify({ courseIds, replaceExisting }),
+    });
+  },
 
   drop(courseId: string): Promise<{ success: boolean; message: string }> {
     return request(`/api/courses/${courseId}/enroll`, {
@@ -533,6 +540,12 @@ export const scheduleApi = {
     return request<ScheduleResponse>("/api/schedule/generate", {
       method: "POST",
       body: body ? JSON.stringify(body) : undefined,
+    });
+  },
+
+  recommend(): Promise<{ success: boolean; recommendations: any[] }> {
+    return request("/api/schedule/recommend", {
+      method: "POST",
     });
   },
 };

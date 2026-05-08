@@ -29,7 +29,7 @@ export const getAIAdviceForSchedule = async (
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -88,7 +88,7 @@ export const generateAIScheduleSelection = async (
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",

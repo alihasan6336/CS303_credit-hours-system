@@ -54,6 +54,8 @@ const AIScheduleGenerator: React.FC = () => {
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
 
+  const [recommending, setRecommending] = useState(false);
+
   const fetchAvailable = async () => {
     try {
       const data = await courseApi.getAllCourses();
@@ -62,6 +64,23 @@ const AIScheduleGenerator: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to fetch courses", err);
+    }
+  };
+
+  const handleRecommend = async () => {
+    setRecommending(true);
+    try {
+      // @ts-ignore
+      const data = await scheduleApi.recommend();
+      if (data.success) {
+        const codes = data.recommendations.map((c: any) => c.code);
+        // Only set unique codes
+        setSelectedCourseIds(Array.from(new Set(codes)));
+      }
+    } catch (err) {
+      console.error("AI Recommendation failed", err);
+    } finally {
+      setRecommending(false);
     }
   };
 
@@ -177,7 +196,20 @@ const AIScheduleGenerator: React.FC = () => {
                   <h2 className="text-2xl font-bold text-gray-800">Select Your Courses</h2>
                   <p className="text-gray-500 text-sm">Choose the courses you'd like to include in your optimized schedule.</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex items-center gap-6">
+                  <button
+                    onClick={handleRecommend}
+                    disabled={recommending}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-colors"
+                  >
+                    {recommending ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Sparkles size={16} />
+                    )}
+                    Smart Select with AI
+                  </button>
+
                   <div className="flex flex-col items-end">
                     <span className={`text-2xl font-bold ${totalSelectedCredits < 14 ? 'text-orange-500' : 'text-green-500'}`}>
                       {totalSelectedCredits} <span className="text-sm font-normal text-gray-400">/ 14-19</span>
@@ -451,15 +483,16 @@ const AIScheduleGenerator: React.FC = () => {
                       onClick={async () => {
                         if (!schedule) return;
                         setEnrolling(true);
-                        // Implement sequential enrollment logic
                         try {
-                          // This is a simplified version; in reality you might need a bulk API
-                          for (const course of schedule.courses) {
-                            await courseApi.enroll(course._id);
+                          const courseIds = schedule.courses.map(c => c._id);
+                          const res = await courseApi.bulkEnroll(courseIds, true); // replaceExisting: true
+                          if (res.success) {
+                            setEnrollSuccess(true);
+                          } else {
+                            throw new Error(res.message);
                           }
-                          setEnrollSuccess(true);
-                        } catch (err) {
-                          alert("Failed to enroll in some courses.");
+                        } catch (err: any) {
+                          alert(err.message || "Failed to enroll in some courses.");
                         } finally {
                           setEnrolling(false);
                         }

@@ -3,7 +3,7 @@ import Course from '../models/Course';
 import Student from '../models/Student';
 import SystemSettings from '../models/SystemSettings';
 import { optimizeSchedule, OptimizedSchedule } from '../utils/scheduleOptimizer';
-import { getAIAdviceForSchedule } from '../utils/aiScheduleAssistant';
+import { getAIAdviceForSchedule, generateAIScheduleSelection } from '../utils/aiScheduleAssistant';
 import { getCreditLimitForStudent } from '../utils/creditLimitCalculator';
 
 /**
@@ -156,5 +156,56 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
       message: error.message
     })}\n\n`);
     res.end();
+  }
+};
+
+/**
+ * AI-Driven Course Recommendation
+ */
+export const recommendCourses = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const student = req.student;
+    
+    // 1. Fetch available courses based on context
+    const query: any = { isActive: true };
+    if (student) {
+      query.$and = [
+        { $or: [{ major: student.major }, { major: { $exists: false } }, { major: '' }] },
+        { $or: [{ level: student.level }, { level: { $exists: false } }, { level: null }] }
+      ];
+    }
+    
+    const availableCourses = await Course.find(query).lean();
+    
+    // 2. Get Credit Limits
+    const creditLimit = await getCreditLimitForStudent(student || { currentSemester: 'Fall', gpa: 3.5 });
+
+    // 3. Call AI Selection
+    const recommendedCodes = await generateAIScheduleSelection(
+      availableCourses as any,
+      creditLimit.minCredits,
+      creditLimit.maxCredits
+    );
+
+    if (!recommendedCodes) {
+      res.status(200).json({ success: true, recommendations: [] });
+      return;
+    }
+
+    const recommendedCourses = availableCourses.filter(c => recommendedCodes.includes(c.code));
+
+    res.status(200).json({
+      success: true,
+      recommendations: recommendedCourses.map(c => ({
+        _id: c._id,
+        code: c.code,
+        name: c.name,
+        credits: c.credits,
+        day: c.day,
+        time: c.time
+      }))
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

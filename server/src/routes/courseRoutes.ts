@@ -9,6 +9,7 @@ import {
   bulkUpdateCourses,
   deleteCourse,
   enrollCourse,
+  bulkEnrollCourses,
   dropCourse,
   getCourseEnrollments,
   getMyCreditLimit,
@@ -25,6 +26,7 @@ router.get('/', protect, asyncWrap(getCourses));
 router.get('/my-courses', protect, asyncWrap(getMyCourses));
 router.get('/my-credit-limit', protect, asyncWrap(getMyCreditLimit));
 router.get('/:id', protect, asyncWrap(getCourseByID));
+router.post('/bulk-enroll', protect, asyncWrap(bulkEnrollCourses));
 router.post('/:id/enroll', protect, enrollmentLimiter, asyncWrap(enrollCourse));
 router.delete('/:id/enroll', protect, asyncWrap(dropCourse));
 

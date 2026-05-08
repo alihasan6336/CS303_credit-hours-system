@@ -5,7 +5,8 @@ export interface OptimizedSchedule {
   totalCredits: number;
   uniqueDays: string[];
   dayCount: number;
-  gapMinutes: number; // New: total minutes of gaps between classes
+  gapMinutes: number;
+  score: number;
   inRange?: boolean;
 }
 
@@ -32,32 +33,53 @@ const getUniqueDays = (courses: ICourse[]): string[] => {
   return Array.from(days);
 };
 
-const getGapMinutesForDay = (courses: ICourse[]): number => {
-  if (courses.length < 2) return 0;
+const getGapScore = (courses: ICourse[]): { totalGap: number; penalty: number } => {
+  if (courses.length < 2) return { totalGap: 0, penalty: 0 };
   
-  // Sort courses by start time
   const sorted = [...courses].sort((a, b) => a.startTime - b.startTime);
   
   let totalGap = 0;
+  let penalty = 0;
   for (let i = 0; i < sorted.length - 1; i++) {
     const gap = sorted[i+1].startTime - sorted[i].endTime;
-    if (gap > 0) totalGap += gap;
+    if (gap > 0) {
+      totalGap += gap;
+      // Penalize gaps larger than 120 minutes (2 hours) heavily
+      if (gap > 120) penalty += (gap - 120) * 2;
+    }
   }
-  return totalGap;
+  return { totalGap, penalty };
 };
 
-const getTotalGapMinutes = (courses: ICourse[]): number => {
+const calculateScheduleQuality = (courses: ICourse[]): { 
+  dayCount: number; 
+  totalGap: number; 
+  score: number;
+} => {
   const dayGroups: Record<string, ICourse[]> = {};
   courses.forEach(c => {
     if (!dayGroups[c.day]) dayGroups[c.day] = [];
     dayGroups[c.day].push(c);
   });
   
-  let total = 0;
-  Object.values(dayGroups).forEach(dayCourses => {
-    total += getGapMinutesForDay(dayCourses);
+  const uniqueDays = Object.keys(dayGroups);
+  const dayCount = uniqueDays.length;
+  
+  let totalGap = 0;
+  let totalPenalty = 0;
+  
+  // 1. Calculate gaps and gap penalties
+  uniqueDays.forEach(day => {
+    const { totalGap: dg, penalty: dp } = getGapScore(dayGroups[day]);
+    totalGap += dg;
+    totalPenalty += dp;
   });
-  return total;
+
+  // Final score: Lower is better
+  // Days are most important (10000 pts per day), then gaps, then large gap penalties
+  const score = (dayCount * 10000) + (totalGap) + totalPenalty;
+
+  return { dayCount, totalGap, score };
 };
 
 /**
@@ -131,22 +153,15 @@ export const optimizeSchedule = (
       onProgress(exploredCount, bestSchedule);
     }
 
-    // **Pruning 3: Early termination - if we found a 3-day schedule in range, stop searching**
-    if (bestSchedule?.inRange && bestSchedule.dayCount <= 3) {
-      return;
-    }
+    // **Pruning 3: Early termination removed to find best balanced schedules**
 
     // Evaluation Logic
     if (currentCredits >= minCredits && currentCredits <= maxCredits) {
+      const { dayCount, totalGap, score } = calculateScheduleQuality(currentCourses);
       const uniqueDays = getUniqueDays(currentCourses);
-      const dayCount = uniqueDays.length;
-      const gapMinutes = getTotalGapMinutes(currentCourses);
 
-      // Comparison logic: Better if (Less Days) or (Same Days AND Less Gaps)
-      const isBetter = !bestSchedule || 
-        (!bestSchedule.inRange) || 
-        (dayCount < bestSchedule.dayCount) || 
-        (dayCount === bestSchedule.dayCount && gapMinutes < bestSchedule.gapMinutes);
+      // Comparison logic: Better if score is lower
+      const isBetter = !bestSchedule || (!bestSchedule.inRange) || (score < bestSchedule.score);
 
       if (isBetter) {
         bestSchedule = {
@@ -154,19 +169,22 @@ export const optimizeSchedule = (
           totalCredits: currentCredits,
           uniqueDays,
           dayCount,
-          gapMinutes,
+          gapMinutes: totalGap,
+          score,
           inRange: true
         };
       }
     } else if (!bestSchedule && currentCredits > 0 && currentCredits < minCredits) {
       // Fallback for "Incomplete" selection
+      const { dayCount, totalGap, score } = calculateScheduleQuality(currentCourses);
       const uniqueDays = getUniqueDays(currentCourses);
       bestSchedule = {
         courses: [...currentCourses],
         totalCredits: currentCredits,
         uniqueDays,
-        dayCount: uniqueDays.length,
-        gapMinutes: getTotalGapMinutes(currentCourses),
+        dayCount,
+        gapMinutes: totalGap,
+        score,
         inRange: false
       };
     }

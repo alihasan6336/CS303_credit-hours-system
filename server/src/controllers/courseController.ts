@@ -402,11 +402,118 @@ export const getCourseEnrollments = async (req: Request, res: Response): Promise
   }
 };
 
+// POST /api/courses/bulk-enroll - Bulk enrollment (optimizer support)
+export const bulkEnrollCourses = async (req: Request, res: Response): Promise<void> => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const student = req.student;
+    const { courseIds, replaceExisting = false } = req.body;
+
+    if (!student) {
+      res.status(403).json({ success: false, message: 'Only students can enroll in courses.' });
+      return;
+    }
+
+    if (!Array.isArray(courseIds) || courseIds.length === 0) {
+      res.status(400).json({ success: false, message: 'Course IDs array is required' });
+      return;
+    }
+
+    // 1. If replaceExisting, drop all active enrollments for current semester
+    if (replaceExisting) {
+      const currentEnrollments = await Enrollment.find({
+        student: student._id,
+        semester: student.currentSemester,
+        status: 'active'
+      });
+      
+      for (const enr of currentEnrollments) {
+        await Course.findByIdAndUpdate(enr.course, { $inc: { enrolledCount: -1 } }, { session });
+        await Enrollment.findByIdAndDelete(enr._id, { session });
+      }
+    }
+
+    const results = [];
+    const creditLimit = await getCreditLimitForStudent(student);
+    let totalCredits = 0;
+
+    // 2. Process each course
+    for (const courseId of courseIds) {
+      const course = await Course.findById(courseId).session(session);
+      if (!course || !course.isActive) {
+        throw new Error(`Course ${courseId} not found or inactive`);
+      }
+
+      // Check capacity
+      if (course.enrolledCount >= course.capacity) {
+        throw new Error(`Course ${course.code} is full`);
+      }
+
+      // Check for already enrolled
+      const existing = await Enrollment.findOne({
+        student: student._id,
+        course: courseId,
+        semester: student.currentSemester,
+        status: 'active'
+      }).session(session);
+
+      if (existing) continue; // Skip if already enrolled
+
+      // Create enrollment
+      await Enrollment.create([{
+        student: student._id,
+        course: courseId,
+        semester: student.currentSemester,
+        level: student.level,
+        status: 'active'
+      }], { session });
+
+      // Update count
+      course.enrolledCount += 1;
+      await course.save({ session });
+
+      totalCredits += course.credits;
+      results.push(course.code);
+    }
+
+    // 3. Final Credit check
+    const enrolledEnrollments = await Enrollment.find({
+      student: student._id,
+      semester: student.currentSemester,
+      status: 'active'
+    }).populate('course', 'credits').session(session);
+    
+    const finalTotalCredits = enrolledEnrollments.reduce((sum, e) => sum + ((e.course as any).credits || 0), 0);
+    
+    if (finalTotalCredits > creditLimit.maxCredits) {
+      throw new Error(`Total credits (${finalTotalCredits}) would exceed your limit (${creditLimit.maxCredits})`);
+    }
+
+    await session.commitTransaction();
+    res.status(201).json({
+      success: true,
+      message: `Successfully enrolled in: ${results.join(', ')}`,
+      enrolledCount: results.length
+    });
+  } catch (error: any) {
+    await session.abortTransaction();
+    res.status(400).json({ success: false, message: error.message });
+  } finally {
+    session.endSession();
+  }
+};
+
 // POST /api/courses/:id/enroll - ATOMIC enrollment (race condition safe)
 export const enrollCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const student = req.student!;
+    const student = req.student;
     const courseId = req.params.id as string;
+
+    if (!student) {
+      res.status(403).json({ success: false, message: 'Only students can enroll in courses.' });
+      return;
+    }
 
     if (!mongoose.Types.ObjectId.isValid(courseId)) {
       res.status(400).json({ success: false, message: 'Invalid course ID format' });
