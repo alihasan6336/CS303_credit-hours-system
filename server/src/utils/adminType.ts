@@ -8,6 +8,9 @@ const ADMIN_TYPE_PERMISSIONS: Record<string, PermissionKey[]> = {
     'users:list', 'users:view',
     'courses:list', 'courses:view', 'courses:update',
     'enrollments:list', 'enrollments:create', 'enrollments:update', 'enrollments:delete',
+    'table:view', 'table:open', 'table:close', 'table:edit', 'table:assign',
+    'registration:open', 'registration:close',
+    'system:settings',
     'users:stats'
   ],
   courses_admin: [
