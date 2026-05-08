@@ -16,7 +16,11 @@ return (
     <aside className="w-64 h-screen bg-gray-900 text-white flex flex-col p-4">
       {/* Logo / Header */}
     <div className="mb-6 text-center">
-        <div className="text-3xl mb-2">🎓</div>
+        <img
+          src="/logo.jpeg"
+          alt="University Logo"
+          className="w-14 h-14 object-contain mx-auto mb-2 rounded-lg bg-white/10 p-1"
+        />
         <h2 className="text-xl font-bold">Credit Hours System</h2>
     </div>
 

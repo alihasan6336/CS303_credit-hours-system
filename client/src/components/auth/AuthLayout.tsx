@@ -1,5 +1,5 @@
 import React from "react";
-import { GraduationCap, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 interface AuthLayoutProps {
   title: React.ReactNode;
@@ -31,7 +31,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-center items-start px-16 py-12 text-white">
           <div className="mb-8">
-            <GraduationCap className="w-16 h-16 mb-6" />
+            <img src="/logo.jpeg" alt="University Logo" className="w-20 h-20 object-contain mb-6 rounded-xl bg-white/10 p-2" />
             <h1 className="text-5xl font-bold mb-4 leading-tight">{title}</h1>
             <p className="text-xl text-blue-100 max-w-md">{subtitle}</p>
           </div>
@@ -52,7 +52,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
         <div className="w-full max-w-md">
           {/* Mobile Header */}
           <div className="lg:hidden text-center mb-6">
-            <GraduationCap className="w-10 h-10 mx-auto text-indigo-600 mb-3" />
+            <img src="/logo.jpeg" alt="University Logo" className="w-14 h-14 mx-auto mb-3 object-contain rounded-lg" />
             <h1 className="text-2xl font-bold text-gray-900">
               {mobileTitle || "Credit Hours System"}
             </h1>
@@ -60,7 +60,12 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
 
           {/* Form Card */}
           <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="mb-6">
+            <div className="flex flex-col items-center mb-6">
+              <img
+                src="/logo.jpeg"
+                alt="University Logo"
+                className="w-16 h-16 object-contain rounded-xl mb-3"
+              />
               <h2 className="text-2xl font-bold text-gray-900">{formTitle}</h2>
               <p className="mt-2 text-sm text-gray-600">{formSubtitle}</p>
             </div>

@@ -43,9 +43,11 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children, user = {} }) =>
       <aside className="w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white flex flex-col">
         {/* Logo / Header */}
         <div className="p-6 text-center">
-          <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-            <GraduationCap size={24} />
-          </div>
+          <img
+            src="/logo.jpeg"
+            alt="University Logo"
+            className="w-16 h-16 object-contain mx-auto mb-3 rounded-lg bg-white/10 p-1"
+          />
           <h2 className="text-lg font-bold">Credit Hours System</h2>
           <p className="text-indigo-200 text-sm">Student Portal</p>
         </div>

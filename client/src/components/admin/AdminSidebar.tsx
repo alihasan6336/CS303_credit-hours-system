@@ -84,15 +84,22 @@ const AdminSidebar: React.FC = () => {
 
   return (
     <aside className="w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white flex flex-col min-h-screen sticky top-0">
-      <div className="p-6">
-        <div className="text-2xl font-bold mb-1">
-          {isSuperAdmin ? "🛡️ Super Admin" : 
-           userType.includes("it") ? "🖥️ IT Admin" :
-           userType.includes("table") || userType.includes("schedule") ? "📅 Table Admin" :
-           userType.includes("courses") ? "📚 Courses Admin" : 
-           userType.includes("enrollment") ? "✍️ Enrollment Admin" : "🎓 Admin Panel"}
+      <div className="p-6 flex items-center gap-3">
+        <img
+          src="/logo.jpeg"
+          alt="University Logo"
+          className="w-12 h-12 object-contain rounded-lg bg-white/10 p-1 flex-shrink-0"
+        />
+        <div>
+          <div className="text-lg font-bold leading-tight">
+            {isSuperAdmin ? "Super Admin" : 
+             userType.includes("it") ? "IT Admin" :
+             userType.includes("table") || userType.includes("schedule") ? "Table Admin" :
+             userType.includes("courses") ? "Courses Admin" : 
+             userType.includes("enrollment") ? "Enrollment Admin" : "Admin Panel"}
+          </div>
+          <p className="text-indigo-200 text-sm">Credit Hours System</p>
         </div>
-        <p className="text-indigo-200 text-sm">Credit Hours System</p>
       </div>
 
       <div className="px-4 py-3 mx-4 bg-indigo-700/50 rounded-lg group hover:bg-indigo-700/70 transition-colors cursor-pointer relative" onClick={() => navigate("/admin/profile-photo")}>
