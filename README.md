@@ -1,4 +1,4 @@
-# 🎓 Credit Hours System (CS303)
+#  Credit Hours System (CS303)
 
 > **A comprehensive academic management platform for universities to streamline course enrollment, track student progress, and manage academic records.**
 
@@ -10,7 +10,7 @@
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 - [Problem Statement](#-problem-statement)
 - [Goal & Objectives](#-goal--objectives)
@@ -24,7 +24,7 @@
 
 ---
 
-## 🎯 Problem Statement
+##  Problem Statement
 
 Traditional university academic management systems face several critical challenges:
 
@@ -37,7 +37,7 @@ Traditional university academic management systems face several critical challen
 
 ---
 
-## 🚀 Goal & Objectives
+##  Goal & Objectives
 
 ### Primary Goal
 Build a modern, scalable academic management system that automates course enrollment, tracks student academic progress, and provides real-time GPA/credit calculations.
@@ -46,16 +46,18 @@ Build a modern, scalable academic management system that automates course enroll
 
 | Objective | Description | Status |
 |-----------|-------------|--------|
-| **Automated Enrollment** | Students can self-enroll in courses with prerequisite validation | ✅ Implemented |
-| **Real-time GPA Tracking** | Automatic GPA calculation based on course grades | ✅ Implemented |
-| **Credit Hour Management** | Track completed vs. required credits per major | ✅ Implemented |
+| **Automated Enrollment** | Students can self-enroll in courses with prerequisite validation 
+| **Real-time GPA Tracking** | Automatic GPA calculation based on course grades 
+| **Credit Hour Management** | Track completed vs. required credits per major 
 | **Multi-Platform Access** | Web + Mobile applications for seamless access | ✅ Implemented |
-| **Administrative Dashboard** | Comprehensive tools for admins and faculty | ✅ Implemented |
-| **Audit & Reporting** | Complete audit trails and analytics | ✅ Implemented |
-
+| **Administrative Dashboard** | Comprehensive tools for admins and faculty 
+| **Audit & Reporting** | Complete audit trails and analytics 
+| **Interactive Alerts** | SweetAlert2 for user-friendly notifications 
+| **Profile Photo Upload** | Cloudinary-powered photo management 
+| **AI Schedule Generator** | Smart course scheduling optimization 
 ---
 
-## 💼 Business Value
+##  Business Value
 
 ### For Students
 - **24/7 Course Access**: Enroll in courses anytime, anywhere
@@ -76,7 +78,7 @@ Build a modern, scalable academic management system that automates course enroll
 
 ---
 
-## 🏗️ System Architecture
+##  System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -94,24 +96,26 @@ Build a modern, scalable academic management system that automates course enroll
 │                              ▼                                             │
 │                    ┌─────────────────────┐                                  │
 │                    │   REST API Server   │                                  │
-│                    │    (Express.js)     │                                  │
-│                    │     server/         │                                  │
-│                    └──────────┬──────────┘                                  │
-│                               │                                            │
-│                               ▼                                            │
-│                    ┌─────────────────────┐                                  │
-│                    │    MongoDB Atlas   │                                  │
-│                    │   (Cloud Database)  │                                  │
-│                    └─────────────────────┘                                  │
+│                    │    (Express.js)     │◄────┐                          │
+│                    │     server/         │     │                          │
+│                    └──────────┬──────────┘     │                          │
+│                               │               │                          │
+│               ┌───────────────┼───────────────┘                          │
+│               │               ▼                                            │
+│               ▼      ┌─────────────────────┐                              │
+│       ┌──────────────┐  MongoDB Atlas      │                              │
+│       │ Cloudinary   │  (Cloud Database)   │                              │
+│       │ (Image CDN)  │                     │                              │
+│       └──────────────┘  └─────────────────────┘                          │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🌐 Technical Stack
+##  Technical Stack
 
-### 🖥️ Frontend (Web) - `client/`
+###  Frontend (Web) - `client/`
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
@@ -122,15 +126,17 @@ Build a modern, scalable academic management system that automates course enroll
 | **TailwindCSS** | 4.x | Utility-first styling |
 | **Lucide React** | Latest | Modern icon library |
 | **Axios** | 1.15.x | HTTP client for API calls |
+| **SweetAlert2** | 11.26.x | Interactive alerts and confirmations |
 
 **Key Features:**
-- ⚡ Hot Module Replacement (HMR)
-- 📱 Responsive design with TailwindCSS
-- 🔒 Protected routes with role-based access
-- 📊 Recharts for data visualization
-- 🎨 Modern UI with shadcn/ui components
+- Responsive design with TailwindCSS
+- Protected routes with role-based access
+- Recharts for data visualization
+- Modern UI with shadcn/ui components
+- SweetAlert2 notifications (toast & modal)
+- Cloudinary photo upload integration
 
-### 📱 Mobile App - `client2/`
+###  Mobile App - `client2/`
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
@@ -140,12 +146,12 @@ Build a modern, scalable academic management system that automates course enroll
 | **TypeScript** | ~5.9.2 | Type-safe mobile development |
 
 **Key Features:**
-- 🔄 Shared codebase with web (React)
-- 📲 Native iOS/Android navigation
-- 💾 AsyncStorage for local persistence
-- 🎯 File-based routing (`app/` directory)
+-  Shared codebase with web (React)
+-  Native iOS/Android navigation
+-  AsyncStorage for local persistence
+-  File-based routing (`app/` directory)
 
-### ⚙️ Backend - `server/`
+###  Backend - `server/`
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
@@ -157,19 +163,23 @@ Build a modern, scalable academic management system that automates course enroll
 | **bcryptjs** | 3.0.3 | Password hashing |
 | **Helmet** | 8.1.0 | Security headers |
 | **Rate Limit** | 8.3.1 | API rate limiting |
+| **Cloudinary** | 2.6.x | Image upload and storage |
+| **Multer** | 1.4.x | File upload handling |
 
 **Key Features:**
-- 🔐 JWT-based authentication with role-based access
-- 📊 MongoDB aggregation pipelines for analytics
-- 🛡️ Rate limiting and security middleware
-- 📝 Comprehensive audit logging
-- 🧪 Data seeding scripts for testing
+- JWT-based authentication with role-based access
+- MongoDB aggregation pipelines for analytics
+- Rate limiting and security middleware
+- Comprehensive audit logging
+- Data seeding scripts for testing
+- Cloudinary image storage and CDN
+- Profile photo upload/delete endpoints
 
 ---
 
-## 👤 User Flows
+##  User Flows
 
-### 1️⃣ Student Registration Flow
+### Student Registration Flow
 
 ```
 ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
@@ -185,7 +195,7 @@ Build a modern, scalable academic management system that automates course enroll
                  └────────────┘
 ```
 
-### 2️⃣ Course Enrollment Flow
+###  Course Enrollment Flow
 
 ```
 ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
@@ -201,7 +211,7 @@ Build a modern, scalable academic management system that automates course enroll
                         └─────────┘           └──────────┘
 ```
 
-### 3️⃣ Grade Entry Flow (Admin)
+###  Grade Entry Flow (Admin)
 
 ```
 ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
@@ -217,20 +227,20 @@ Build a modern, scalable academic management system that automates course enroll
                                               └──────────┘
 ```
 
-### 4️⃣ Academic Progress Tracking
+###  Academic Progress Tracking
 
 ```
 Student Dashboard
-├── 📊 GPA Overview (Current & Cumulative)
-├── 📚 Completed Courses (with grades)
-├── 📖 Current Enrollments (in-progress)
-├── 🎯 Credit Hours (completed/required)
-└── 📈 Academic History (semester-wise)
+├──  GPA Overview (Current & Cumulative)
+├──  Completed Courses (with grades)
+├──  Current Enrollments (in-progress)
+├──  Credit Hours (completed/required)
+└──  Academic History (semester-wise)
 ```
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -263,6 +273,11 @@ JWT_SECRET=your-secret-key-here
 JWT_EXPIRE=7d
 ADMIN_EMAIL=admin@credit-hours.com
 ADMIN_PASSWORD=admin123
+
+# Cloudinary (Photo Upload)
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
 ```
 
 Start server:
@@ -307,7 +322,7 @@ npx expo start       # Opens Expo dev tools
 
 ---
 
-## 📡 API Documentation
+##  API Documentation
 
 ### Authentication Endpoints
 
@@ -317,6 +332,14 @@ npx expo start       # Opens Expo dev tools
 | POST | `/api/auth/register` | Student registration | Public |
 | POST | `/api/auth/forgot-password` | Password reset request | Public |
 | POST | `/api/admin/auth/login` | Admin login | Public |
+
+### Photo Endpoints
+
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
+| POST | `/api/photos/upload` | Upload profile photo | Student/Admin |
+| GET | `/api/photos/me` | Get current user's photo | Student/Admin |
+| DELETE | `/api/photos/me` | Delete profile photo | Student/Admin |
 
 ### Student Endpoints
 
@@ -342,6 +365,8 @@ npx expo start       # Opens Expo dev tools
 | POST | `/api/admin/enrollments` | Create enrollment | Admin |
 | PATCH | `/api/admin/enrollments/:id/grade` | Update grade | Admin |
 | DELETE | `/api/admin/enrollments/:id` | Delete enrollment | Admin |
+| GET | `/api/admin/students/:id` | Get student details | Admin |
+| POST | `/api/admin/students/:id/complete-semester` | Complete semester | Admin |
 
 ### Admin Management Endpoints
 
@@ -350,6 +375,15 @@ npx expo start       # Opens Expo dev tools
 | GET | `/api/admin/students` | List all students | Admin |
 | POST | `/api/admin/students` | Create student account | Admin |
 | GET | `/api/admin/stats` | Get dashboard stats | Admin |
+| GET | `/api/admin/users/:id/credit-limit` | Get credit limit | Admin |
+| PATCH | `/api/admin/users/:id/credit-limit` | Set credit override | Admin |
+
+### AI Schedule Endpoints
+
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
+| POST | `/api/schedule/recommend` | Get AI-optimized schedule | Student |
+| POST | `/api/schedule/bulk-enroll` | Bulk enroll recommended | Student |
 
 ---
 
@@ -363,6 +397,20 @@ npx expo start       # Opens Expo dev tools
 | `createStudentsWithAPI.ts` | `npm run create-students-api` | Bulk create students with enrollments |
 | `enrollExistingStudents.ts` | `npm run enroll-existing-students` | Enroll existing students in courses |
 | `seedCourses.ts` | - | Seed course catalog |
+
+### Frontend Utilities
+
+| Utility | Location | Purpose |
+|---------|----------|---------|
+| `alerts.ts` | `client/src/utils/alerts.ts` | SweetAlert2 wrapper for notifications |
+| `api.ts` | `client/src/utils/api.ts` | API client with auth interceptors |
+| `validation.ts` | `client/src/utils/validation.ts` | Form validation helpers |
+
+**Alert Types:**
+- `alertSuccess(message)` - Bottom toast (3s auto-dismiss)
+- `alertError(message)` - Center modal (red styling)
+- `alertConfirm(message)` - OK/Cancel dialog
+- `confirmDelete(itemName)` - Danger confirmation
 
 ### Example: Create Test Data
 
@@ -381,7 +429,7 @@ npm run enroll-existing-students
 
 ---
 
-## 📊 Project Structure
+##  Project Structure
 
 ```
 CS303_credit-hours-system/
@@ -420,7 +468,9 @@ CS303_credit-hours-system/
 │   │   │   ├── enrollmentController.ts
 │   │   │   ├── courseController.ts
 │   │   │   ├── gpaController.ts
-│   │   │   └── adminController.ts
+│   │   │   ├── adminController.ts
+│   │   │   ├── photoController.ts  # Photo upload to Cloudinary
+│   │   │   └── scheduleController.ts # AI schedule generation
 │   │   ├── 📁 models/              # Database models
 │   │   │   ├── student.ts          # Student schema
 │   │   │   ├── course.ts           # Course schema
@@ -441,36 +491,18 @@ CS303_credit-hours-system/
 
 ## 🔐 Security Features
 
-- ✅ **JWT Authentication**: Secure token-based auth with expiration
-- ✅ **Role-Based Access**: Student, Admin, SuperAdmin permissions
-- ✅ **Rate Limiting**: API protection against abuse
-- ✅ **Password Hashing**: bcryptjs with salt rounds
-- ✅ **Helmet Headers**: Security HTTP headers
-- ✅ **Input Sanitization**: MongoDB injection protection
-- ✅ **CORS Protection**: Configured cross-origin policies
+-  **JWT Authentication**: Secure token-based auth with expiration
+-  **Role-Based Access**: Student, Admin, SuperAdmin permissions
+-  **Rate Limiting**: API protection against abuse
+-  **Password Hashing**: bcryptjs with salt rounds
+-  **Helmet Headers**: Security HTTP headers
+-  **Input Sanitization**: MongoDB injection protection
+-  **CORS Protection**: Configured cross-origin policies
+
 
 ---
 
-## 📈 Future Enhancements
 
-- [ ] **Real-time Notifications**: WebSocket for enrollment updates
-- [ ] **Payment Integration**: Course fee payment processing
-- [ ] **Document Upload**: Transcript and ID verification
-- [ ] **AI Advisor**: Course recommendation engine
-- [ ] **Multi-language Support**: Arabic and English localization
-- [ ] **Offline Mode**: Mobile app offline capability
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
 
 ## 👥 Team
 

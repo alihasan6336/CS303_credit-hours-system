@@ -19,6 +19,7 @@ const formatStudent = (s: any) => {
         email: s.email,
         universityId: s.universityId,
         major: s.major,
+        photoUrl: s.photoUrl || '',
         ...(isAdmin ? {} : {
             level: s.level,
             currentSemester: s.currentSemester,
@@ -148,6 +149,7 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
                 universityId: admin.universityId,
                 major: admin.major,
                 role: admin.role,
+                photoUrl: admin.photoUrl || '',
                 isActive: admin.isActive ?? true,
                 permissions: admin.permissions || [],
                 createdAt: admin.createdAt,
@@ -157,7 +159,7 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
             // Fetch students from Student collection
             const [studentDocs, studentCount] = await Promise.all([
                 Student.find(filter)
-                    .select('fullName email universityId major level role gpa completedCreditHours currentSemester')
+                    .select('fullName email universityId major level role gpa completedCreditHours currentSemester photoUrl')
                     .sort({ createdAt: -1 })
                     .skip(skip)
                     .limit(limit)

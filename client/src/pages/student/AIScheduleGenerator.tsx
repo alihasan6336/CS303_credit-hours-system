@@ -228,19 +228,6 @@ const AIScheduleGenerator: React.FC = () => {
                   <p className="text-gray-500 text-sm">Choose the courses you'd like to include in your optimized schedule.</p>
                 </div>
                 <div className="text-right flex items-center gap-6">
-                  <button
-                    onClick={handleRecommend}
-                    disabled={recommending}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-colors"
-                  >
-                    {recommending ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Sparkles size={16} />
-                    )}
-                    Smart Select with AI
-                  </button>
-
                   <div className="flex flex-col items-end">
                     <span className={`text-2xl font-bold ${totalSelectedCredits < 14 ? 'text-orange-500' : 'text-green-500'}`}>
                       {totalSelectedCredits} <span className="text-sm font-normal text-gray-400">/ 14-19</span>

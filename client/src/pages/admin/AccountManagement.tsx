@@ -22,6 +22,7 @@ interface StudentAccount {
   isActive?: boolean;
   createdAt?: string;
   createdBy?: any;
+  photoUrl?: string;
 }
 
 const AccountManagement: React.FC = () => {

@@ -14,6 +14,7 @@ interface StudentAccount {
   isActive?: boolean;
   createdAt?: string;
   createdBy?: any;
+  photoUrl?: string;
 }
 
 interface StudentsTableProps {
@@ -126,9 +127,17 @@ const StudentsTable: React.FC<StudentsTableProps> = ({
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold">
-                          {student.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                        </div>
+                        {student.photoUrl ? (
+                          <img
+                            src={student.photoUrl}
+                            alt={student.fullName}
+                            className="w-10 h-10 rounded-full object-cover border-2 border-indigo-100"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold">
+                            {student.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
                         <span className="font-medium text-gray-900">
                           {student.fullName}
                         </span>
