@@ -24,11 +24,13 @@ export default function CourseManagement() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [form, setForm] = useState({
     code: "", name: "", instructor: "", day: "Monday", time: "", room: "",
     credits: "3", capacity: "30", prerequisites: "",
     courseType: "Lecture", semester: ["Fall"], passingGrade: "50",
     major: "Computer Science", studentYear: "1",
+    group: "1",
   });
 
   const fetchCourses = async () => {
@@ -48,10 +50,11 @@ export default function CourseManagement() {
   const openAddModal = () => {
     setEditingCourse(null);
     setForm({
-        code: "", name: "", instructor: "", day: "Monday", time: "", room: "",
-        credits: "3", capacity: "30", prerequisites: "",
-        courseType: "Lecture", semester: ["Fall"], passingGrade: "50",
-        major: "Computer Science", studentYear: "1",
+      code: "", name: "", instructor: "", day: "Monday", time: "", room: "",
+      credits: "3", capacity: "30", prerequisites: "",
+      courseType: "Lecture", semester: ["Fall"], passingGrade: "50",
+      major: "Computer Science", studentYear: "1",
+      group: "1",
     });
     setModalVisible(true);
   };
@@ -68,11 +71,12 @@ export default function CourseManagement() {
       credits: String(course.credits),
       capacity: String(course.capacity),
       prerequisites: course.prerequisites ? course.prerequisites.join(", ") : "",
-      courseType: course.courseType || "Lecture",
+      courseType: course.type || course.courseType || "Lecture",
       semester: Array.isArray(course.semester) ? course.semester : [course.semester],
       passingGrade: String(course.passingGrade || "50"),
       major: course.major || "Computer Science",
       studentYear: String(course.studentYear || "1"),
+      group: String(course.group || "1"),
     });
     setModalVisible(true);
   };
@@ -94,11 +98,14 @@ export default function CourseManagement() {
         credits: Number(form.credits),
         capacity: Number(form.capacity),
         prerequisites: form.prerequisites.split(",").map(p => p.trim()).filter(Boolean),
-        courseType: form.courseType,
+        type: form.courseType,
+        courseType: form.courseType, // Send both for compatibility
         semester: form.semester,
         passingGrade: Number(form.passingGrade),
         major: form.major,
+        level: Number(form.studentYear),
         studentYear: Number(form.studentYear),
+        group: Number(form.group),
       };
 
       if (editingCourse) {
@@ -123,14 +130,28 @@ export default function CourseManagement() {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Course Management</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
-            <Text style={styles.addBtnText}>+ Add Course</Text>
-          </TouchableOpacity>
+          <View style={styles.headerTop}>
+            <Text style={styles.headerTitle}>Course Management</Text>
+            <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
+              <Text style={styles.addBtnText}>+ Add Course</Text>
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={styles.searchBar}
+            placeholder="Search by code, name or instructor..."
+            placeholderTextColor="#94a3b8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
 
         {[1, 2, 3, 4].map(level => {
-          const levelCourses = courses.filter(c => parseInt(c.studentYear || 1) === level);
+          const levelCourses = courses.filter(c =>
+            parseInt(c.studentYear || 1) === level &&
+            (c.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              c.instructor?.toLowerCase().includes(searchQuery.toLowerCase()))
+          );
           if (levelCourses.length === 0) return null;
           return (
             <View key={level} style={{ marginBottom: 20 }}>
@@ -158,7 +179,7 @@ export default function CourseManagement() {
                     <Text style={styles.courseName}>{course.name}</Text>
                     <Text style={styles.courseDetail}>👤 {course.instructor}</Text>
                     <Text style={styles.courseDetail}>🕐 {course.time}  📍 {course.room}</Text>
-                    <Text style={styles.courseDetail}>👥 {course.enrolledCount || 0}/{course.capacity} enrolled</Text>
+                    <Text style={styles.courseDetail}>👥 {course.enrolledCount || 0}/{course.capacity} enrolled {course.group ? `(Group ${course.group})` : ""}</Text>
                     {course.prerequisites?.length > 0 && (
                       <Text style={styles.coursePrereq}>Pre: {course.prerequisites.join(", ")}</Text>
                     )}
@@ -186,6 +207,7 @@ export default function CourseManagement() {
                 { label: "Credits", key: "credits", placeholder: "e.g. 3" },
                 { label: "Capacity", key: "capacity", placeholder: "e.g. 30" },
                 { label: "Passing Grade", key: "passingGrade", placeholder: "e.g. 50" },
+                { label: "Group *", key: "group", placeholder: "e.g. 1" },
                 { label: "Prerequisites", key: "prerequisites", placeholder: "e.g. CS101, CS202" },
               ].map((field) => (
                 <View key={field.key}>
@@ -206,7 +228,7 @@ export default function CourseManagement() {
                   <TouchableOpacity
                     key={t}
                     style={[styles.dayPill, form.courseType === t && styles.pillSelected]}
-                    onPress={() => setForm({ ...form, courseType: t, time: "" })}
+                    onPress={() => setForm({ ...form, courseType: t })}
                   >
                     <Text style={[styles.dayPillText, form.courseType === t && styles.pillTextSelected]}>{t}</Text>
                   </TouchableOpacity>
@@ -215,7 +237,7 @@ export default function CourseManagement() {
 
               <Text style={styles.fieldLabel}>Time</Text>
               <View style={styles.dayRow}>
-                {(form.courseType === "Lab" 
+                {(form.courseType === "Lab"
                   ? ["08:00 - 11:00", "11:00 - 14:00", "14:00 - 17:00", "17:00 - 20:00"]
                   : ["08:00 - 10:00", "10:00 - 12:00", "12:00 - 14:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"]
                 ).map((timeSlot) => (
@@ -307,10 +329,21 @@ const styles = StyleSheet.create({
   centerBox: { flex: 1, justifyContent: "center", alignItems: "center" },
   emptyText: { textAlign: "center", color: "#888", marginTop: 40, fontSize: 15 },
   header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: "#fff",
+    borderBottomWidth: 1, borderBottomColor: "#f3f4f6",
   },
+  headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   headerTitle: { fontSize: 22, fontWeight: "800", color: "#111" },
+  searchBar: {
+    backgroundColor: "#f3f4f6",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: "#1e293b",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
   addBtn: { backgroundColor: "#2554e8", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
   addBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   editBtn: { marginLeft: 8 },

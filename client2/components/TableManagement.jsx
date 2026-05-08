@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { courseApi } from "../utils/api";
+import { courseApi, settingsApi } from "../utils/api";
 import { TIME_SLOTS } from "../constants/data";
 
 const { width } = Dimensions.get("window");
@@ -38,6 +38,11 @@ export default function TableManagement() {
   const [conflict, setConflict] = useState(null);
   const [saving, setSaving] = useState(false);
 
+  // Table Controls State
+  const [tableVisible, setTableVisible] = useState(false);
+  const [enrollmentOpenLevels, setEnrollmentOpenLevels] = useState([]);
+  const [updatingAction, setUpdatingAction] = useState(null);
+
   const fetchCourses = async () => {
     try {
       setIsLoading(true);
@@ -50,11 +55,24 @@ export default function TableManagement() {
     }
   };
 
+  const fetchSettings = async () => {
+    try {
+      const data = await settingsApi.getSettings();
+      if (data.success) {
+        setTableVisible(data.settings.tableVisible);
+        setEnrollmentOpenLevels(data.settings.enrollmentOpenLevels || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings:", err);
+    }
+  };
+
   useEffect(() => {
     fetchCourses();
+    fetchSettings();
   }, []);
 
-  
+
   const filteredCourses = courses.filter((c) => {
     const q = searchQuery.toLowerCase();
     return (
@@ -64,14 +82,14 @@ export default function TableManagement() {
     );
   });
 
-  
+
   const sortedCourses = [...filteredCourses].sort((a, b) => {
     const dayOrder = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
     if (dayOrder !== 0) return dayOrder;
     return (a.time || "").localeCompare(b.time || "");
   });
 
-  
+
   const openEdit = (course) => {
     setEditingCourse(course);
     setEditForm({
@@ -85,11 +103,11 @@ export default function TableManagement() {
     setEditModalVisible(true);
   };
 
-  
+
   const checkConflicts = (form, courseId) => {
     const otherCourses = courses.filter((c) => (c._id || c.id) !== courseId);
 
-    
+
     const roomConflict = otherCourses.find(
       (c) => c.room === form.room && c.day === form.day && c.time === form.time
     );
@@ -97,7 +115,7 @@ export default function TableManagement() {
       return `🏫 Room conflict: ${form.room} is already occupied by ${roomConflict.code} on ${form.day} at ${form.time}`;
     }
 
-    
+
     const instructorConflict = otherCourses.find(
       (c) => c.instructor === form.instructor && c.day === form.day && c.time === form.time
     );
@@ -108,7 +126,7 @@ export default function TableManagement() {
     return null;
   };
 
-  
+
   const saveSchedule = async () => {
     const cap = parseInt(editForm.capacity, 10);
     if (!cap || cap < 1) {
@@ -152,7 +170,7 @@ export default function TableManagement() {
     }
   };
 
-  
+
   const updateForm = (key, value) => {
     const newForm = { ...editForm, [key]: value };
     setEditForm(newForm);
@@ -161,10 +179,70 @@ export default function TableManagement() {
     }
   };
 
-  
+
   const getCourseColor = (courseId) => {
     const idx = courses.findIndex((c) => (c._id || c.id) === courseId);
     return COURSE_COLORS[idx % COURSE_COLORS.length];
+  };
+
+  // Table Control Handlers
+  const handleToggleTable = async () => {
+    const action = tableVisible ? "hide-table" : "show-table";
+    setUpdatingAction(action);
+    try {
+      if (tableVisible) {
+        await settingsApi.hideTable();
+        setTableVisible(false);
+      } else {
+        await settingsApi.showTable();
+        setTableVisible(true);
+      }
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setUpdatingAction(null);
+    }
+  };
+
+  const handleToggleLevel = async (level) => {
+    const isOpen = enrollmentOpenLevels.includes(level);
+    const action = `${isOpen ? 'close' : 'open'}-${level}`;
+    setUpdatingAction(action);
+    try {
+      let res;
+      if (isOpen) {
+        res = await settingsApi.closeRegistration([level]);
+      } else {
+        res = await settingsApi.openRegistration([level]);
+      }
+      if (res.success) {
+        setEnrollmentOpenLevels(res.enrollmentOpenLevels);
+      }
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setUpdatingAction(null);
+    }
+  };
+
+  const handleAllLevels = async (open) => {
+    const action = open ? 'open-all' : 'close-all';
+    setUpdatingAction(action);
+    try {
+      let res;
+      if (open) {
+        res = await settingsApi.openRegistration(); // passing nothing means ALL
+      } else {
+        res = await settingsApi.closeRegistration(); // passing nothing means ALL
+      }
+      if (res.success) {
+        setEnrollmentOpenLevels(res.enrollmentOpenLevels);
+      }
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setUpdatingAction(null);
+    }
   };
 
   if (isLoading) {
@@ -175,7 +253,7 @@ export default function TableManagement() {
     );
   }
 
-  
+
   const renderWeeklyView = () => {
     const getCoursesForSlot = (day, timeSlot) => {
       return courses.filter((c) => c.day === day && c.time === timeSlot);
@@ -199,8 +277,8 @@ export default function TableManagement() {
             </View>
 
             {/* Scrollable Body */}
-            <ScrollView 
-              style={{ flex: 1 }} 
+            <ScrollView
+              style={{ flex: 1 }}
               contentContainerStyle={{ paddingBottom: 120 }}
               showsVerticalScrollIndicator={true}
               nestedScrollEnabled={true}
@@ -213,7 +291,7 @@ export default function TableManagement() {
                   {TIME_SLOTS.map((slot) => {
                     const slotCourses = getCoursesForSlot(day, slot.value);
                     const hasConflict = slotCourses.length > 1;
-                    
+
                     return (
                       <View key={slot.value} style={[styles.weeklyCell, hasConflict && styles.weeklyCellConflictContainer]}>
                         {slotCourses.length > 0 ? (
@@ -249,9 +327,72 @@ export default function TableManagement() {
     );
   };
 
-  
+
+  const renderControlPanel = () => {
+    return (
+      <View style={styles.controlPanel}>
+        <View style={styles.controlPanelHeader}>
+          <View>
+            <Text style={styles.controlPanelTitle}>⚙️ Enrollment Controls</Text>
+            <Text style={styles.controlPanelSub}>Manage registration availability</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.visibilityBtn, tableVisible ? styles.visibilityBtnActive : styles.visibilityBtnInactive]}
+            onPress={handleToggleTable}
+            disabled={updatingAction === 'show-table' || updatingAction === 'hide-table'}
+          >
+            <Text style={[styles.visibilityBtnText, { color: tableVisible ? '#3b82f6' : '#64748b' }]}>
+              {updatingAction === 'show-table' || updatingAction === 'hide-table'
+                ? "..."
+                : tableVisible ? "👁️ Public" : "🙈 Hidden"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={[styles.quickActionBtn, { backgroundColor: '#10b981' }]}
+            onPress={() => handleAllLevels(true)}
+            disabled={updatingAction === 'open-all'}
+          >
+            <Text style={styles.quickActionText}>{updatingAction === 'open-all' ? "..." : "🔓 Open All"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickActionBtn, { backgroundColor: '#ef4444' }]}
+            onPress={() => handleAllLevels(false)}
+            disabled={updatingAction === 'close-all'}
+          >
+            <Text style={styles.quickActionText}>{updatingAction === 'close-all' ? "..." : "🔒 Close All"}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.levelGrid}>
+          {[1, 2, 3, 4].map(level => {
+            const isOpen = enrollmentOpenLevels.includes(level);
+            const isUpdating = updatingAction === `open-${level}` || updatingAction === `close-${level}`;
+            return (
+              <TouchableOpacity
+                key={level}
+                style={[styles.levelCard, isOpen && styles.levelCardOpen]}
+                onPress={() => handleToggleLevel(level)}
+                disabled={isUpdating}
+              >
+                <View style={[styles.levelBadge, { backgroundColor: isOpen ? '#10b98115' : '#6b728010' }]}>
+                  <Text style={[styles.levelBadgeText, { color: isOpen ? '#10b981' : '#6b7280' }]}>Y{level}</Text>
+                </View>
+                <Text style={[styles.levelStatusText, { color: isOpen ? '#059669' : '#4b5563' }]}>
+                  {isUpdating ? "..." : isOpen ? "Open" : "Closed"}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
   const renderListView = () => (
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <View>
       {sortedCourses.length === 0 ? (
         <Text style={styles.emptyText}>
           {searchQuery ? "No courses match your search" : "No courses found. Create courses first."}
@@ -314,7 +455,7 @@ export default function TableManagement() {
         })
       )}
       <View style={{ height: 100 }} />
-    </ScrollView>
+    </View>
   );
 
   return (
@@ -364,7 +505,12 @@ export default function TableManagement() {
       )}
 
       {/* Content */}
-      {viewMode === "list" ? renderListView() : renderWeeklyView()}
+      {viewMode === "list" ? (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {renderControlPanel()}
+          {renderListView()}
+        </ScrollView>
+      ) : renderWeeklyView()}
 
       {/* Edit Modal */}
       <Modal visible={editModalVisible} animationType="slide" transparent>
@@ -648,4 +794,49 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, backgroundColor: "#2554e8", paddingVertical: 13, borderRadius: 10, alignItems: "center" },
   saveBtnDisabled: { backgroundColor: "#ccc" },
   saveBtnText: { fontWeight: "700", color: "#fff" },
+
+  // Control Panel Styles
+  controlPanel: {
+    backgroundColor: "#fff", marginHorizontal: 16, marginTop: 16, marginBottom: 8,
+    borderRadius: 20, padding: 16,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 10, elevation: 3,
+    borderWidth: 1, borderColor: "#f1f5f9",
+  },
+  controlPanelHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    marginBottom: 16,
+  },
+  controlPanelTitle: { fontSize: 16, fontWeight: "800", color: "#1e293b" },
+  controlPanelSub: { fontSize: 11, color: "#94a3b8", marginTop: 2 },
+
+  visibilityBtn: {
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1,
+  },
+  visibilityBtnActive: { backgroundColor: "#eff6ff", borderColor: "#3b82f6" },
+  visibilityBtnInactive: { backgroundColor: "#f8fafc", borderColor: "#e2e8f0" },
+  visibilityBtnText: { fontSize: 11, fontWeight: "700" },
+
+  quickActions: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  quickActionBtn: {
+    flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1, shadowRadius: 4, elevation: 2,
+  },
+  quickActionText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+
+  levelGrid: { flexDirection: "row", gap: 8 },
+  levelCard: {
+    flex: 1, backgroundColor: "#f8fafc", borderRadius: 12, padding: 10,
+    alignItems: "center", borderWidth: 1.5, borderColor: "#f1f5f9",
+  },
+  levelCardOpen: {
+    backgroundColor: "#ecfdf5", borderColor: "#10b98120",
+  },
+  levelBadge: {
+    width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center",
+    marginBottom: 6,
+  },
+  levelBadgeText: { fontSize: 12, fontWeight: "800" },
+  levelStatusText: { fontSize: 10, fontWeight: "700" },
 });

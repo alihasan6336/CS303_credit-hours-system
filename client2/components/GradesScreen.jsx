@@ -69,6 +69,7 @@ export default function GradesScreen({ onGoBack }) {
   const [serverCredits, setServerCredits] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Calculator State
   const [calcCourses, setCalcCourses] = useState([
@@ -144,30 +145,44 @@ export default function GradesScreen({ onGoBack }) {
       </View>
 
       <View style={styles.historyCard}>
-        <Text style={styles.historyTitle}>Course History</Text>
+        <View style={styles.historyHeaderRow}>
+          <Text style={styles.historyTitle}>Course History</Text>
+          <TextInput
+            style={styles.historySearch}
+            placeholder="Search code or name..."
+            placeholderTextColor="#94a3b8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
         {breakdown.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyText}>No completed courses found.</Text>
           </View>
         ) : (
-          breakdown.map((item, i) => (
-            <View key={i} style={[styles.courseRow, i !== breakdown.length - 1 && styles.borderBottom]}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.courseCode}>{item.code}</Text>
-                <Text style={styles.courseName}>{item.name}</Text>
-                <Text style={styles.courseMeta}>{item.semester} {item.academicYear}</Text>
-              </View>
-              <View style={styles.gradeCol}>
-                <View style={[styles.gradeBadge, { backgroundColor: getGPAColor(item.gradePoints) + "15", borderColor: getGPAColor(item.gradePoints) }]}>
-                  <Text style={[styles.gradeBadgeText, { color: getGPAColor(item.gradePoints) }]}>
-                    {gradePointsToLetter(item.gradePoints)}
-                  </Text>
+          breakdown
+            .filter(item =>
+              item.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              item.name?.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            .map((item, i) => (
+              <View key={i} style={[styles.courseRow, i !== breakdown.length - 1 && styles.borderBottom]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.courseCode}>{item.code}</Text>
+                  <Text style={styles.courseName}>{item.name}</Text>
+                  <Text style={styles.courseMeta}>{item.semester} {item.academicYear}</Text>
                 </View>
-                <Text style={styles.coursePercentage}>{item.grade}%</Text>
-                <Text style={styles.courseCredits}>{item.credits} Cr</Text>
+                <View style={styles.gradeCol}>
+                  <View style={[styles.gradeBadge, { backgroundColor: getGPAColor(item.gradePoints) + "15", borderColor: getGPAColor(item.gradePoints) }]}>
+                    <Text style={[styles.gradeBadgeText, { color: getGPAColor(item.gradePoints) }]}>
+                      {gradePointsToLetter(item.gradePoints)}
+                    </Text>
+                  </View>
+                  <Text style={styles.coursePercentage}>{item.grade}%</Text>
+                  <Text style={styles.courseCredits}>{item.credits} Cr</Text>
+                </View>
               </View>
-            </View>
-          ))
+            ))
         )}
       </View>
       <View style={{ height: 100 }} />
@@ -254,14 +269,14 @@ export default function GradesScreen({ onGoBack }) {
   return (
     <View style={styles.container}>
       <View style={styles.subTabBar}>
-        <TouchableOpacity 
-          style={[styles.subTab, activeTab === "history" && styles.subTabActive]} 
+        <TouchableOpacity
+          style={[styles.subTab, activeTab === "history" && styles.subTabActive]}
           onPress={() => setActiveSubTab("history")}
         >
           <Text style={[styles.subTabText, activeTab === "history" && styles.subTabTextActive]}>📜 History</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.subTab, activeTab === "calculator" && styles.subTabActive]} 
+        <TouchableOpacity
+          style={[styles.subTab, activeTab === "calculator" && styles.subTabActive]}
           onPress={() => setActiveSubTab("calculator")}
         >
           <Text style={[styles.subTabText, activeTab === "calculator" && styles.subTabTextActive]}>🧮 Calculator</Text>
@@ -296,7 +311,18 @@ const styles = StyleSheet.create({
   calcSub: { fontSize: 12, color: "#aaa", marginTop: 8, fontWeight: "600" },
 
   historyCard: { backgroundColor: "#fff", borderRadius: 20, padding: 20 },
-  historyTitle: { fontSize: 15, fontWeight: "800", color: "#111", marginBottom: 16 },
+  historyHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  historyTitle: { fontSize: 15, fontWeight: "800", color: "#111" },
+  historySearch: {
+    flex: 0.7,
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0"
+  },
   courseRow: { flexDirection: "row", alignItems: "center", paddingVertical: 14 },
   borderBottom: { borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
   courseCode: { fontSize: 13, fontWeight: "800", color: "#2554e8" },

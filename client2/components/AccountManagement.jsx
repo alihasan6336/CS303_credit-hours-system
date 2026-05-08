@@ -40,6 +40,7 @@ export default function AccountManagement({ onViewStudent, onViewAdmin, user }) 
   const [editingAccount, setEditingAccount] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [editSaving, setEditSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchAccounts = async () => {
     try {
@@ -66,8 +67,13 @@ export default function AccountManagement({ onViewStudent, onViewAdmin, user }) 
   const students = accounts.filter(a => a.role === "student");
   const admins = accounts.filter(a => (a.role && (a.role.includes("_admin") || a.role === "admin")));
   const superadmins = user?.role === "superadmin" ? accounts.filter(a => a.role === "superadmin") : [];
-  
-  const filtered = tab === "student" ? students : tab === "admin" ? admins : superadmins;
+
+  const filtered = (tab === "student" ? students : tab === "admin" ? admins : superadmins)
+    .filter(a =>
+      a.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (a.universityId && String(a.universityId).toLowerCase().includes(searchQuery.toLowerCase()))
+    );
 
   const openAddModal = (type) => {
     setAccountType(type);
@@ -217,7 +223,7 @@ export default function AccountManagement({ onViewStudent, onViewAdmin, user }) 
       } else {
         if (!editForm.role) { Alert.alert("Error", "Please select an admin role"); setEditSaving(false); return; }
         if (!editForm.permissions || editForm.permissions.length === 0) { Alert.alert("Error", "Please select at least one permission"); setEditSaving(false); return; }
-        
+
         payload.role = editForm.role;
         payload.adminRole = ADMIN_ROLES.find(r => r.key === editForm.role)?.label || editForm.adminRole || "Admin";
         payload.permissions = editForm.permissions;
@@ -241,15 +247,24 @@ export default function AccountManagement({ onViewStudent, onViewAdmin, user }) 
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Accounts</Text>
-          <View style={styles.headerBtns}>
-            <TouchableOpacity style={styles.addAdminBtn} onPress={() => openAddModal("admin")}>
-              <Text style={styles.addAdminBtnText}>+ Admin</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.addStudentBtn} onPress={() => openAddModal("student")}>
-              <Text style={styles.addStudentBtnText}>+ Student</Text>
-            </TouchableOpacity>
+          <View style={styles.headerTop}>
+            <Text style={styles.headerTitle}>Accounts</Text>
+            <View style={styles.headerBtns}>
+              <TouchableOpacity style={styles.addAdminBtn} onPress={() => openAddModal("admin")}>
+                <Text style={styles.addAdminBtnText}>+ Admin</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addStudentBtn} onPress={() => openAddModal("student")}>
+                <Text style={styles.addStudentBtnText}>+ Student</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+          <TextInput
+            style={styles.searchBar}
+            placeholder="Search by name, email or ID..."
+            placeholderTextColor="#94a3b8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
 
         <View style={styles.tabs}>
@@ -660,10 +675,21 @@ const styles = StyleSheet.create({
   centerBox: { flex: 1, justifyContent: "center", alignItems: "center" },
   emptyText: { textAlign: "center", color: "#888", marginTop: 40, fontSize: 15 },
   header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: "#fff",
+    borderBottomWidth: 1, borderBottomColor: "#f3f4f6",
   },
+  headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   headerTitle: { fontSize: 22, fontWeight: "800", color: "#111" },
+  searchBar: {
+    backgroundColor: "#f3f4f6",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: "#1e293b",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
   headerBtns: { flexDirection: "row", gap: 8 },
   addAdminBtn: { backgroundColor: "#8b5cf6", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
   addAdminBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },

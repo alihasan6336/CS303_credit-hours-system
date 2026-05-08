@@ -5,11 +5,12 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
 import { useEffect, useState } from "react";
-import { courseApi } from "../utils/api";
+import { courseApi, settingsApi } from "../utils/api";
 
 const { width } = Dimensions.get("window");
 
@@ -20,6 +21,8 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
     const [isLoading, setIsLoading] = useState(true);
     const [actionLoadingId, setActionLoadingId] = useState(null);
     const [error, setError] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isRegistrationOpenForMe, setIsRegistrationOpenForMe] = useState(false);
 
     const fetchCourses = async () => {
         try {
@@ -33,9 +36,22 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
                 .filter(e => e.status === 'completed' && e.grade >= (e.course?.passingGrade || 50))
                 .map(e => e.course?._id);
 
-            const studentLevel = parseInt(responseEnrolled.student?.level || responseEnrolled.user?.level || 1, 10);
-            const filteredAvailable = (responseAll.courses || []).filter(c => 
-                !passedCoursesIds.includes(c._id) && 
+            const settingsRes = await settingsApi.getSettings();
+            const settings = settingsRes.settings || {};
+            const openLevels = settings.enrollmentOpenLevels || [];
+            const isGlobalOpen = settings.isRegistrationOpen;
+
+            const studentLevel = parseInt(responseEnrolled.student?.level || 1, 10);
+            const isOpen = isGlobalOpen && openLevels.includes(studentLevel);
+            setIsRegistrationOpenForMe(isOpen);
+
+            // Auto-switch tab if available is closed
+            if (!isOpen && activeTab === "available") {
+                setActiveTab("my_courses");
+            }
+
+            const filteredAvailable = (responseAll.courses || []).filter(c =>
+                !passedCoursesIds.includes(c._id) &&
                 (parseInt(c.level || 1, 10) <= studentLevel)
             );
             setAvailableCourses(filteredAvailable);
@@ -43,16 +59,17 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
             const enrolledData = (responseEnrolled.data || [])
                 .filter(e => e.status === 'active')
                 .map(e => ({
-                _id: e.course?._id,
-                code: e.course?.code,
-                name: e.course?.name,
-                day: e.course?.day,
-                time: e.course?.time,
-                room: e.course?.room,
-                credits: e.course?.credits,
-                instructor: e.course?.instructor,
-                status: e.status,
-            }));
+                    _id: e.course?._id,
+                    code: e.course?.code,
+                    name: e.course?.name,
+                    day: e.course?.day,
+                    time: e.course?.time,
+                    room: e.course?.room,
+                    credits: e.course?.credits,
+                    instructor: e.course?.instructor,
+                    courseType: e.course?.type || e.course?.courseType,
+                    status: e.status,
+                }));
             setMyCourses(enrolledData);
 
         } catch (err) {
@@ -164,19 +181,21 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Course Registration</Text>
                 <View style={styles.tabContainer}>
+                    {isRegistrationOpenForMe && (
+                        <TouchableOpacity
+                            style={[styles.tabBtn, activeTab === "available" && styles.tabBtnActive]}
+                            onPress={() => setActiveTab("available")}
+                        >
+                            <Text style={[styles.tabText, activeTab === "available" && styles.tabTextActive]}>
+                                Available Courses
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity
-                        style={[styles.tabBtn, activeTab === "available" && styles.tabBtnActive]}
-                        onPress={() => setActiveTab("available")}
-                    >
-                        <Text style={[styles.tabText, activeTab === "available" && styles.tabTextActive]}>
-                            Available Courses
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tabBtn, activeTab === "my_courses" && styles.tabBtnActive]}
+                        style={[styles.tabBtn, (activeTab === "my_courses" || !isRegistrationOpenForMe) && styles.tabBtnActive]}
                         onPress={() => setActiveTab("my_courses")}
                     >
-                        <Text style={[styles.tabText, activeTab === "my_courses" && styles.tabTextActive]}>
+                        <Text style={[styles.tabText, (activeTab === "my_courses" || !isRegistrationOpenForMe) && styles.tabTextActive]}>
                             My Courses
                         </Text>
                     </TouchableOpacity>
@@ -197,62 +216,91 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                    {activeTab === "available" && (
+                    <View style={styles.searchBarContainer}>
+                        <TextInput
+                            style={styles.searchBar}
+                            placeholder="Search courses by code or name..."
+                            placeholderTextColor="#94a3b8"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                    </View>
+
+                    {!isRegistrationOpenForMe && (
+                        <View style={styles.closedBanner}>
+                            <Text style={styles.closedIconSmall}>🔒</Text>
+                            <Text style={styles.closedTextSmall}>
+                                Course registration is currently closed for your year level.
+                            </Text>
+                        </View>
+                    )}
+
+                    {activeTab === "available" && isRegistrationOpenForMe && (
                         <View>
-                            {availableCourses.map((course) => {
-                                const enrolled = isEnrolled(course.code);
-                                const isFull = course.enrolledCount >= course.capacity;
+                            {availableCourses
+                                .filter(c =>
+                                    c.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    c.name?.toLowerCase().includes(searchQuery.toLowerCase())
+                                )
+                                .map((course) => {
+                                    const enrolled = isEnrolled(course.code);
+                                    const isFull = course.enrolledCount >= course.capacity;
 
-                                return (
-                                    <View key={course._id} style={styles.courseCard}>
-                                        <View style={styles.courseTop}>
-                                            <Text style={styles.courseCode}>{course.code}</Text>
-                                            {course.day && (
-                                                <View style={[styles.dayBadge, { backgroundColor: "#4f46e520", borderColor: "#4f46e5" }]}>
-                                                    <Text style={[styles.dayText, { color: "#4f46e5" }]}>{course.day}</Text>
+                                    return (
+                                        <View key={course._id} style={styles.courseCard}>
+                                            <View style={styles.courseTop}>
+                                                <Text style={styles.courseCode}>{course.code}</Text>
+                                                {course.day && (
+                                                    <View style={[styles.dayBadge, { backgroundColor: "#4f46e520", borderColor: "#4f46e5" }]}>
+                                                        <Text style={[styles.dayText, { color: "#4f46e5" }]}>{course.day}</Text>
+                                                    </View>
+                                                )}
+                                                <View style={styles.creditBadge}>
+                                                    <Text style={styles.creditText}>{course.credits} cr</Text>
                                                 </View>
-                                            )}
-                                            <View style={styles.creditBadge}>
-                                                <Text style={styles.creditText}>{course.credits} cr</Text>
-                                            </View>
-                                        </View>
-
-                                        <Text style={styles.courseName}>{course.name}</Text>
-                                        <Text style={styles.courseInstructor}>👤 {course.instructor}</Text>
-
-                                        <View style={styles.courseBottom}>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.courseDetail}>🕐 {course.time}</Text>
-                                                <Text style={styles.courseDetail}>📍 {course.room}</Text>
-                                                <Text style={styles.courseDetail}>👥 {course.enrolledCount}/{course.capacity} filled</Text>
-                                                {course.prerequisites?.length > 0 && (
-                                                    <Text style={styles.coursePrereq}>Pre: {course.prerequisites.join(", ")}</Text>
+                                                {(course.type || course.courseType) && (
+                                                    <View style={[styles.typeBadge, { backgroundColor: (course.type || course.courseType) === 'Online' ? '#dcfce7' : '#fef3c7' }]}>
+                                                        <Text style={[styles.typeText, { color: (course.type || course.courseType) === 'Online' ? '#166534' : '#92400e' }]}>{course.type || course.courseType}</Text>
+                                                    </View>
                                                 )}
                                             </View>
 
-                                            {enrolled ? (
-                                                <View style={[styles.actionBtn, styles.actionBtnDisabled]}>
-                                                    <Text style={styles.actionBtnTextDisabled}>Enrolled</Text>
-                                                </View>
-                                            ) : (
-                                                <TouchableOpacity
-                                                    style={[styles.actionBtn, (isFull || actionLoadingId === course._id) && styles.actionBtnDisabled]}
-                                                    disabled={isFull || actionLoadingId === course._id}
-                                                    onPress={() => handleEnroll(course._id)}
-                                                >
-                                                    {actionLoadingId === course._id ? (
-                                                        <ActivityIndicator size="small" color="#fff" />
-                                                    ) : (
-                                                        <Text style={[styles.actionBtnText, isFull && styles.actionBtnTextDisabled]}>
-                                                            {isFull ? "Class Full" : "Enroll"}
-                                                        </Text>
+                                            <Text style={styles.courseName}>{course.name}</Text>
+                                            <Text style={styles.courseInstructor}>👤 {course.instructor}</Text>
+
+                                            <View style={styles.courseBottom}>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.courseDetail}>🕐 {course.time}</Text>
+                                                    <Text style={styles.courseDetail}>📍 {course.room}</Text>
+                                                    <Text style={styles.courseDetail}>👥 {course.enrolledCount}/{course.capacity} filled</Text>
+                                                    {course.prerequisites?.length > 0 && (
+                                                        <Text style={styles.coursePrereq}>Pre: {course.prerequisites.join(", ")}</Text>
                                                     )}
-                                                </TouchableOpacity>
-                                            )}
+                                                </View>
+
+                                                {enrolled ? (
+                                                    <View style={[styles.actionBtn, styles.actionBtnDisabled]}>
+                                                        <Text style={styles.actionBtnTextDisabled}>Enrolled</Text>
+                                                    </View>
+                                                ) : (
+                                                    <TouchableOpacity
+                                                        style={[styles.actionBtn, (isFull || actionLoadingId === course._id) && styles.actionBtnDisabled]}
+                                                        disabled={isFull || actionLoadingId === course._id}
+                                                        onPress={() => handleEnroll(course._id)}
+                                                    >
+                                                        {actionLoadingId === course._id ? (
+                                                            <ActivityIndicator size="small" color="#fff" />
+                                                        ) : (
+                                                            <Text style={[styles.actionBtnText, isFull && styles.actionBtnTextDisabled]}>
+                                                                {isFull ? "Class Full" : "Enroll"}
+                                                            </Text>
+                                                        )}
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
                                         </View>
-                                    </View>
-                                );
-                            })}
+                                    );
+                                })}
                             {availableCourses.length === 0 && (
                                 <Text style={styles.emptyText}>No available courses at the moment.</Text>
                             )}
@@ -261,45 +309,57 @@ export default function StudentCoursesScreen({ onNavigateDashboard }) {
 
                     {activeTab === "my_courses" && (
                         <View>
-                            {myCourses.map((course, index) => {
-                                return (
-                                    <View key={course._id || index} style={styles.courseCard}>
-                                        <View style={styles.courseTop}>
-                                            <Text style={styles.courseCode}>{course.code}</Text>
-                                            {course.day && (
-                                                <View style={[styles.dayBadge, { backgroundColor: "#22c55e20", borderColor: "#22c55e" }]}>
-                                                    <Text style={[styles.dayText, { color: "#22c55e" }]}>{course.day}</Text>
-                                                </View>
-                                            )}
-                                            <View style={styles.creditBadge}>
-                                                <Text style={styles.creditText}>{course.credits} cr</Text>
-                                            </View>
-                                        </View>
-
-                                        <Text style={styles.courseName}>{course.name}</Text>
-                                        <Text style={styles.courseInstructor}>👤 {course.instructor}</Text>
-
-                                        <View style={styles.courseBottom}>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.courseDetail}>🕐 {course.time}</Text>
-                                                <Text style={styles.courseDetail}>📍 {course.room}</Text>
-                                            </View>
-
-                                            <TouchableOpacity
-                                                style={[styles.actionBtn, styles.actionBtnDanger]}
-                                                disabled={actionLoadingId === course._id}
-                                                onPress={() => handleDrop(course._id)}
-                                            >
-                                                {actionLoadingId === course._id ? (
-                                                    <ActivityIndicator size="small" color="#ef4444" />
-                                                ) : (
-                                                    <Text style={styles.actionBtnTextDanger}>Drop Course</Text>
+                            {myCourses
+                                .filter(c =>
+                                    c.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    c.name?.toLowerCase().includes(searchQuery.toLowerCase())
+                                )
+                                .map((course, index) => {
+                                    return (
+                                        <View key={course._id || index} style={styles.courseCard}>
+                                            <View style={styles.courseTop}>
+                                                <Text style={styles.courseCode}>{course.code}</Text>
+                                                {course.day && (
+                                                    <View style={[styles.dayBadge, { backgroundColor: "#22c55e20", borderColor: "#22c55e" }]}>
+                                                        <Text style={[styles.dayText, { color: "#22c55e" }]}>{course.day}</Text>
+                                                    </View>
                                                 )}
-                                            </TouchableOpacity>
+                                                <View style={styles.creditBadge}>
+                                                    <Text style={styles.creditText}>{course.credits} cr</Text>
+                                                </View>
+                                                {course.courseType && (
+                                                    <View style={[styles.typeBadge, { backgroundColor: course.courseType === 'Online' ? '#dcfce7' : '#fef3c7' }]}>
+                                                        <Text style={[styles.typeText, { color: course.courseType === 'Online' ? '#166534' : '#92400e' }]}>{course.courseType}</Text>
+                                                    </View>
+                                                )}
+                                            </View>
+
+                                            <Text style={styles.courseName}>{course.name}</Text>
+                                            <Text style={styles.courseInstructor}>👤 {course.instructor}</Text>
+
+                                            <View style={styles.courseBottom}>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.courseDetail}>🕐 {course.time}</Text>
+                                                    <Text style={styles.courseDetail}>📍 {course.room}</Text>
+                                                </View>
+
+                                                {isRegistrationOpenForMe && (
+                                                    <TouchableOpacity
+                                                        style={[styles.actionBtn, styles.actionBtnDanger]}
+                                                        disabled={actionLoadingId === course._id}
+                                                        onPress={() => handleDrop(course._id)}
+                                                    >
+                                                        {actionLoadingId === course._id ? (
+                                                            <ActivityIndicator size="small" color="#ef4444" />
+                                                        ) : (
+                                                            <Text style={styles.actionBtnTextDanger}>Drop Course</Text>
+                                                        )}
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
                                         </View>
-                                    </View>
-                                );
-                            })}
+                                    );
+                                })}
                             {myCourses.length === 0 && (
                                 <Text style={styles.emptyText}>You haven't enrolled in any courses yet.</Text>
                             )}
@@ -331,6 +391,24 @@ const styles = StyleSheet.create({
         fontWeight: "800",
         color: "#111",
         marginBottom: 16,
+    },
+    searchBarContainer: {
+        marginBottom: 16,
+    },
+    searchBar: {
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 14,
+        color: "#1e293b",
+        borderWidth: 1,
+        borderColor: "#e2e8f0",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
     tabContainer: {
         flexDirection: "row",
@@ -429,6 +507,8 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     creditText: { fontSize: 11, fontWeight: "700", color: "#555" },
+    typeBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 4 },
+    typeText: { fontSize: 9, fontWeight: "800" },
     courseName: { fontSize: 16, fontWeight: "700", color: "#111", marginBottom: 6 },
     courseInstructor: { fontSize: 13, color: "#777", marginBottom: 12 },
     courseBottom: {
@@ -470,4 +550,18 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         fontSize: 13,
     },
+    // Registration Closed UI
+    closedBanner: {
+        backgroundColor: "#fef2f2",
+        borderRadius: 12,
+        padding: 16,
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 10,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: "#fee2e2",
+    },
+    closedIconSmall: { fontSize: 20, marginRight: 12 },
+    closedTextSmall: { fontSize: 13, color: "#991b1b", fontWeight: "600", flex: 1 },
 });
