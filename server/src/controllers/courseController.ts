@@ -408,18 +408,19 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
   session.startTransaction();
   try {
     let student = req.student;
-    const { courseIds, replaceExisting = false } = req.body;
+    const { courseIds, replaceExisting = false, studentId } = req.body;
 
-    // If middleware didn't populate student (e.g. Admin testing or session issue)
-    if (!student && req.user) {
-      const foundStudent = await Student.findOne({ user: req.user._id });
-      if (foundStudent) student = foundStudent;
+    // If middleware didn't populate student (e.g. Admin is testing)
+    // Admins can pass studentId in the body to test enrollment for a specific student
+    if (!student && (req as any).adminUser && studentId) {
+      const found = await Student.findById(studentId);
+      if (found) student = found;
     }
 
     if (!student) {
       res.status(403).json({ 
         success: false, 
-        message: 'Only students can enroll in courses. Please log in with a student account.' 
+        message: 'Only students can enroll in courses. (Admins: please provide a studentId in the body)' 
       });
       return;
     }
@@ -503,7 +504,7 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
 
     // 4. Create Audit Log (Background)
     AuditLog.create({
-      actor: req.user?._id || (student as any)._id,
+      actor: (req as any).adminUser?._id || (student as any)._id,
       action: 'BULK_ENROLL',
       details: { 
         studentId: student._id,
