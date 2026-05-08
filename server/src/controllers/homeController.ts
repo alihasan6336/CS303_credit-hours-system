@@ -16,7 +16,11 @@ export const getHomeData = async (
   res: Response
 ): Promise<void> => {
   try {
-    const studentId = req.student!._id;
+    if (!req.student) {
+      res.status(403).json({ success: false, message: 'This endpoint is only available for students.' });
+      return;
+    }
+    const studentId = req.student._id;
 
     const student = await Student.findById(studentId);
     if (!student) {
@@ -85,7 +89,11 @@ export const getAcademicProgress = async (
   res: Response
 ): Promise<void> => {
   try {
-    const studentId = req.student!._id;
+    if (!req.student) {
+      res.status(403).json({ success: false, message: 'This endpoint is only available for students.' });
+      return;
+    }
+    const studentId = req.student._id;
 
     const student = await Student.findById(studentId);
     if (!student) {

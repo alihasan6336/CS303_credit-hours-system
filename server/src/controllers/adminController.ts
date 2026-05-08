@@ -702,8 +702,7 @@ export const adminEnroll = async (req: Request, res: Response): Promise<void> =>
             level: student.level,
         });
 
-        course.enrolledCount += 1;
-        await course.save();
+        await Course.findByIdAndUpdate(courseId, { $inc: { enrolledCount: 1 } });
 
         // Audit log
         if (caller) {

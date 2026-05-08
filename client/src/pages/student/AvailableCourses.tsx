@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Course } from "../../types/course";
-import { authApi, courseApi } from "../../utils/api";
+import { authApi, courseApi, settingsApi } from "../../utils/api";
 import StudentLayout from "../../layout/StudentLayout";
 
 const AvailableCourses: React.FC = () => {
@@ -12,6 +12,8 @@ const AvailableCourses: React.FC = () => {
   const [registering, setRegistering] = useState<string | null>(null);
   const [dropping, setDropping] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [enrollmentOpen, setEnrollmentOpen] = useState(false);
+  const [openLevels, setOpenLevels] = useState<number[]>([]);
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
 
@@ -23,7 +25,21 @@ const AvailableCourses: React.FC = () => {
     }
 
     fetchCourses();
+    fetchEnrollmentStatus();
   }, [navigate]);
+
+  const fetchEnrollmentStatus = async () => {
+    try {
+      const data = await settingsApi.getSettings();
+      if (data.success) {
+        const levels = data.settings.enrollmentOpenLevels || [];
+        setOpenLevels(levels);
+        setEnrollmentOpen(data.settings.isRegistrationOpen && levels.includes(user.level));
+      }
+    } catch (err) {
+      console.error("Failed to fetch enrollment status", err);
+    }
+  };
 
   const fetchCourses = async () => {
     setLoading(true);
@@ -148,6 +164,36 @@ const AvailableCourses: React.FC = () => {
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600">{error}</p>
+            </div>
+          )}
+
+          {/* Enrollment Status Banner */}
+          {!enrollmentOpen && (
+            <div className="mb-6 p-5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-4">
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m10-6a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-amber-800">Enrollment Closed for Year {user.level}</h3>
+                <p className="text-amber-700 text-sm">
+                  The enrollment table is currently closed for your year level. You cannot register or drop courses at this time.
+                  {openLevels.length > 0 && (
+                    <span className="ml-1">Open for: Year {openLevels.join(', ')}.</span>
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
+          {enrollmentOpen && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-green-700 font-medium text-sm">Enrollment is open for Year {user.level} — you can register and drop courses.</p>
             </div>
           )}
 
@@ -285,21 +331,25 @@ const AvailableCourses: React.FC = () => {
                                   </span>
                                   <button
                                     onClick={() => handleDrop(course._id!)}
-                                    disabled={dropping === course._id}
+                                    disabled={dropping === course._id || !enrollmentOpen}
                                     className="inline-flex items-center justify-center px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     {dropping === course._id
                                       ? "Dropping..."
-                                      : "Drop"}
+                                      : enrollmentOpen ? "Drop" : "Closed"}
                                   </button>
                                 </div>
                               ) : (
                                 <button
                                   onClick={() => handleRegister(course._id!)}
-                                  disabled={isProcessing}
-                                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                                  disabled={isProcessing || !enrollmentOpen}
+                                  className={`px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                                    enrollmentOpen
+                                      ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                      : 'bg-gray-300 text-gray-500'
+                                  }`}
                                 >
-                                  {isProcessing ? "Registering..." : "Register"}
+                                  {isProcessing ? "Registering..." : enrollmentOpen ? "Register" : "Closed"}
                                 </button>
                               )}
                             </div>

@@ -616,5 +616,65 @@ export const adminCreditLimitApi = {
   },
 };
 
+interface SettingsResponse {
+  success: boolean;
+  settings: {
+    currentSemester: string;
+    academicYear: string;
+    isRegistrationOpen: boolean;
+    tableVisible: boolean;
+    enrollmentOpenLevels: number[];
+    enrollmentStartDate?: string;
+    enrollmentEndDate?: string;
+  };
+}
+
+export const settingsApi = {
+  getSettings(): Promise<SettingsResponse> {
+    return request<SettingsResponse>("/api/settings");
+  },
+
+  updateSettings(body: {
+    currentSemester?: string;
+    academicYear?: string;
+    isRegistrationOpen?: boolean;
+    tableVisible?: boolean;
+    enrollmentOpenLevels?: number[];
+    enrollmentStartDate?: string;
+    enrollmentEndDate?: string;
+  }): Promise<SettingsResponse> {
+    return request<SettingsResponse>("/api/settings", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
+
+  openRegistration(levels?: number[]): Promise<{ success: boolean; message: string; isRegistrationOpen: boolean; enrollmentOpenLevels: number[] }> {
+    return request("/api/settings/open-registration", {
+      method: "POST",
+      body: JSON.stringify({ levels }),
+    });
+  },
+
+  closeRegistration(levels?: number[]): Promise<{ success: boolean; message: string; isRegistrationOpen: boolean; enrollmentOpenLevels: number[] }> {
+    return request("/api/settings/close-registration", {
+      method: "POST",
+      body: JSON.stringify({ levels }),
+    });
+  },
+
+  showTable(): Promise<{ success: boolean; message: string; tableVisible: boolean }> {
+    return request("/api/settings/show-table", {
+      method: "POST",
+    });
+  },
+
+  hideTable(): Promise<{ success: boolean; message: string; tableVisible: boolean }> {
+    return request("/api/settings/hide-table", {
+      method: "POST",
+    });
+  },
+};
+
 export type { StudentFromApi, AuthResponse, MeResponse, HomeResponse, CourseFromApi, CourseResponse, CoursesListResponse };
 

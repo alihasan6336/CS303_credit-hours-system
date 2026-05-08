@@ -124,9 +124,8 @@ export const createEnrollment = async (req: Request, res: Response): Promise<voi
       status: 'active',
     });
 
-    // Increment course enrolled count
-    course.enrolledCount += 1;
-    await course.save();
+    // Increment course enrolled count (use $inc to avoid re-validating all fields)
+    await Course.findByIdAndUpdate(courseId, { $inc: { enrolledCount: 1 } });
 
     // Audit log
     if (caller) {

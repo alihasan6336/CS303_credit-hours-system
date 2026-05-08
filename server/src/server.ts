@@ -14,6 +14,7 @@ import enrollmentRoutes from './routes/enrollmentRoutes';
 import gpaRoutes from './routes/gpaRoutes';
 import scheduleRoutes from './routes/scheduleRoutes';
 import photoRoutes from './routes/photoRoutes';
+import settingsRoutes from './routes/settingsRoutes';
 import { apiLimiter, authLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -107,6 +108,7 @@ app.use('/api/admin/enrollments', enrollmentRoutes);
 app.use('/api/gpa', gpaRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/schedule', scheduleRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // 404 handler
 app.use((_req, res) => {

@@ -105,7 +105,11 @@ export const getCourseByID = async (req: Request, res: Response): Promise<void> 
 // GET /api/courses/my-courses
 export const getMyCourses = async (req: Request, res: Response): Promise<void> => {
   try {
-    const student = req.student!;
+    if (!req.student) {
+      res.status(403).json({ success: false, message: 'This endpoint is only available for students.' });
+      return;
+    }
+    const student = req.student;
     const { semester, level } = req.query;
 
     const filter: any = { student: student._id };
@@ -429,6 +433,23 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
       return;
     }
 
+    // === ENROLLMENT TABLE CHECK ===
+    // Admin bypass: table management admin and super admin can enroll even when closed
+    const isAdminBulk = !!(req as any).adminUser;
+    if (!isAdminBulk) {
+      const settings = await SystemSettings.findOne().lean();
+      const openLevels = settings?.enrollmentOpenLevels || [];
+      if (!settings?.isRegistrationOpen || !openLevels.includes(student.level)) {
+        res.status(403).json({
+          success: false,
+          message: `Enrollment is currently closed for Year ${student.level} students. Please wait for the enrollment table to open.`,
+          enrollmentClosed: true,
+          openLevels,
+        });
+        return;
+      }
+    }
+
     // 1. If replaceExisting, drop all active enrollments for current semester
     if (replaceExisting) {
       const currentEnrollments = await Enrollment.find({
@@ -478,9 +499,8 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
         status: 'active'
       }], { session });
 
-      // Update count
-      course.enrolledCount += 1;
-      await course.save({ session });
+      // Update count (use $inc to avoid re-validating all required fields on existing courses)
+      await Course.findByIdAndUpdate(courseId, { $inc: { enrolledCount: 1 } }, { session });
 
       totalCredits += course.credits;
       results.push(course.code);
@@ -551,6 +571,24 @@ export const enrollCourse = async (req: Request, res: Response): Promise<void> =
     if (!course.isActive) {
       res.status(400).json({ success: false, message: 'This course is no longer available.' });
       return;
+    }
+
+    // === ENROLLMENT TABLE CHECK ===
+    // Students can only enroll when the enrollment table is open for their level
+    // Admin bypass: table management admin and super admin can enroll even when closed
+    const isAdmin = !!(req as any).adminUser;
+    if (!isAdmin) {
+      const settings = await SystemSettings.findOne().lean();
+      const openLevels = settings?.enrollmentOpenLevels || [];
+      if (!settings?.isRegistrationOpen || !openLevels.includes(student.level)) {
+        res.status(403).json({
+          success: false,
+          message: `Enrollment is currently closed for Year ${student.level} students. Please wait for the enrollment table to open.`,
+          enrollmentClosed: true,
+          openLevels,
+        });
+        return;
+      }
     }
 
     // === PREREQUISITE CHECK ===
@@ -728,7 +766,11 @@ function timesOverlap(start1: string, end1: string, start2: string, end2: string
 // DELETE /api/courses/:id/enroll
 export const dropCourse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const student = req.student!;
+    if (!req.student) {
+      res.status(403).json({ success: false, message: 'This endpoint is only available for students.' });
+      return;
+    }
+    const student = req.student;
     const courseId = req.params.id;
 
     const enrollment = await Enrollment.findOneAndDelete({
@@ -762,7 +804,11 @@ export const dropCourse = async (req: Request, res: Response): Promise<void> => 
 // GET /api/courses/my-credit-limit - Get current student's credit hour limits
 export const getMyCreditLimit = async (req: Request, res: Response): Promise<void> => {
   try {
-    const student = req.student!;
+    if (!req.student) {
+      res.status(403).json({ success: false, message: 'This endpoint is only available for students.' });
+      return;
+    }
+    const student = req.student;
 
     const creditLimit = await getCreditLimitForStudent(student);
 

@@ -10,6 +10,7 @@ export interface ISystemSettings extends Document {
     maxCreditHoursSummer: number;
     isRegistrationOpen: boolean;
     tableVisible: boolean;
+    enrollmentOpenLevels: number[];
     enrollmentStartDate?: Date;
     enrollmentEndDate?: Date;
 }
@@ -54,6 +55,14 @@ const SystemSettingsSchema: Schema = new Schema(
         tableVisible: {
             type: Boolean,
             default: false,
+        },
+        enrollmentOpenLevels: {
+            type: [Number],
+            default: [],
+            validate: {
+                validator: (arr: number[]) => arr.every(l => [1, 2, 3, 4].includes(l)),
+                message: 'Levels must be between 1 and 4',
+            },
         },
         enrollmentStartDate: {
             type: Date,

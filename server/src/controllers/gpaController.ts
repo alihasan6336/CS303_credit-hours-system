@@ -9,7 +9,11 @@ import { recalculateStudentGPA, percentageToGradePoints } from '../utils/gpaCalc
  */
 export const getMyGPABreakdown = async (req: Request, res: Response): Promise<void> => {
   try {
-    const studentId = req.student!._id;
+    if (!req.student) {
+      res.status(403).json({ success: false, message: 'This endpoint is only available for students.' });
+      return;
+    }
+    const studentId = req.student._id;
 
     const [student, enrollments] = await Promise.all([
       Student.findById(studentId).select('gpa completedCreditHours'),
@@ -77,7 +81,11 @@ export const triggerRecalculate = async (req: Request, res: Response): Promise<v
  */
 export const predictGPA = async (req: Request, res: Response): Promise<void> => {
   try {
-    const studentId = req.student!._id;
+    if (!req.student) {
+      res.status(403).json({ success: false, message: 'This endpoint is only available for students.' });
+      return;
+    }
+    const studentId = req.student._id;
     const { potentialGrades } = req.body; // Array of { courseId: string, grade: number }
 
     if (!Array.isArray(potentialGrades)) {
@@ -125,7 +133,7 @@ export const predictGPA = async (req: Request, res: Response): Promise<void> => 
 
     res.status(200).json({
       success: true,
-      currentGPA: req.student!.gpa,
+      currentGPA: req.student.gpa,
       predictedGPA,
       totalCreditsAfter: totalCredits
     });
