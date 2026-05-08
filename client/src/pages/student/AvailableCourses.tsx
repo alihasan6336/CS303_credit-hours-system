@@ -14,6 +14,7 @@ const AvailableCourses: React.FC = () => {
   const [error, setError] = useState("");
   const [enrollmentOpen, setEnrollmentOpen] = useState(false);
   const [openLevels, setOpenLevels] = useState<number[]>([]);
+  const [tableVisible, setTableVisible] = useState(true);
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
 
@@ -35,6 +36,7 @@ const AvailableCourses: React.FC = () => {
         const levels = data.settings.enrollmentOpenLevels || [];
         setOpenLevels(levels);
         setEnrollmentOpen(data.settings.isRegistrationOpen && levels.includes(user.level));
+        setTableVisible(data.settings.tableVisible !== false);
       }
     } catch (err) {
       console.error("Failed to fetch enrollment status", err);
@@ -197,7 +199,23 @@ const AvailableCourses: React.FC = () => {
             </div>
           )}
 
+          {/* Table Hidden Message */}
+          {!tableVisible && (
+            <div className="mb-6 p-8 bg-gray-50 border border-gray-200 rounded-xl flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.05 10.05 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-3.37 4.68m0 0A9.953 9.953 0 0112 19a9.953 9.953 0 01-3.59-.687m0 0L21 21" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-1">Course Table Unavailable</h3>
+              <p className="text-sm text-gray-600 max-w-md">
+                The course table is currently hidden by the administration. Please check back later or contact your advisor for course information.
+              </p>
+            </div>
+          )}
+
           {/* Courses Table */}
+          {tableVisible && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -371,6 +389,7 @@ const AvailableCourses: React.FC = () => {
               </div>
             )}
           </div>
+          )}
         </main>
       </div>
     </StudentLayout>
