@@ -14,7 +14,7 @@ import Course from '../models/Course';
 import Enrollment from '../models/Enrollment';
 import AuditLog from '../models/AuditLog';
 import SystemSettings from '../models/SystemSettings';
-import Student from '../models/Student';
+import Student, { IStudent } from '../models/Student';
 import { getCreditLimitForStudent } from '../utils/creditLimitCalculator';
 
 // GET /api/courses
@@ -411,19 +411,25 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    let student = req.student;
-    const { courseIds, replaceExisting = false } = req.body;
+    let student: IStudent | null | undefined = req.student;
+    const { courseIds, replaceExisting = false, studentId } = req.body;
 
-    // If middleware didn't populate student (e.g. Admin testing or session issue)
-    if (!student && req.user) {
-      const foundStudent = await Student.findOne({ user: req.user._id });
-      if (foundStudent) student = foundStudent;
+    // If middleware didn't populate student (e.g. Admin is testing)
+    if (!student && (req as any).adminUser) {
+      // 1. Try finding a student with the same email as the admin
+      const adminEmail = (req as any).adminUser.email;
+      student = await Student.findOne({ email: adminEmail });
+      
+      // 2. Or if they provided a specific studentId in the body
+      if (!student && studentId) {
+        student = await Student.findById(studentId);
+      }
     }
 
     if (!student) {
       res.status(403).json({ 
         success: false, 
-        message: 'Only students can enroll in courses. Please log in with a student account.' 
+        message: 'Only students can enroll in courses. (Admins: please provide a studentId in the body)' 
       });
       return;
     }
@@ -523,7 +529,7 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
 
     // 4. Create Audit Log (Background)
     AuditLog.create({
-      actor: req.user?._id || (student as any)._id,
+      actor: (req as any).adminUser?._id || (student as any)._id,
       action: 'BULK_ENROLL',
       details: { 
         studentId: student._id,
