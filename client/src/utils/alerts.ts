@@ -11,8 +11,8 @@ const COLORS = {
   text: "#1f2937", // Gray-800
 };
 
-// Common styling for all alerts
-const commonOptions: Partial<SweetAlertOptions> = {
+// Common styling for toast alerts (no backdrop)
+const toastOptions: Partial<SweetAlertOptions> = {
   customClass: {
     popup: "rounded-2xl shadow-2xl",
     title: "text-xl font-bold text-gray-800",
@@ -27,7 +27,26 @@ const commonOptions: Partial<SweetAlertOptions> = {
   buttonsStyling: false,
   allowOutsideClick: false,
   allowEscapeKey: true,
-  backdrop: `rgba(0, 0, 0, 0.4)`,
+  backdrop: false,
+};
+
+// Common styling for modal alerts (no backdrop shadow)
+const modalOptions: Partial<SweetAlertOptions> = {
+  customClass: {
+    popup: "rounded-2xl shadow-2xl",
+    title: "text-xl font-bold text-gray-800",
+    htmlContainer: "text-gray-600 text-sm",
+    confirmButton:
+      "px-6 py-2.5 rounded-xl font-medium transition-all duration-200 hover:scale-105 active:scale-95",
+    cancelButton:
+      "px-6 py-2.5 rounded-xl font-medium transition-all duration-200 hover:scale-105 active:scale-95",
+    denyButton:
+      "px-6 py-2.5 rounded-xl font-medium transition-all duration-200 hover:scale-105 active:scale-95",
+  },
+  buttonsStyling: false,
+  allowOutsideClick: false,
+  allowEscapeKey: true,
+  backdrop: false,
 };
 
 // Alert Types
@@ -56,7 +75,7 @@ const showToast = (
   timer: number = 3000
 ): void => {
   Swal.fire({
-    ...commonOptions,
+    ...toastOptions,
     title,
     text: message,
     icon,
@@ -99,7 +118,7 @@ const showModal = (config: AlertConfig): Promise<SweetAlertResult> => {
   const isDanger = type === "error" || type === "warning";
 
   return Swal.fire({
-    ...commonOptions,
+    ...modalOptions,
     title,
     text: message,
     icon:
