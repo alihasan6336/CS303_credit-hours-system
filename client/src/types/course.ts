@@ -6,6 +6,7 @@ export interface Course {
   studentYear: number;
   day: string;
   time: string;
+  room?: string;
   creditHours: number;
   instructorName?: string;
   group?: string;
@@ -23,6 +24,7 @@ export interface CourseFormData {
   studentYear: number;
   day: string;
   time: string;
+  room: string;
   creditHours: number;
   instructorName: string;
   group: string;

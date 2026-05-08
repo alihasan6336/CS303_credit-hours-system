@@ -10,6 +10,7 @@ interface Course {
   time: string;
   room: string;
   instructor: string;
+  type: string;
   major?: string;
   studentYear?: number;
 }
@@ -192,9 +193,14 @@ const TableManagement: React.FC = () => {
                                 <span className="truncate block" title={c.name}>
                                   {c.name}
                                 </span>
-                                <span className="text-gray-500 mt-1 block">
-                                  {c.room}
-                                </span>
+                                <div className="mt-1 flex items-center justify-between text-gray-500">
+                                  <span>{c.room || "TBA"}</span>
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${c.type === "Lab" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}
+                                  >
+                                    {c.type || "Lecture"}
+                                  </span>
+                                </div>
                               </div>
                             ))}
                             {coursesInSlot.length === 0 && (

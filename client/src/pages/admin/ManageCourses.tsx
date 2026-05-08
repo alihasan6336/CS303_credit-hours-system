@@ -15,10 +15,14 @@ const ManageCourses: React.FC = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-  const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set());
+  const [selectedCourses, setSelectedCourses] = useState<Set<string>>(
+    new Set(),
+  );
 
   const user = getStoredAdminUser();
-  const canEditCourses = user.role === "superadmin" || (user.adminType || "").toLowerCase() === "courses_admin";
+  const canEditCourses =
+    user.role === "superadmin" ||
+    (user.adminType || "").toLowerCase() === "courses_admin";
 
   const [formData, setFormData] = useState<CourseFormData>({
     courseName: "",
@@ -27,6 +31,7 @@ const ManageCourses: React.FC = () => {
     studentYear: 1,
     day: "Sunday",
     time: "09:00 - 10:30",
+    room: "",
     creditHours: 3,
     instructorName: "",
     group: "A",
@@ -38,6 +43,7 @@ const ManageCourses: React.FC = () => {
   const [bulkEditData, setBulkEditData] = useState({
     day: "Sunday",
     time: "09:00 - 10:30",
+    room: "",
     instructorName: "",
     major: "",
     capacity: "",
@@ -62,6 +68,7 @@ const ManageCourses: React.FC = () => {
             studentYear: course.level || 1,
             day: course.day,
             time: course.time,
+            room: course.room || "",
             creditHours: course.credits,
             instructorName: course.instructor,
             group: course.group || "A",
@@ -105,7 +112,7 @@ const ManageCourses: React.FC = () => {
           name: formData.courseName,
           day: formData.day,
           time: formData.time,
-          room: "TBA",
+          room: formData.room || "TBA",
           credits: formData.creditHours,
           instructor: formData.instructorName,
           group: formData.group,
@@ -131,7 +138,7 @@ const ManageCourses: React.FC = () => {
           name: formData.courseName,
           day: formData.day,
           time: formData.time,
-          room: "TBA",
+          room: formData.room || "TBA",
           credits: formData.creditHours,
           instructor: formData.instructorName,
           group: formData.group,
@@ -179,6 +186,7 @@ const ManageCourses: React.FC = () => {
       studentYear: course.studentYear || 1,
       day: course.day,
       time: course.time,
+      room: course.room || "",
       creditHours: course.creditHours,
       instructorName: course.instructorName || "",
       group: course.group || "A",
@@ -212,9 +220,12 @@ const ManageCourses: React.FC = () => {
           const update: any = { _id: c._id! };
           if (bulkEditData.day) update.day = bulkEditData.day;
           if (bulkEditData.time) update.time = bulkEditData.time;
-          if (bulkEditData.instructorName) update.instructor = bulkEditData.instructorName;
+          if (bulkEditData.room) update.room = bulkEditData.room;
+          if (bulkEditData.instructorName)
+            update.instructor = bulkEditData.instructorName;
           if (bulkEditData.major) update.major = bulkEditData.major;
-          if (bulkEditData.capacity) update.capacity = parseInt(bulkEditData.capacity);
+          if (bulkEditData.capacity)
+            update.capacity = parseInt(bulkEditData.capacity);
           if (bulkEditData.courseType) update.type = bulkEditData.courseType;
           return update;
         });
@@ -225,7 +236,15 @@ const ManageCourses: React.FC = () => {
         await fetchCourses();
         setShowBulkEditModal(false);
         setSelectedCourses(new Set());
-        setBulkEditData({ day: "Sunday", time: "09:00 - 10:30", instructorName: "", major: "", capacity: "", courseType: "" });
+        setBulkEditData({
+          day: "Sunday",
+          time: "09:00 - 10:30",
+          room: "",
+          instructorName: "",
+          major: "",
+          capacity: "",
+          courseType: "",
+        });
       }
     } catch (err: unknown) {
       const error = err as Error;
@@ -261,6 +280,7 @@ const ManageCourses: React.FC = () => {
       studentYear: 1,
       day: "Sunday",
       time: "09:00 - 10:30",
+      room: "",
       creditHours: 3,
       instructorName: "",
       group: "A",
@@ -276,7 +296,8 @@ const ManageCourses: React.FC = () => {
       course.courseCode.toLowerCase().includes(query) ||
       course.courseName.toLowerCase().includes(query) ||
       course.major.toLowerCase().includes(query) ||
-      (course.instructorName && course.instructorName.toLowerCase().includes(query))
+      (course.instructorName &&
+        course.instructorName.toLowerCase().includes(query))
     );
   });
 
@@ -317,12 +338,13 @@ const ManageCourses: React.FC = () => {
                   onClick={() => setShowBulkEditModal(true)}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
                 >
-                  <span className="text-xl">✎</span> Bulk Edit ({selectedCourses.size})
+                  <span className="text-xl">✎</span> Bulk Edit (
+                  {selectedCourses.size})
                 </button>
               )}
             </div>
           </div>
-          
+
           <div className="mb-6 shrink-0">
             <input
               type="text"
@@ -347,15 +369,44 @@ const ManageCourses: React.FC = () => {
                 <thead className="bg-indigo-600 border-b border-indigo-700 sticky top-0 z-10">
                   <tr>
                     {canEditCourses && (
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                        <input
-                          type="checkbox"
-                          checked={selectedCourses.size > 0 && selectedCourses.size === filteredCourses.length}
-                          onChange={toggleSelectAll}
-                          className="w-4 h-4 rounded cursor-pointer"
-                        />
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider w-16">
+                        <div
+                          onClick={toggleSelectAll}
+                          className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all cursor-pointer shadow-sm
+                            ${
+                              selectedCourses.size > 0 &&
+                              selectedCourses.size === filteredCourses.length
+                                ? "bg-white border-white scale-110"
+                                : "bg-indigo-700/50 border-indigo-400/50 hover:bg-indigo-500/50 hover:border-indigo-300"
+                            }`}
+                        >
+                          {selectedCourses.size > 0 &&
+                            selectedCourses.size === filteredCourses.length && (
+                              <svg
+                                className="w-3.5 h-3.5 text-indigo-600"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={3}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                            )}
+                        </div>
                       </th>
                     )}
+                    {canEditCourses && (
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                        Edit
+                      </th>
+                    )}
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      Delete
+                    </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Course Code
                     </th>
@@ -384,6 +435,9 @@ const ManageCourses: React.FC = () => {
                       Time
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                      Room
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Instructor
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
@@ -392,16 +446,13 @@ const ManageCourses: React.FC = () => {
                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Prerequisite
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                      Actions
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {filteredCourses.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={canEditCourses ? 14 : 12}
+                        colSpan={canEditCourses ? 15 : 13}
                         className="px-6 py-12 text-center text-gray-500"
                       >
                         No courses found. Click "Add New Course" to get started.
@@ -415,14 +466,77 @@ const ManageCourses: React.FC = () => {
                       >
                         {canEditCourses && (
                           <td className="px-6 py-4">
-                            <input
-                              type="checkbox"
-                              checked={selectedCourses.has(course._id!)}
-                              onChange={() => toggleSelectCourse(course._id!)}
-                              className="w-4 h-4 rounded cursor-pointer"
-                            />
+                            <div
+                              onClick={() => toggleSelectCourse(course._id!)}
+                              className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all cursor-pointer
+                                ${
+                                  selectedCourses.has(course._id!)
+                                    ? "bg-indigo-600 border-indigo-600 scale-110 shadow-md shadow-indigo-200"
+                                    : "bg-white border-gray-300 hover:border-indigo-400 hover:bg-indigo-50"
+                                }`}
+                            >
+                              {selectedCourses.has(course._id!) && (
+                                <svg
+                                  className="w-3.5 h-3.5 text-white"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={3}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                              )}
+                            </div>
                           </td>
                         )}
+                        {canEditCourses && (
+                          <td className="px-6 py-4 text-sm">
+                            <button
+                              onClick={() => handleEditCourse(course)}
+                              className="w-8 h-8 flex items-center justify-center bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg transition-all shadow-sm group"
+                              title="Edit course"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                />
+                              </svg>
+                            </button>
+                          </td>
+                        )}
+                        <td className="px-6 py-4 text-sm">
+                          <button
+                            onClick={() => handleDelete(course._id!)}
+                            className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all shadow-sm group"
+                            title="Delete course"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </td>
                         <td className="px-6 py-4 text-sm font-medium text-gray-900">
                           {course.courseCode}
                         </td>
@@ -439,7 +553,9 @@ const ManageCourses: React.FC = () => {
                           {course.creditHours}
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${course.courseType === 'Lab' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-semibold ${course.courseType === "Lab" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}
+                          >
                             {course.courseType}
                           </span>
                         </td>
@@ -453,6 +569,9 @@ const ManageCourses: React.FC = () => {
                           {course.time}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
+                          {course.room || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-700">
                           {course.instructorName || "-"}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
@@ -460,24 +579,6 @@ const ManageCourses: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
                           {course.prerequisite || "-"}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <div className="flex gap-2">
-                            {canEditCourses && (
-                              <button
-                                onClick={() => handleEditCourse(course)}
-                                className="text-blue-600 hover:text-blue-800 transition"
-                              >
-                                Edit
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDelete(course._id!)}
-                              className="text-red-600 hover:text-red-800 transition"
-                            >
-                              Delete
-                            </button>
-                          </div>
                         </td>
                       </tr>
                     ))
@@ -644,8 +745,8 @@ const ManageCourses: React.FC = () => {
                 </div>
               </div>
 
-              {/* Day and Time */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Day, Time, and Room */}
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Day <span className="text-red-500">*</span>
@@ -677,6 +778,20 @@ const ManageCourses: React.FC = () => {
                     required
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="e.g., 09:00 - 10:30"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Room
+                  </label>
+                  <input
+                    type="text"
+                    name="room"
+                    value={formData.room}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="e.g., B-101"
                   />
                 </div>
               </div>
@@ -752,7 +867,13 @@ const ManageCourses: React.FC = () => {
                   disabled={formLoading}
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {formLoading ? (editingCourse ? "Updating..." : "Adding...") : (editingCourse ? "Update Course" : "Add Course")}
+                  {formLoading
+                    ? editingCourse
+                      ? "Updating..."
+                      : "Adding..."
+                    : editingCourse
+                      ? "Update Course"
+                      : "Add Course"}
                 </button>
               </div>
             </form>
@@ -782,7 +903,9 @@ const ManageCourses: React.FC = () => {
             </div>
 
             <form onSubmit={handleBulkEdit} className="p-6 space-y-4">
-              <p className="text-sm text-gray-500">Leave a field empty to keep the current value unchanged.</p>
+              <p className="text-sm text-gray-500">
+                Leave a field empty to keep the current value unchanged.
+              </p>
 
               {/* Major */}
               <div>
@@ -791,7 +914,9 @@ const ManageCourses: React.FC = () => {
                 </label>
                 <select
                   value={bulkEditData.major}
-                  onChange={(e) => setBulkEditData({ ...bulkEditData, major: e.target.value })}
+                  onChange={(e) =>
+                    setBulkEditData({ ...bulkEditData, major: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   <option value="">— Keep current —</option>
@@ -810,7 +935,12 @@ const ManageCourses: React.FC = () => {
                 </label>
                 <select
                   value={bulkEditData.courseType}
-                  onChange={(e) => setBulkEditData({ ...bulkEditData, courseType: e.target.value })}
+                  onChange={(e) =>
+                    setBulkEditData({
+                      ...bulkEditData,
+                      courseType: e.target.value,
+                    })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   <option value="">— Keep current —</option>
@@ -830,7 +960,12 @@ const ManageCourses: React.FC = () => {
                 <input
                   type="number"
                   value={bulkEditData.capacity}
-                  onChange={(e) => setBulkEditData({ ...bulkEditData, capacity: e.target.value })}
+                  onChange={(e) =>
+                    setBulkEditData({
+                      ...bulkEditData,
+                      capacity: e.target.value,
+                    })
+                  }
                   min="1"
                   max="500"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -845,7 +980,9 @@ const ManageCourses: React.FC = () => {
                 </label>
                 <select
                   value={bulkEditData.day}
-                  onChange={(e) => setBulkEditData({ ...bulkEditData, day: e.target.value })}
+                  onChange={(e) =>
+                    setBulkEditData({ ...bulkEditData, day: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   {DAYS.map((day) => (
@@ -864,9 +1001,27 @@ const ManageCourses: React.FC = () => {
                 <input
                   type="text"
                   value={bulkEditData.time}
-                  onChange={(e) => setBulkEditData({ ...bulkEditData, time: e.target.value })}
+                  onChange={(e) =>
+                    setBulkEditData({ ...bulkEditData, time: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="e.g., 09:00 - 10:30"
+                />
+              </div>
+
+              {/* Room */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Room
+                </label>
+                <input
+                  type="text"
+                  value={bulkEditData.room}
+                  onChange={(e) =>
+                    setBulkEditData({ ...bulkEditData, room: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Leave empty to keep current"
                 />
               </div>
 
@@ -878,7 +1033,12 @@ const ManageCourses: React.FC = () => {
                 <input
                   type="text"
                   value={bulkEditData.instructorName}
-                  onChange={(e) => setBulkEditData({ ...bulkEditData, instructorName: e.target.value })}
+                  onChange={(e) =>
+                    setBulkEditData({
+                      ...bulkEditData,
+                      instructorName: e.target.value,
+                    })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="Leave empty to keep current"
                 />
@@ -901,7 +1061,9 @@ const ManageCourses: React.FC = () => {
                   disabled={formLoading}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {formLoading ? "Updating..." : `Update ${selectedCourses.size} Courses`}
+                  {formLoading
+                    ? "Updating..."
+                    : `Update ${selectedCourses.size} Courses`}
                 </button>
               </div>
             </form>
