@@ -174,8 +174,8 @@ export const optimizeSchedule = (
           inRange: true
         };
       }
-    } else if (!bestSchedule && currentCredits > 0 && currentCredits < minCredits) {
-      // Fallback for "Incomplete" selection
+    } else if (currentCredits > 0 && (!bestSchedule || (!bestSchedule.inRange && currentCredits > bestSchedule.totalCredits))) {
+      // Fallback: If no full schedule found yet, keep the most complete one (most credits)
       const { dayCount, totalGap, score } = calculateScheduleQuality(currentCourses);
       const uniqueDays = getUniqueDays(currentCourses);
       bestSchedule = {
@@ -214,17 +214,9 @@ export const optimizeSchedule = (
     // Branch 2: Try each section/group of this course
     for (const section of sections) {
       // Check for conflict with existing selections
-      const cacheKey = `${currentCourses.map(c => c._id).join(',')}|${section._id}`;
-      let conflict: boolean;
+      const hasOverlap = currentCourses.some(c => hasConflict(c, section));
       
-      if (conflictCache.has(cacheKey)) {
-        conflict = conflictCache.get(cacheKey)!;
-      } else {
-        conflict = currentCourses.some(c => hasConflict(c, section));
-        conflictCache.set(cacheKey, conflict);
-      }
-      
-      if (!conflict) {
+      if (!hasOverlap) {
         currentCourses.push(section);
         backtrack(nextIndex, currentCourses, currentCredits + section.credits, nextRemainingKeys);
         currentCourses.pop();

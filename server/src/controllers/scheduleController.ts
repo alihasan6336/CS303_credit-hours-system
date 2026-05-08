@@ -54,11 +54,13 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
     }
 
     const availableCourses = await Course.find(query).lean();
+    console.log(`[Schedule] Found ${availableCourses.length} available courses for query:`, JSON.stringify(query));
 
     // 3. Determine Credit Limits using centralized calculator (GPA-based + summer + override)
     const creditLimit = await getCreditLimitForStudent(
       student || { currentSemester: 'Fall', gpa: 3.5 }
     );
+    console.log(`[Schedule] Credit limits: min=${creditLimit.minCredits}, max=${creditLimit.maxCredits}`);
     const minCredits = creditLimit.minCredits;
     const maxCredits = creditLimit.maxCredits;
 
