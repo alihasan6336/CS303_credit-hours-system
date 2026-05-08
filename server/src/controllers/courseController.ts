@@ -14,7 +14,7 @@ import Course from '../models/Course';
 import Enrollment from '../models/Enrollment';
 import AuditLog from '../models/AuditLog';
 import SystemSettings from '../models/SystemSettings';
-import Student from '../models/Student';
+import Student, { IStudent } from '../models/Student';
 import { getCreditLimitForStudent } from '../utils/creditLimitCalculator';
 
 // GET /api/courses
@@ -407,19 +407,19 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    let student = req.student;
+    let student: IStudent | null | undefined = req.student;
     const { courseIds, replaceExisting = false, studentId } = req.body;
 
     // If middleware didn't populate student (e.g. Admin is testing)
-    // 1. Try finding a student with the same email as the admin
     if (!student && (req as any).adminUser) {
-      student = await Student.findOne({ email: (req as any).adminUser.email });
-    }
-    
-    // 2. Or if they provided a specific studentId in the body
-    if (!student && (req as any).adminUser && studentId) {
-      const found = await Student.findById(studentId);
-      if (found) student = found;
+      // 1. Try finding a student with the same email as the admin
+      const adminEmail = (req as any).adminUser.email;
+      student = await Student.findOne({ email: adminEmail });
+      
+      // 2. Or if they provided a specific studentId in the body
+      if (!student && studentId) {
+        student = await Student.findById(studentId);
+      }
     }
 
     if (!student) {
