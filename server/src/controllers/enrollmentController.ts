@@ -5,6 +5,7 @@ import Course from '../models/Course';
 import AuditLog from '../models/AuditLog';
 import { recalculateStudentGPA } from '../utils/gpaCalculator';
 import { getCreditLimitForStudent } from '../utils/creditLimitCalculator';
+import { autoPromoteStudentLevel } from '../utils/studentProgress';
 
 // GET /api/admin/enrollments - List all enrollments (admin)
 export const listEnrollments = async (req: Request, res: Response): Promise<void> => {
@@ -233,6 +234,9 @@ export const updateGrade = async (req: Request, res: Response): Promise<void> =>
     // Recalculate student GPA using the utility
     await recalculateStudentGPA(studentId);
 
+    // Auto-promote student level if they have enough credits
+    const promotion = await autoPromoteStudentLevel(studentId);
+
     // Audit log
     if (caller) {
       await AuditLog.create({
@@ -245,13 +249,14 @@ export const updateGrade = async (req: Request, res: Response): Promise<void> =>
           oldGrade,
           newGrade: numericGrade,
           courseCode: (enrollment.course as any).code,
+          levelPromotion: promotion.promoted ? `${promotion.oldLevel} -> ${promotion.newLevel}` : 'no change',
         },
         ipAddress: req.ip,
       });
     }
 
     // Get updated student
-    const updatedStudent = await Student.findById(studentId).select('gpa completedCreditHours');
+    const updatedStudent = await Student.findById(studentId).select('gpa completedCreditHours level');
 
     res.status(200).json({
       success: true,
@@ -264,6 +269,13 @@ export const updateGrade = async (req: Request, res: Response): Promise<void> =>
       },
       gpa: updatedStudent?.gpa,
       completedCreditHours: updatedStudent?.completedCreditHours,
+      level: updatedStudent?.level,
+      levelPromotion: promotion.promoted ? {
+        promoted: true,
+        oldLevel: promotion.oldLevel,
+        newLevel: promotion.newLevel,
+        message: `Congratulations! You have been promoted to Year ${promotion.newLevel}!`,
+      } : null,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

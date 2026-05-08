@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Course } from "../../types/course";
 import { authApi, courseApi, settingsApi } from "../../utils/api";
+import { alertSuccess, alertError, confirmDelete } from "../../utils/alerts";
 import StudentLayout from "../../layout/StudentLayout";
 
 const AvailableCourses: React.FC = () => {
@@ -93,7 +94,7 @@ const AvailableCourses: React.FC = () => {
     }
   };
 
-  const handleRegister = async (courseId: string) => {
+  const handleRegister = async (courseId: string, courseName?: string) => {
     setRegistering(courseId);
     setError("");
 
@@ -101,17 +102,21 @@ const AvailableCourses: React.FC = () => {
       const response = await courseApi.enroll(courseId);
       if (response.success !== false) {
         setEnrolledCourses([...enrolledCourses, courseId]);
+        alertSuccess(`Successfully registered for ${courseName || "course"}`);
       }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to register for course";
-      setError(message);
+      alertError(message);
     } finally {
       setRegistering(null);
     }
   };
 
-  const handleDrop = async (courseId: string) => {
+  const handleDrop = async (courseId: string, courseName?: string) => {
+    const confirmed = await confirmDelete(`enrollment in ${courseName || "this course"}`, "You will be removed from this course.");
+    if (!confirmed) return;
+
     setDropping(courseId);
     setError("");
 
@@ -119,11 +124,12 @@ const AvailableCourses: React.FC = () => {
       const response = await courseApi.drop(courseId);
       if (response.success !== false) {
         setEnrolledCourses(enrolledCourses.filter((id) => id !== courseId));
+        alertSuccess(`Successfully dropped ${courseName || "course"}`);
       }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to drop course";
-      setError(message);
+      alertError(message);
     } finally {
       setDropping(null);
     }
@@ -348,7 +354,7 @@ const AvailableCourses: React.FC = () => {
                                     ✓ Enrolled
                                   </span>
                                   <button
-                                    onClick={() => handleDrop(course._id!)}
+                                    onClick={() => handleDrop(course._id!, course.courseName)}
                                     disabled={dropping === course._id || !enrollmentOpen}
                                     className="inline-flex items-center justify-center px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
@@ -359,7 +365,7 @@ const AvailableCourses: React.FC = () => {
                                 </div>
                               ) : (
                                 <button
-                                  onClick={() => handleRegister(course._id!)}
+                                  onClick={() => handleRegister(course._id!, course.courseName)}
                                   disabled={isProcessing || !enrollmentOpen}
                                   className={`px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
                                     enrollmentOpen

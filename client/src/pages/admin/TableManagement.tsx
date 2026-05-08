@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { courseApi, settingsApi } from "../../utils/api";
+import { alertSuccess, alertError } from "../../utils/alerts";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 
 interface Course {
@@ -75,9 +76,10 @@ const TableManagement: React.FC = () => {
       const data = await settingsApi.openRegistration([level]);
       if (data.success) {
         setEnrollmentOpenLevels(data.enrollmentOpenLevels);
+        alertSuccess(`Enrollment opened for Year ${level}`);
       }
     } catch (err) {
-      console.error("Failed to open enrollment for level:", err);
+      alertError("Failed to open enrollment for level");
     } finally {
       setUpdating(null);
     }
@@ -89,9 +91,10 @@ const TableManagement: React.FC = () => {
       const data = await settingsApi.closeRegistration([level]);
       if (data.success) {
         setEnrollmentOpenLevels(data.enrollmentOpenLevels);
+        alertSuccess(`Enrollment closed for Year ${level}`);
       }
     } catch (err) {
-      console.error("Failed to close enrollment for level:", err);
+      alertError("Failed to close enrollment for level");
     } finally {
       setUpdating(null);
     }
@@ -103,9 +106,10 @@ const TableManagement: React.FC = () => {
       const data = await settingsApi.openRegistration();
       if (data.success) {
         setEnrollmentOpenLevels(data.enrollmentOpenLevels);
+        alertSuccess("Enrollment opened for all years");
       }
     } catch (err) {
-      console.error("Failed to open enrollment for all:", err);
+      alertError("Failed to open enrollment for all");
     } finally {
       setUpdating(null);
     }
@@ -117,9 +121,10 @@ const TableManagement: React.FC = () => {
       const data = await settingsApi.closeRegistration();
       if (data.success) {
         setEnrollmentOpenLevels(data.enrollmentOpenLevels);
+        alertSuccess("Enrollment closed for all years");
       }
     } catch (err) {
-      console.error("Failed to close enrollment for all:", err);
+      alertError("Failed to close enrollment for all");
     } finally {
       setUpdating(null);
     }
@@ -129,9 +134,12 @@ const TableManagement: React.FC = () => {
     setUpdating("show-table");
     try {
       const data = await settingsApi.showTable();
-      if (data.success) setTableVisible(true);
+      if (data.success) {
+        setTableVisible(true);
+        alertSuccess("Enrollment table is now visible to students");
+      }
     } catch (err) {
-      console.error("Failed to show table:", err);
+      alertError("Failed to show table");
     } finally {
       setUpdating(null);
     }
@@ -141,9 +149,12 @@ const TableManagement: React.FC = () => {
     setUpdating("hide-table");
     try {
       const data = await settingsApi.hideTable();
-      if (data.success) setTableVisible(false);
+      if (data.success) {
+        setTableVisible(false);
+        alertSuccess("Enrollment table is now hidden from students");
+      }
     } catch (err) {
-      console.error("Failed to hide table:", err);
+      alertError("Failed to hide table");
     } finally {
       setUpdating(null);
     }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { courseApi } from "../../utils/api";
+import { alertSuccess, alertError, confirmDelete } from "../../utils/alerts";
 import type { Course, CourseFormData } from "../../types/course";
 import { MAJORS, STUDENT_YEARS, DAYS, COURSE_TYPES } from "../../types/course";
 import AdminSidebar from "../../components/admin/AdminSidebar";
@@ -126,6 +127,7 @@ const ManageCourses: React.FC = () => {
         });
 
         if (response.success) {
+          alertSuccess("Course updated successfully");
           await fetchCourses();
           setShowEditModal(false);
           setEditingCourse(null);
@@ -152,6 +154,7 @@ const ManageCourses: React.FC = () => {
         });
 
         if (response.success) {
+          alertSuccess("Course created successfully");
           await fetchCourses();
           setShowModal(false);
           resetForm();
@@ -159,21 +162,23 @@ const ManageCourses: React.FC = () => {
       }
     } catch (err: unknown) {
       const error = err as Error;
-      setError(error.message || "Failed to save course");
+      alertError(error.message || "Failed to save course");
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleDelete = async (courseId: string) => {
-    if (!confirm("Are you sure you want to delete this course?")) return;
+  const handleDelete = async (courseId: string, courseName?: string) => {
+    const confirmed = await confirmDelete(courseName || "this course");
+    if (!confirmed) return;
 
     try {
       await courseApi.deleteCourse(courseId);
+      alertSuccess("Course deleted successfully");
       await fetchCourses();
     } catch (err: unknown) {
       const error = err as Error;
-      setError(error.message || "Failed to delete course");
+      alertError(error.message || "Failed to delete course");
     }
   };
 
@@ -233,6 +238,7 @@ const ManageCourses: React.FC = () => {
       const response = await courseApi.bulkUpdate(coursesToUpdate);
 
       if (response.success) {
+        alertSuccess("Courses updated successfully");
         await fetchCourses();
         setShowBulkEditModal(false);
         setSelectedCourses(new Set());
@@ -248,7 +254,7 @@ const ManageCourses: React.FC = () => {
       }
     } catch (err: unknown) {
       const error = err as Error;
-      setError(error.message || "Failed to bulk update courses");
+      alertError(error.message || "Failed to bulk update courses");
     } finally {
       setFormLoading(false);
     }
@@ -518,7 +524,7 @@ const ManageCourses: React.FC = () => {
                         )}
                         <td className="px-6 py-4 text-sm">
                           <button
-                            onClick={() => handleDelete(course._id!)}
+                            onClick={() => handleDelete(course._id!, course.courseName)}
                             className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all shadow-sm group"
                             title="Delete course"
                           >

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { adminApi } from "../../utils/api";
+import { alertError } from "../../utils/alerts";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import StudentsTable from "../../components/admin/StudentsTable";
 import StudentEnrollmentModal from "../../components/admin/StudentEnrollmentModal";
@@ -21,6 +22,7 @@ const StudentSchedules: React.FC = () => {
       const response = await adminApi.getStats();
       if (response.success) setStats(response.stats);
     } catch (err) {
+      // Silent fail for stats
       console.warn("Stats fetch failed:", err);
     }
   }, []);
@@ -34,7 +36,7 @@ const StudentSchedules: React.FC = () => {
         setTotalPages(response.pages);
       }
     } catch (err) {
-      console.error("Failed to load students:", err);
+      alertError("Failed to load students");
     } finally {
       setLoading(false);
     }

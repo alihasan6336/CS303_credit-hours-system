@@ -60,6 +60,11 @@ export const getHomeData = async (
       }));
 
     const semesterLabel = `${student.currentSemester} ${new Date().getFullYear()}`;
+    
+    // Calculate current semester credits from active enrollments
+    const currentSemesterCredits = enrollments
+      .filter(e => e.status === 'active')
+      .reduce((sum, e) => sum + (e.course?.credits || 0), 0);
 
     res.status(200).json({
       success: true,
@@ -72,6 +77,7 @@ export const getHomeData = async (
         level: student.level,
         currentSemester: student.currentSemester,
         completedCreditHours: student.completedCreditHours,
+        currentSemesterCredits,
         phoneNumber: student.phoneNumber,
         gpa: student.gpa,
         role: student.role,

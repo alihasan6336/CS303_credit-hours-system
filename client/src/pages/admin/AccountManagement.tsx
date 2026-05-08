@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { adminApi } from "../../utils/api";
+import { alertError, alertSuccess, confirmDelete } from "../../utils/alerts";
 import StudentRegisterForm from "../../components/admin/StudentRegisterForm";
 import StudentsTable from "../../components/admin/StudentsTable";
 import AccountEditModal from "../../components/admin/AccountEditModal";
@@ -164,6 +165,7 @@ const AccountManagement: React.FC = () => {
       });
 
       if (response.success) {
+        alertSuccess("Account created successfully");
         setShowRegisterForm(false);
         fetchStudents();
         fetchKpiStats();
@@ -176,22 +178,24 @@ const AccountManagement: React.FC = () => {
   };
 
   const handleDeleteAccount = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete account: ${name}?`)) {
+    const confirmed = await confirmDelete(`account: ${name}`);
+    if (confirmed) {
       try {
         const response = await adminApi.deleteAccount(id);
         if (response.success) {
+          alertSuccess("Account deleted successfully");
           fetchStudents();
           fetchKpiStats();
         }
       } catch (err: any) {
-        alert(err.message || "Failed to delete account");
+        alertError(err.message || "Failed to delete account");
       }
     }
   };
 
-  const handleEditClick = (account: StudentAccount) => {
+  const handleEditClick = async (account: StudentAccount) => {
     if (!isSuperAdmin && (account.role || "").toLowerCase() === "superadmin") {
-      alert("You do not have permission to edit a Superadmin account.");
+      await alertError("You do not have permission to edit a Superadmin account.");
       return;
     }
     setEditingAccount(account);
@@ -203,13 +207,14 @@ const AccountManagement: React.FC = () => {
       setFormLoading(true);
       const response = await adminApi.updateAccount(id, data);
       if (response.success) {
+        alertSuccess("Account updated successfully");
         setShowEditModal(false);
         setEditingAccount(null);
         fetchStudents();
         fetchKpiStats();
       }
     } catch (err: any) {
-      alert(err.message || "Failed to update account");
+      alertError(err.message || "Failed to update account");
     } finally {
       setFormLoading(false);
     }

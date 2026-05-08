@@ -6,6 +6,7 @@ import Enrollment from '../models/Enrollment';
 import AuditLog from '../models/AuditLog';
 import { recalculateStudentGPA } from '../utils/gpaCalculator';
 import { getCreditLimitForStudent } from '../utils/creditLimitCalculator';
+import { completeSemester, autoPromoteStudentLevel, getAcademicSummary } from '../utils/studentProgress';
 import AdminUser from '../models/AdminUser';
 
 // Helper to format student response
@@ -955,6 +956,122 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
                 email: user.email,
                 fullName: user.fullName,
             },
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * POST /api/admin/students/:id/complete-semester
+ * Complete current semester for a student:
+ * - Marks all active enrollments as completed
+ * - Advances to next semester
+ * - Recalculates GPA and completed credits
+ * - Auto-promotes level if applicable
+ */
+export const completeStudentSemester = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params as { id: string };
+        const caller = (req as any).adminUser;
+
+        const student = await Student.findById(id);
+        if (!student) {
+            res.status(404).json({ success: false, message: 'Student not found' });
+            return;
+        }
+
+        const result = await completeSemester(id);
+
+        // Audit log
+        if (caller) {
+            await AuditLog.create({
+                actor: caller._id,
+                action: 'semester:complete',
+                targetUser: id,
+                details: {
+                    oldSemester: result.stats.oldSemester,
+                    newSemester: result.stats.newSemester,
+                    oldLevel: result.stats.oldLevel,
+                    newLevel: result.stats.newLevel,
+                    coursesCompleted: result.stats.coursesCompleted,
+                    completedCredits: result.stats.completedCredits,
+                    gpa: result.stats.gpa,
+                },
+                ipAddress: req.ip,
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: result.message,
+            stats: result.stats,
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * POST /api/admin/students/:id/check-promotion
+ * Check and apply level promotion for a student based on completed credits
+ */
+export const checkStudentPromotion = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const caller = (req as any).adminUser;
+
+        const student = await Student.findById(id);
+        if (!student) {
+            res.status(404).json({ success: false, message: 'Student not found' });
+            return;
+        }
+
+        const promotion = await autoPromoteStudentLevel(Array.isArray(id) ? id[0] : id);
+
+        // Audit log if promoted
+        if (caller && promotion.promoted) {
+            await AuditLog.create({
+                actor: caller._id,
+                action: 'student:promote',
+                targetUser: id,
+                details: {
+                    oldLevel: promotion.oldLevel,
+                    newLevel: promotion.newLevel,
+                    completedCredits: promotion.completedCredits,
+                },
+                ipAddress: req.ip,
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            promoted: promotion.promoted,
+            oldLevel: promotion.oldLevel,
+            newLevel: promotion.newLevel,
+            completedCredits: promotion.completedCredits,
+            message: promotion.promoted
+                ? `Student promoted from Year ${promotion.oldLevel} to Year ${promotion.newLevel}!`
+                : `No promotion needed. Current level: Year ${promotion.newLevel} with ${promotion.completedCredits} completed credits.`,
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * GET /api/admin/students/:id/academic-summary
+ * Get full academic summary for a student
+ */
+export const getStudentAcademicSummary = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const summary = await getAcademicSummary(Array.isArray(id) ? id[0] : id);
+
+        res.status(200).json({
+            success: true,
+            summary,
         });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });

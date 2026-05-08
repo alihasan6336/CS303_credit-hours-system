@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { courseAssignmentApi } from "../../utils/api";
+import { alertSuccess, alertError, alertConfirm } from "../../utils/alerts";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 
 interface Course {
@@ -112,9 +113,10 @@ const CourseAssignmentPage: React.FC = () => {
       });
 
       setShowModal(false);
+      alertSuccess("Course assigned successfully");
       fetchData();
     } catch (err: any) {
-      setError(err.message || "Failed to assign course");
+      alertError(err.message || "Failed to assign course");
     } finally {
       setFormLoading(false);
     }
@@ -124,15 +126,20 @@ const CourseAssignmentPage: React.FC = () => {
     assignmentId: string,
     courseName: string,
   ) => {
-    if (!window.confirm(`Remove ${courseName} from this level?`)) {
-      return;
-    }
+    const confirmed = await alertConfirm(
+      `Remove "${courseName}" from this level?`,
+      "Confirm Removal",
+      "Yes, remove",
+      "Cancel"
+    );
+    if (!confirmed) return;
 
     try {
       await courseAssignmentApi.removeAssignment(assignmentId);
+      alertSuccess("Course assignment removed successfully");
       fetchData();
     } catch (err: any) {
-      setError(err.message || "Failed to remove assignment");
+      alertError(err.message || "Failed to remove assignment");
     }
   };
 

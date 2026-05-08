@@ -17,6 +17,9 @@ import {
   updateStudentCreditOverride,
   getStudentCreditLimit,
   resetPassword,
+  completeStudentSemester,
+  checkStudentPromotion,
+  getStudentAcademicSummary,
 } from '../controllers/adminController';
 import { adminProtect, requireRole, requirePermission } from '../middleware/adminProtect';
 import { asyncWrap } from '../middleware/errorHandler';
@@ -63,5 +66,10 @@ router.get('/enrollments', requireRole(...ALL_ADMIN_ROLES), requirePermission('e
 router.post('/enrollments', requireRole(...ALL_ADMIN_ROLES), adminActionLimiter, requirePermission('enrollments:create'), asyncWrap(adminEnroll));
 router.delete('/enrollments/:id', requireRole(...ALL_ADMIN_ROLES), adminActionLimiter, requirePermission('enrollments:delete'), asyncWrap(adminUnenroll));
 router.patch('/enrollments/:id/grade', requireRole(...ALL_ADMIN_ROLES), adminActionLimiter, requirePermission('enrollments:update'), asyncWrap(updateGrade));
+
+// Student progress management
+router.post('/students/:id/complete-semester', requireRole('superadmin', 'enrollment_admin'), adminActionLimiter, requirePermission('enrollments:update'), asyncWrap(completeStudentSemester));
+router.post('/students/:id/check-promotion', requireRole('superadmin', 'enrollment_admin'), requirePermission('users:view'), asyncWrap(checkStudentPromotion));
+router.get('/students/:id/academic-summary', requireRole(...ALL_ADMIN_ROLES), requirePermission('users:view'), asyncWrap(getStudentAcademicSummary));
 
 export default router;

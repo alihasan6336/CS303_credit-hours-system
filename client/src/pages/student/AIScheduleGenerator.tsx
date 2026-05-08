@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import StudentLayout from "../../layout/StudentLayout";
 import { courseApi } from "../../utils/api";
+import { alertError, alertSuccess } from "../../utils/alerts";
 import { Sparkles, Calendar, Clock, MapPin, User, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
@@ -521,11 +522,12 @@ const AIScheduleGenerator: React.FC = () => {
                           const res = await courseApi.bulkEnroll(courseIds, true); // replaceExisting: true
                           if (res.success) {
                             setEnrollSuccess(true);
+                            alertSuccess("Successfully enrolled in all courses!");
                           } else {
                             throw new Error(res.message);
                           }
                         } catch (err: any) {
-                          alert(err.message || "Failed to enroll in some courses.");
+                          alertError(err.message || "Failed to enroll in some courses.");
                         } finally {
                           setEnrolling(false);
                         }

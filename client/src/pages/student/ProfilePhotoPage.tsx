@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import StudentLayout from "../../layout/StudentLayout";
 import { photoApi } from "../../utils/api";
+import { alertSuccess, alertError, confirmDelete } from "../../utils/alerts";
 import { Camera, Trash2, Upload, ArrowLeft, User, Loader2 } from "lucide-react";
 
 const ProfilePhotoPage: React.FC = () => {
@@ -60,22 +61,23 @@ const ProfilePhotoPage: React.FC = () => {
       const res = await photoApi.upload(file);
       if (res.success) {
         setPhotoUrl(res.photoUrl);
-        setSuccess("Photo uploaded successfully!");
+        alertSuccess("Photo uploaded successfully!");
         // Update localStorage so sidebar shows new photo
         user.photoUrl = res.photoUrl;
         localStorage.setItem("student", JSON.stringify(user));
       } else {
-        setError(res.message || "Upload failed");
+        alertError(res.message || "Upload failed");
       }
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.");
+      alertError(err.message || "An unexpected error occurred");
     } finally {
       setUploading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to remove your profile photo?")) return;
+    const confirmed = await confirmDelete("your profile photo");
+    if (!confirmed) return;
 
     setLoading(true);
     setError(null);
@@ -85,14 +87,14 @@ const ProfilePhotoPage: React.FC = () => {
       const res = await photoApi.deletePhoto();
       if (res.success) {
         setPhotoUrl("");
-        setSuccess("Photo removed successfully.");
+        alertSuccess("Photo removed successfully");
         user.photoUrl = "";
         localStorage.setItem("student", JSON.stringify(user));
       } else {
-        setError(res.message || "Delete failed");
+        alertError(res.message || "Delete failed");
       }
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.");
+      alertError(err.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
