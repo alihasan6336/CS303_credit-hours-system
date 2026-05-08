@@ -95,7 +95,13 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
 
     if (onClearError) onClearError();
 
-    await onSubmit({ ...formData, gpa });
+    if (role === "admin" || role === "superadmin") {
+      const adminData = { ...formData, gpa };
+      delete adminData.major;
+      await onSubmit(adminData);
+    } else {
+      await onSubmit({ ...formData, gpa });
+    }
 
     setFormData({
       fullName: "",
@@ -412,25 +418,6 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
                 className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="ADMIN-001"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Major
-              </label>
-              <select
-                name="major"
-                value={formData.major}
-                onChange={handleChange}
-                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                required
-              >
-                {majors.map((major) => (
-                  <option key={major} value={major}>
-                    {major}
-                  </option>
-                ))}
-              </select>
             </div>
 
             <div>
