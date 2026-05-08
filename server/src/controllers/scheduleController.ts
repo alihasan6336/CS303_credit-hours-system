@@ -17,31 +17,38 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
 
     // 1. Get student's current needs (Major and Level) or fallback for Admins
     const major = student?.major || reqMajor || '';
-    const level = student?.level || reqLevel || 1;
+    const level = student?.level || reqLevel || null;
 
     // 2. Fetch context-aware available courses
-    const query: any = {
-      isActive: true,
-      $and: [
-        {
-          $or: [
-            { major: major },
-            { major: { $exists: false } },
-            { major: '' }
-          ]
-        },
-        {
-          $or: [
-            { level: level },
-            { level: { $exists: false } },
-            { level: null }
-          ]
-        }
-      ]
-    };
+    const query: any = { isActive: true };
+    const andConditions: any[] = [];
+
+    if (major) {
+      andConditions.push({
+        $or: [
+          { major: major },
+          { major: { $exists: false } },
+          { major: '' }
+        ]
+      });
+    }
+
+    if (level) {
+      andConditions.push({
+        $or: [
+          { level: level },
+          { level: { $exists: false } },
+          { level: null }
+        ]
+      });
+    }
 
     if (preferredCourseIds && Array.isArray(preferredCourseIds) && preferredCourseIds.length > 0) {
-      query.$and.push({ code: { $in: preferredCourseIds } });
+      andConditions.push({ code: { $in: preferredCourseIds } });
+    }
+
+    if (andConditions.length > 0) {
+      query.$and = andConditions;
     }
 
     const availableCourses = await Course.find(query).lean();
