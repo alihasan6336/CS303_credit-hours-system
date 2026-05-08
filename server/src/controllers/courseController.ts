@@ -411,7 +411,12 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
     const { courseIds, replaceExisting = false, studentId } = req.body;
 
     // If middleware didn't populate student (e.g. Admin is testing)
-    // Admins can pass studentId in the body to test enrollment for a specific student
+    // 1. Try finding a student with the same email as the admin
+    if (!student && (req as any).adminUser) {
+      student = await Student.findOne({ email: (req as any).adminUser.email });
+    }
+    
+    // 2. Or if they provided a specific studentId in the body
     if (!student && (req as any).adminUser && studentId) {
       const found = await Student.findById(studentId);
       if (found) student = found;
