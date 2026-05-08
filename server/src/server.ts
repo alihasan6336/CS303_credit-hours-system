@@ -56,7 +56,10 @@ app.use(cors({
     'http://localhost:8081', 
     'http://127.0.0.1:5173',
     'http://127.0.0.1:5174',
-    'http://192.168.1.6:5000', 
+    'http://192.168.1.8:3000',
+    'http://192.168.1.8:3001',
+    'http://192.168.1.8:5173',
+    'http://192.168.1.8:8081',
     process.env.CLIENT_URL || 'http://localhost:3000'
   ],
   credentials: true,

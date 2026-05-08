@@ -407,11 +407,20 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const student = req.student;
+    let student = req.student;
     const { courseIds, replaceExisting = false } = req.body;
 
+    // If middleware didn't populate student (e.g. Admin testing or session issue)
+    if (!student && req.user) {
+      const foundStudent = await Student.findOne({ user: req.user._id });
+      if (foundStudent) student = foundStudent;
+    }
+
     if (!student) {
-      res.status(403).json({ success: false, message: 'Only students can enroll in courses.' });
+      res.status(403).json({ 
+        success: false, 
+        message: 'Only students can enroll in courses. Please log in with a student account.' 
+      });
       return;
     }
 
@@ -491,6 +500,18 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
     }
 
     await session.commitTransaction();
+
+    // 4. Create Audit Log (Background)
+    AuditLog.create({
+      actor: req.user?._id || (student as any)._id,
+      action: 'BULK_ENROLL',
+      details: { 
+        studentId: student._id,
+        courses: results,
+        message: `Student enrolled in: ${results.join(', ')}`
+      }
+    }).catch(err => console.error('Audit log failed:', err));
+
     res.status(201).json({
       success: true,
       message: `Successfully enrolled in: ${results.join(', ')}`,

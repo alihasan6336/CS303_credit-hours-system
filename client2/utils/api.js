@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
-const API_BASE_URL =process.env.EXPO_PUBLIC_VITE_API_BASE_URL || (Platform.OS === "android" ? "http://192.168.1.5:5000" : "http://localhost:5000");
+const API_BASE_URL = process.env.EXPO_PUBLIC_VITE_API_BASE_URL || (Platform.OS === "android" ? "http://192.168.1.8:3001" : "http://localhost:3001");
 
 
 async function request(path, options = {}) {

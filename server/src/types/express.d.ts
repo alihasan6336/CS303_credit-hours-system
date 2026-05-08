@@ -23,6 +23,10 @@ declare global {
        * Resolved operational admin type based on id/email mapping.
        */
       adminType?: import('../utils/adminType').AdminType | null;
+      /**
+       * The raw user object from the database (User model)
+       */
+      user?: any;
     }
   }
 }
