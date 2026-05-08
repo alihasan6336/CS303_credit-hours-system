@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Course from '../models/Course';
 import Student from '../models/Student';
+import Enrollment from '../models/Enrollment';
 import SystemSettings from '../models/SystemSettings';
 import { optimizeSchedule, OptimizedSchedule } from '../utils/scheduleOptimizer';
 import { getAIAdviceForSchedule, generateAIScheduleSelection } from '../utils/aiScheduleAssistant';
@@ -18,6 +19,35 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
     // 1. Get student's current needs (Major and Level) or fallback for Admins
     const major = student?.major || reqMajor || '';
     const level = student?.level || reqLevel || null;
+
+    // === ENROLLMENT STATUS CHECK ===
+    // Check if enrollment table is open for this student
+    if (student) {
+      const settings = await SystemSettings.findOne().lean();
+      const openLevels = settings?.enrollmentOpenLevels || [];
+      if (!settings?.isRegistrationOpen || !openLevels.includes(student.level)) {
+        res.status(403).json({
+          success: false,
+          message: `Enrollment is currently closed for Year ${student.level} students. Please wait for the enrollment table to open.`,
+          enrollmentClosed: true,
+          openLevels,
+        });
+        return;
+      }
+    }
+
+    // 2. Fetch existing enrollments to check credit limits and time conflicts
+    let existingEnrollments: any[] = [];
+    let currentCredits = 0;
+    if (student) {
+      existingEnrollments = await Enrollment.find({
+        student: student._id,
+        semester: student.currentSemester,
+        status: 'active'
+      }).populate('course', 'code name credits day time startTime endTime');
+      
+      currentCredits = existingEnrollments.reduce((sum, e) => sum + ((e.course as any)?.credits || 0), 0);
+    }
 
     // 2. Fetch context-aware available courses
     const query: any = { isActive: true };
@@ -53,22 +83,61 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
       query.$and = andConditions;
     }
 
-    const availableCourses = await Course.find(query).lean();
+    let availableCourses = await Course.find(query).lean();
+    
+    // Filter out courses that conflict with existing enrollments
+    if (existingEnrollments.length > 0) {
+      const existingCourses = existingEnrollments.map(e => e.course).filter(Boolean);
+      availableCourses = availableCourses.filter((course: any) => {
+        // Check if this course is already enrolled
+        const alreadyEnrolled = existingCourses.some((ec: any) => ec._id?.toString() === course._id.toString());
+        if (alreadyEnrolled) return false;
+        
+        // Check for time conflicts
+        const hasTimeConflict = existingCourses.some((ec: any) => {
+          if (ec.day !== course.day) return false;
+          // Time overlap: (StartA < EndB) and (EndA > StartB)
+          return ec.startTime < course.endTime && ec.endTime > course.startTime;
+        });
+        return !hasTimeConflict;
+      });
+    }
+    
     console.log(`[Schedule] Found ${availableCourses.length} available courses for query:`, JSON.stringify(query));
+    console.log(`[Schedule] Student currently has ${currentCredits} credits enrolled`);
 
     // 3. Determine Credit Limits using centralized calculator (GPA-based + summer + override)
     const creditLimit = await getCreditLimitForStudent(
       student || { currentSemester: 'Fall', gpa: 3.5 }
     );
-    console.log(`[Schedule] Credit limits: min=${creditLimit.minCredits}, max=${creditLimit.maxCredits}`);
+    
+    // Adjust max credits to account for already enrolled courses
+    const remainingMaxCredits = Math.max(0, creditLimit.maxCredits - currentCredits);
+    
+    console.log(`[Schedule] Credit limits: min=${creditLimit.minCredits}, max=${creditLimit.maxCredits}, remaining=${remainingMaxCredits}`);
     const minCredits = creditLimit.minCredits;
-    const maxCredits = creditLimit.maxCredits;
+    const maxCredits = remainingMaxCredits;
+
+    // Check if student is already at max credits
+    if (remainingMaxCredits === 0) {
+      res.status(400).json({
+        success: false,
+        message: `You have already enrolled in ${currentCredits} credits, which is your maximum allowed. You cannot add more courses.`,
+        currentCredits,
+        maxCredits: creditLimit.maxCredits,
+        alreadyAtMax: true
+      });
+      return;
+    }
 
     // Only courses for the student's level and major (if applicable)
     if (availableCourses.length === 0) {
+      const message = existingEnrollments.length > 0 
+        ? 'No additional courses available. All available courses conflict with your current schedule or you are already enrolled in all available courses.'
+        : 'No available courses found for your major and level.';
       res.status(404).json({
         success: false,
-        message: 'No available courses found for your major and level.'
+        message
       });
       return;
     }
@@ -168,6 +237,21 @@ export const recommendCourses = async (req: Request, res: Response): Promise<voi
   try {
     const student = req.student;
     
+    // === ENROLLMENT STATUS CHECK ===
+    if (student) {
+      const settings = await SystemSettings.findOne().lean();
+      const openLevels = settings?.enrollmentOpenLevels || [];
+      if (!settings?.isRegistrationOpen || !openLevels.includes(student.level)) {
+        res.status(403).json({
+          success: false,
+          message: `Enrollment is currently closed for Year ${student.level} students.`,
+          enrollmentClosed: true,
+          openLevels,
+        });
+        return;
+      }
+    }
+    
     // 1. Fetch available courses based on context
     const query: any = { isActive: true };
     if (student) {
@@ -177,16 +261,45 @@ export const recommendCourses = async (req: Request, res: Response): Promise<voi
       ];
     }
     
-    const availableCourses = await Course.find(query).lean();
+    let availableCourses = await Course.find(query).lean();
     
-    // 2. Get Credit Limits
+    // 2. Fetch existing enrollments and filter out conflicts
+    let currentCredits = 0;
+    if (student) {
+      const existingEnrollments = await Enrollment.find({
+        student: student._id,
+        semester: student.currentSemester,
+        status: 'active'
+      }).populate('course', 'code name credits day time startTime endTime');
+      
+      const existingCourses = existingEnrollments.map(e => e.course).filter(Boolean);
+      currentCredits = existingCourses.reduce((sum: number, c: any) => sum + (c?.credits || 0), 0);
+      
+      // Filter out conflicting and already enrolled courses
+      availableCourses = availableCourses.filter((course: any) => {
+        const alreadyEnrolled = existingCourses.some((ec: any) => ec._id?.toString() === course._id.toString());
+        if (alreadyEnrolled) return false;
+        
+        const hasTimeConflict = existingCourses.some((ec: any) => {
+          if (ec.day !== course.day) return false;
+          return ec.startTime < course.endTime && ec.endTime > course.startTime;
+        });
+        return !hasTimeConflict;
+      });
+    }
+    
+    // 3. Get Credit Limits
     const creditLimit = await getCreditLimitForStudent(student || { currentSemester: 'Fall', gpa: 3.5 });
+    
+    // Adjust for already enrolled credits
+    const remainingMaxCredits = Math.max(0, creditLimit.maxCredits - currentCredits);
+    const remainingMinCredits = Math.max(0, creditLimit.minCredits - currentCredits);
 
-    // 3. Call AI Selection
+    // 3. Call AI Selection with adjusted limits
     const recommendedCodes = await generateAIScheduleSelection(
       availableCourses as any,
-      creditLimit.minCredits,
-      creditLimit.maxCredits
+      remainingMinCredits,
+      remainingMaxCredits
     );
 
     if (!recommendedCodes) {

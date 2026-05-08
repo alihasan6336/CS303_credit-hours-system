@@ -69,16 +69,34 @@ const AIScheduleGenerator: React.FC = () => {
 
   const handleRecommend = async () => {
     setRecommending(true);
+    setError(null);
     try {
-      // @ts-ignore
-      const data = await scheduleApi.recommend();
+      const response = await fetch(`${API_BASE_URL}/api/schedule/recommend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.enrollmentClosed) {
+          setError(`Enrollment is currently closed for Year ${user.level} students. The enrollment table is not open for your level.`);
+          return;
+        }
+        throw new Error(errorData.message || 'Failed to get recommendations');
+      }
+      
+      const data = await response.json();
       if (data.success) {
         const codes = data.recommendations.map((c: any) => c.code);
         // Only set unique codes
         setSelectedCourseIds(Array.from(new Set(codes)));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Recommendation failed", err);
+      setError(err.message || "Failed to get AI recommendations");
     } finally {
       setRecommending(false);
     }
@@ -104,7 +122,19 @@ const AIScheduleGenerator: React.FC = () => {
         })
       });
 
+      // Handle non-SSE error responses
       if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          const errorData = await response.json();
+          if (errorData.enrollmentClosed) {
+            throw new Error(`Enrollment is currently closed for Year ${user.level} students. The enrollment table is not open for your level.`);
+          }
+          if (errorData.alreadyAtMax) {
+            throw new Error(`You have already enrolled in ${errorData.currentCredits} credits, which is your maximum allowed (${errorData.maxCredits} credits). You cannot add more courses.`);
+          }
+          throw new Error(errorData.message || 'Failed to generate schedule');
+        }
         throw new Error('Failed to generate schedule');
       }
 
@@ -370,10 +400,13 @@ const AIScheduleGenerator: React.FC = () => {
             <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
               <AlertCircle size={32} />
             </div>
-            <h2 className="text-xl font-bold text-red-800 mb-2">Optimization Failed</h2>
+            <h2 className="text-xl font-bold text-red-800 mb-2">Schedule Generation Failed</h2>
             <p className="text-red-600 mb-8">{error}</p>
             <button
-              onClick={() => setStep(1)}
+              onClick={() => {
+                setStep(1);
+                setError(null);
+              }}
               className="px-8 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors"
             >
               Go Back
