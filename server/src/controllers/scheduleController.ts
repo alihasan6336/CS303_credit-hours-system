@@ -23,7 +23,9 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
     const query: any = { isActive: true };
     const andConditions: any[] = [];
 
-    if (major) {
+    const hasPreferredCourses = preferredCourseIds && Array.isArray(preferredCourseIds) && preferredCourseIds.length > 0;
+
+    if (!hasPreferredCourses && major) {
       andConditions.push({
         $or: [
           { major: major },
@@ -33,7 +35,7 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
       });
     }
 
-    if (level) {
+    if (!hasPreferredCourses && level) {
       andConditions.push({
         $or: [
           { level: level },
@@ -43,7 +45,7 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
       });
     }
 
-    if (preferredCourseIds && Array.isArray(preferredCourseIds) && preferredCourseIds.length > 0) {
+    if (hasPreferredCourses) {
       andConditions.push({ code: { $in: preferredCourseIds } });
     }
 
