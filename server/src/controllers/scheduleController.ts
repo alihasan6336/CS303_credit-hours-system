@@ -12,12 +12,12 @@ import { getCreditLimitForStudent } from '../utils/creditLimitCalculator';
  */
 export const autoGenerateSchedule = async (req: Request, res: Response): Promise<void> => {
   try {
-    const student = req.student!;
-    const { preferredCourseIds } = req.body;
+    const student = req.student;
+    const { preferredCourseIds, major: reqMajor, level: reqLevel } = req.body;
 
-    // 1. Get student's current needs (Major and Level)
-    const major = student.major;
-    const level = student.level;
+    // 1. Get student's current needs (Major and Level) or fallback for Admins
+    const major = student?.major || reqMajor || '';
+    const level = student?.level || reqLevel || 1;
 
     // 2. Fetch context-aware available courses
     const query: any = {
@@ -47,7 +47,9 @@ export const autoGenerateSchedule = async (req: Request, res: Response): Promise
     const availableCourses = await Course.find(query).lean();
 
     // 3. Determine Credit Limits using centralized calculator (GPA-based + summer + override)
-    const creditLimit = await getCreditLimitForStudent(student);
+    const creditLimit = await getCreditLimitForStudent(
+      student || { currentSemester: 'Fall', gpa: 3.5 }
+    );
     const minCredits = creditLimit.minCredits;
     const maxCredits = creditLimit.maxCredits;
 
