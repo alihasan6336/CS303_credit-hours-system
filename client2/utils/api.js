@@ -101,6 +101,13 @@ export const courseApi = {
     update(id, payload) {
         return request(`/api/courses/${id}`, { method: "PUT", body: JSON.stringify(payload) });
     },
+
+    bulkEnroll(courseIds, replaceExisting = false) {
+        return request("/api/courses/bulk-enroll", {
+            method: "POST",
+            body: JSON.stringify({ courseIds, replaceExisting }),
+        });
+    },
 };
 
 export const adminApi = {
@@ -183,6 +190,12 @@ export const scheduleApi = {
         return request("/api/schedule/generate", {
             method: "POST",
             body: body ? JSON.stringify(body) : undefined,
+        });
+    },
+
+    recommend() {
+        return request("/api/schedule/recommend", {
+            method: "POST",
         });
     },
 };

@@ -24,6 +24,7 @@ export default function AIScheduleScreen() {
   const [enrollSuccess, setEnrollSuccess] = useState(false);
   const [step, setStep] = useState(1);
   const [fetchingCourses, setFetchingCourses] = useState(true);
+  const [recommending, setRecommending] = useState(false);
 
   useEffect(() => {
     fetchAvailable();
@@ -53,6 +54,21 @@ export default function AIScheduleScreen() {
       console.error("Failed to fetch courses", err);
     } finally {
       setFetchingCourses(false);
+    }
+  };
+
+  const handleRecommend = async () => {
+    setRecommending(true);
+    try {
+      const data = await scheduleApi.recommend();
+      if (data.success) {
+        const codes = data.recommendations.map(c => c.code);
+        setSelectedCourseIds(Array.from(new Set(codes)));
+      }
+    } catch (err) {
+      Alert.alert("Error", "AI Recommendation failed: " + err.message);
+    } finally {
+      setRecommending(false);
     }
   };
 
@@ -94,13 +110,16 @@ export default function AIScheduleScreen() {
     if (!schedule) return;
     setEnrolling(true);
     try {
-      for (const course of schedule.courses) {
-        await courseApi.enroll(course._id || course.id);
+      const courseIds = schedule.courses.map(c => c._id || c.id);
+      const res = await courseApi.bulkEnroll(courseIds, true); // replaceExisting: true
+      if (res.success) {
+        setEnrollSuccess(true);
+        Alert.alert("Success", res.message || "Enrolled in all courses successfully!");
+      } else {
+        throw new Error(res.message);
       }
-      setEnrollSuccess(true);
-      Alert.alert("Success", "Enrolled in all courses successfully!");
     } catch (err) {
-      Alert.alert("Error", "Failed to enroll in some courses.");
+      Alert.alert("Error", err.message || "Failed to enroll in some courses.");
     } finally {
       setEnrolling(false);
     }
@@ -153,9 +172,21 @@ export default function AIScheduleScreen() {
         <>
           <View style={styles.selectionCard}>
             <View style={styles.selectionHeader}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.selectionTitle}>Select Your Courses</Text>
                 <Text style={styles.selectionSub}>Choose the courses you'd like to include in your optimized schedule.</Text>
+                
+                <TouchableOpacity 
+                  style={[styles.recommendBtn, recommending && { opacity: 0.7 }]} 
+                  onPress={handleRecommend}
+                  disabled={recommending}
+                >
+                  {recommending ? (
+                    <ActivityIndicator size="small" color="#6366f1" />
+                  ) : (
+                    <Text style={styles.recommendBtnText}>✨ Smart Select with AI</Text>
+                  )}
+                </TouchableOpacity>
               </View>
               <View style={styles.creditCounter}>
                 <Text style={[styles.creditValue, { color: totalSelectedCredits < 14 ? "#f59e0b" : "#22c55e" }]}>
@@ -406,6 +437,22 @@ const styles = StyleSheet.create({
   creditValue: { fontSize: 24, fontWeight: "900" },
   creditRange: { fontSize: 12, color: "#aaa", fontWeight: "600" },
   creditLabel: { fontSize: 9, color: "#aaa", fontWeight: "800", textTransform: "uppercase", letterSpacing: 1 },
+
+  recommendBtn: {
+    marginTop: 10,
+    backgroundColor: "#eff6ff",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "#dbeafe",
+  },
+  recommendBtnText: {
+    color: "#6366f1",
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
   warningBanner: {
     backgroundColor: "#fffbeb", borderWidth: 1, borderColor: "#fde68a",
