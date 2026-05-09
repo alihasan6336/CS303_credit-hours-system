@@ -292,6 +292,13 @@ export const adminApi = {
       method: "DELETE",
     });
   },
+
+  updateEnrollmentGrade(enrollmentId: string, grade: number): Promise<{ success: boolean; message: string }> {
+    return request(`/api/admin/enrollments/${enrollmentId}/grade`, {
+      method: "PATCH",
+      body: JSON.stringify({ grade }),
+    });
+  },
 };
 
 export const gpaApi = {
