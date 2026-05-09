@@ -55,7 +55,7 @@ const AIScheduleGenerator: React.FC = () => {
 
   const user = JSON.parse(localStorage.getItem("student") || "{}");
 
-  const [recommending, setRecommending] = useState(false);
+  // const [recommending, setRecommending] = useState(false);
 
   const fetchAvailable = async () => {
     try {
@@ -68,6 +68,7 @@ const AIScheduleGenerator: React.FC = () => {
     }
   };
 
+  /*
   const handleRecommend = async () => {
     setRecommending(true);
     setError(null);
@@ -102,6 +103,7 @@ const AIScheduleGenerator: React.FC = () => {
       setRecommending(false);
     }
   };
+  */
 
   React.useEffect(() => {
     fetchAvailable();
