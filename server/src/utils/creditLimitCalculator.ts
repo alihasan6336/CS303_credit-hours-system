@@ -12,11 +12,11 @@ export interface CreditLimitResult {
  * Calculates the credit hour enrollment limits for a student based on:
  * 1. Admin override (if active) — takes absolute precedence
  * 2. Summer semester — hard cap (default 9)
- * 3. GPA-based rules:
- *    - GPA < 1.0 → max 12 credits
- *    - GPA > 3.0 AND Year 4 → max 21 credits
- *    - GPA > 3.0 BUT not Year 4 → standard max 19 credits
- *    - Otherwise → default max (19)
+ * 3. Year & GPA-based rules (Fall / Spring):
+ *    - Year 1 (any GPA, including 0) → standard 15–19 credit hours
+ *    - Year 2, 3, or 4 with GPA < 1.0 → max 12 credit hours (academic probation)
+ *    - Year 4 with GPA > 3.0 → max 21 credit hours (elevated limit)
+ *    - Otherwise (GPA 1–3, any year) → standard 15–19 credit hours
  */
 export async function getCreditLimitForStudent(
   student: { gpa?: number; level?: number; currentSemester: string; creditLimitOverride?: { min: number; max: number; isActive: boolean; reason: string } }
@@ -48,44 +48,38 @@ export async function getCreditLimitForStudent(
     };
   }
 
-  // 3. GPA-based rules (Fall / Spring)
+  // 3. Year & GPA-based rules (Fall / Spring)
   const gpa = student.gpa ?? 0;
-  const defaultMin = settings?.minCreditHoursDefault ?? 14;
+  const level = student.level ?? 1;
+  const defaultMin = settings?.minCreditHoursDefault ?? 15;
   const defaultMax = settings?.maxCreditHoursDefault ?? 19;
   const gpaBelow1Max = settings?.maxCreditHoursGpaBelow1 ?? 12;
   const gpaAbove3Max = settings?.maxCreditHoursGpaAbove3 ?? 21;
 
-  if (gpa < 1 && student.level !== 1) {
+  // Rule A: Year 1 students always get the standard range (even if GPA is 0)
+  if (level === 1) {
+    return {
+      minCredits: defaultMin,
+      maxCredits: defaultMax,
+      reason: `First-year student — standard limit ${defaultMin}–${defaultMax} credit hours`,
+      isSummer: false,
+      isOverride: false,
+    };
+  }
+
+  // Rule B: Year 2, 3, or 4 with GPA < 1.0 → academic probation cap
+  if (gpa < 1) {
     return {
       minCredits: 0,
       maxCredits: gpaBelow1Max,
-      reason: `GPA below 1.0 — maximum ${gpaBelow1Max} credit hours`,
+      reason: `GPA below 1.0 (Year ${level}) — academic probation, maximum ${gpaBelow1Max} credit hours`,
       isSummer: false,
       isOverride: false,
     };
   }
 
-  if (gpa < 1 && student.level === 1) {
-    return {
-      minCredits: defaultMin,
-      maxCredits: defaultMax,
-      reason: `First year student with low GPA — standard limit ${defaultMax} credit hours`,
-      isSummer: false,
-      isOverride: false,
-    };
-  }
-
-  if (gpa >= 1 && gpa <= 3) {
-    return {
-      minCredits: defaultMin,
-      maxCredits: defaultMax,
-      reason: `GPA ${gpa.toFixed(2)} — standard limit ${defaultMax} credit hours`,
-      isSummer: false,
-      isOverride: false,
-    };
-  }
-
-  if (gpa > 3 && student.level === 4) {
+  // Rule C: Year 4 with GPA > 3.0 → elevated limit
+  if (level === 4 && gpa > 3) {
     return {
       minCredits: defaultMin,
       maxCredits: gpaAbove3Max,
@@ -95,11 +89,11 @@ export async function getCreditLimitForStudent(
     };
   }
 
-  // GPA > 3 but not Year 4
+  // Rule D: All other cases (GPA 1–3, Year 2/3/4 or GPA > 3 but not Year 4) → standard range
   return {
     minCredits: defaultMin,
     maxCredits: defaultMax,
-    reason: `GPA above 3.0 but Year ${student.level} — standard limit ${defaultMax} credit hours (Year 4 required for elevated limit)`,
+    reason: `GPA ${gpa.toFixed(2)}, Year ${level} — standard limit ${defaultMin}–${defaultMax} credit hours`,
     isSummer: false,
     isOverride: false,
   };
