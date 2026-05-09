@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { PermissionKey } from '../models/AdminPermission';
 import { hasPermission, AdminRole, canManageAdmins } from '../utils/adminRoles';
 
-// Extend Express Request to include admin
 declare global {
   namespace Express {
     interface Request {
