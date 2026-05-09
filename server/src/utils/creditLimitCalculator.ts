@@ -55,11 +55,21 @@ export async function getCreditLimitForStudent(
   const gpaBelow1Max = settings?.maxCreditHoursGpaBelow1 ?? 12;
   const gpaAbove3Max = settings?.maxCreditHoursGpaAbove3 ?? 21;
 
-  if (gpa < 1) {
+  if (gpa < 1 && student.level !== 1) {
     return {
       minCredits: 0,
       maxCredits: gpaBelow1Max,
       reason: `GPA below 1.0 — maximum ${gpaBelow1Max} credit hours`,
+      isSummer: false,
+      isOverride: false,
+    };
+  }
+
+  if (gpa < 1 && student.level === 1) {
+    return {
+      minCredits: defaultMin,
+      maxCredits: defaultMax,
+      reason: `First year student with low GPA — standard limit ${defaultMax} credit hours`,
       isSummer: false,
       isOverride: false,
     };
