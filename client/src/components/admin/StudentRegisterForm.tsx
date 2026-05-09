@@ -123,7 +123,10 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "completedCreditHours" || name === "level" ? parseInt(value) || 0 : value,
+      [name]:
+        name === "completedCreditHours" || name === "level"
+          ? parseInt(value) || 0
+          : value,
     }));
   };
 
@@ -215,12 +218,22 @@ const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
                 className="w-full px-3 py-2.5 text-sm border-2 border-indigo-100 bg-indigo-50/30 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
               >
                 <option value="">-- Select Specialization --</option>
-                <option value="it_admin">IT Administrator (Accounts & System)</option>
-                <option value="table_admin">Table Administrator (Schedules & Timetables)</option>
-                <option value="courses_admin">Courses Administrator (Catalog & Content)</option>
-                <option value="enrollment_admin">Enrollment Administrator (Student Records)</option>
+                <option value="it_admin">
+                  IT Administrator (Accounts & System)
+                </option>
+                <option value="table_admin">
+                  Table Administrator (Schedules & Timetables)
+                </option>
+                <option value="courses_admin">
+                  Courses Administrator (Catalog & Content)
+                </option>
+                <option value="enrollment_admin">
+                  Enrollment Administrator (Student Records)
+                </option>
               </select>
-              <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">This determines which dashboard the admin will see.</p>
+              <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">
+                This determines which dashboard the admin will see.
+              </p>
             </div>
           </div>
         )}
