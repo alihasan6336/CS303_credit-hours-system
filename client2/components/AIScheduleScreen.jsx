@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { courseApi, scheduleApi } from "../utils/api";
+import { courseApi, scheduleApi, settingsApi } from "../utils/api";
 
 const { width } = Dimensions.get("window");
 
@@ -25,6 +25,7 @@ export default function AIScheduleScreen() {
   const [step, setStep] = useState(1);
   const [fetchingCourses, setFetchingCourses] = useState(true);
   const [recommending, setRecommending] = useState(false);
+  const [isRegistrationOpenForMe, setIsRegistrationOpenForMe] = useState(false);
 
   useEffect(() => {
     fetchAvailable();
@@ -33,22 +34,28 @@ export default function AIScheduleScreen() {
   const fetchAvailable = async () => {
     try {
       setFetchingCourses(true);
-      const [allRes, myRes] = await Promise.all([
+      const [allRes, myRes, settingsRes] = await Promise.all([
         courseApi.getAll(),
-        courseApi.getMyCourses()
+        courseApi.getMyCourses(),
+        settingsApi.getSettings()
       ]);
-      
+
+      const settings = settingsRes.settings || {};
+      const openLevels = settings.enrollmentOpenLevels || [];
+      const isGlobalOpen = settings.isRegistrationOpen;
+
+      const studentLevel = parseInt(myRes.student?.level || 1, 10);
+      setIsRegistrationOpenForMe(isGlobalOpen && openLevels.includes(studentLevel));
+
       const passedIds = (myRes.data || [])
         .filter(e => e.status === 'completed' && e.grade >= (e.course?.passingGrade || 50))
         .map(e => e.course?._id || e.course?.id);
-      
-      const studentLevel = parseInt(myRes.student?.level || myRes.user?.level || 1, 10);
-      
-      const filtered = (allRes.courses || []).filter(c => 
-        !passedIds.includes(c._id || c.id) && 
+
+      const filtered = (allRes.courses || []).filter(c =>
+        !passedIds.includes(c._id || c.id) &&
         (parseInt(c.level || 1, 10) <= studentLevel)
       );
-      
+
       setAvailableCourses(filtered);
     } catch (err) {
       console.error("Failed to fetch courses", err);
@@ -168,16 +175,25 @@ export default function AIScheduleScreen() {
         </View>
       )}
 
-      {step === 1 && !loading && !error && (
+      {!isRegistrationOpenForMe && (
+        <View style={styles.closedBanner}>
+          <Text style={styles.closedIconSmall}>🔒</Text>
+          <Text style={styles.closedTextSmall}>
+            Registration is currently closed for your year level. Optimizer features are unavailable.
+          </Text>
+        </View>
+      )}
+
+      {step === 1 && !loading && !error && isRegistrationOpenForMe && (
         <>
           <View style={styles.selectionCard}>
             <View style={styles.selectionHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.selectionTitle}>Select Your Courses</Text>
                 <Text style={styles.selectionSub}>Choose the courses you'd like to include in your optimized schedule.</Text>
-                
-                <TouchableOpacity 
-                  style={[styles.recommendBtn, recommending && { opacity: 0.7 }]} 
+
+                <TouchableOpacity
+                  style={[styles.recommendBtn, recommending && { opacity: 0.7 }]}
                   onPress={handleRecommend}
                   disabled={recommending}
                 >
@@ -342,17 +358,19 @@ export default function AIScheduleScreen() {
                 <Text style={styles.enrollSuccessText}>✅ Enrolled Successfully</Text>
               </View>
             ) : (
-              <TouchableOpacity
-                style={styles.enrollBtn}
-                onPress={handleEnroll}
-                disabled={enrolling}
-              >
-                {enrolling ? (
-                  <ActivityIndicator color="#6366f1" />
-                ) : (
-                  <Text style={styles.enrollBtnText}>Confirm Enrollment</Text>
-                )}
-              </TouchableOpacity>
+              isRegistrationOpenForMe && (
+                <TouchableOpacity
+                  style={styles.enrollBtn}
+                  onPress={handleEnroll}
+                  disabled={enrolling}
+                >
+                  {enrolling ? (
+                    <ActivityIndicator color="#6366f1" />
+                  ) : (
+                    <Text style={styles.enrollBtnText}>Confirm Enrollment</Text>
+                  )}
+                </TouchableOpacity>
+              )
             )}
           </View>
 
@@ -366,7 +384,7 @@ export default function AIScheduleScreen() {
                 </View>
                 {course.group && (
                   <View style={styles.timetableGroupBadge}>
-                    <Text style={styles.timetableGroupText}>Sec {course.group}</Text>
+                    <Text style={styles.timetableGroupText}>Grp {course.group}</Text>
                   </View>
                 )}
               </View>
@@ -400,7 +418,7 @@ const styles = StyleSheet.create({
   loadingTitle: { marginTop: 16, fontSize: 18, fontWeight: "700", color: "#111", textAlign: "center" },
   loadingSub: { marginTop: 8, fontSize: 13, color: "#888", textAlign: "center" },
 
-  
+
   header: { alignItems: "center", paddingVertical: 24, paddingHorizontal: 20 },
   headerIconBox: {
     width: 56, height: 56, borderRadius: 16,
@@ -414,7 +432,7 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: 14, color: "#888", textAlign: "center", lineHeight: 20 },
   headerHighlight: { color: "#6366f1", fontWeight: "700" },
 
-  
+
   errorCard: {
     backgroundColor: "#fef2f2", borderWidth: 1, borderColor: "#fecaca",
     borderRadius: 20, marginHorizontal: 16, padding: 24, alignItems: "center",
@@ -586,4 +604,19 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: "#f8fafc", paddingVertical: 8, borderRadius: 10, alignItems: "center",
   },
   timeScheduleText: { fontSize: 12, fontWeight: "700", color: "#555" },
+
+  // Registration Closed Styles
+  closedBanner: {
+    backgroundColor: "#fef2f2",
+    borderRadius: 14,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#fee2e2",
+  },
+  closedIconSmall: { fontSize: 20, marginRight: 12 },
+  closedTextSmall: { fontSize: 13, color: "#991b1b", fontWeight: "600", flex: 1 },
 });

@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
-const API_BASE_URL = process.env.EXPO_PUBLIC_VITE_API_BASE_URL || (Platform.OS === "android" ? "http://192.168.1.8:3001" : "http://localhost:3001");
+const API_BASE_URL = process.env.EXPO_PUBLIC_VITE_API_BASE_URL || (Platform.OS === "android" ? "http://192.168.1.47:5000" : "http://localhost:5000");
 
 
 async function request(path, options = {}) {
@@ -20,7 +20,22 @@ async function request(path, options = {}) {
         });
 
         let data;
-        const text = await res.text();
+        let text = await res.text();
+
+        // Handle SSE (Server-Sent Events) formatted response if it arrives as a single string
+        // This often happens in mobile environments where streaming is handled differently.
+        if (text.includes('data: {')) {
+            const lines = text.split('\n');
+            const successLine = lines.find(l => l.includes('"type":"success"'));
+            if (successLine) {
+                text = successLine.replace('data: ', '').trim();
+            } else {
+                // Try to find any data line if success isn't there yet
+                const anyDataLine = lines.find(l => l.startsWith('data: '));
+                if (anyDataLine) text = anyDataLine.replace('data: ', '').trim();
+            }
+        }
+
         try {
             data = JSON.parse(text);
         } catch (e) {
@@ -223,5 +238,44 @@ export const userApi = {
 
     async getAvatar(userId) {
         return request(`/api/photos/me`);
+    },
+};
+
+export const settingsApi = {
+    getSettings() {
+        return request("/api/settings");
+    },
+
+    updateSettings(body) {
+        return request("/api/settings", {
+            method: "PUT",
+            body: JSON.stringify(body),
+        });
+    },
+
+    openRegistration(levels) {
+        return request("/api/settings/open-registration", {
+            method: "POST",
+            body: JSON.stringify({ levels }),
+        });
+    },
+
+    closeRegistration(levels) {
+        return request("/api/settings/close-registration", {
+            method: "POST",
+            body: JSON.stringify({ levels }),
+        });
+    },
+
+    showTable() {
+        return request("/api/settings/show-table", {
+            method: "POST",
+        });
+    },
+
+    hideTable() {
+        return request("/api/settings/hide-table", {
+            method: "POST",
+        });
     },
 };
