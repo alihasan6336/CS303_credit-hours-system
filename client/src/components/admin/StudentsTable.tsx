@@ -99,7 +99,6 @@ const StudentsTable: React.FC<StudentsTableProps> = ({
                         {onManageEnrollments && (student.role || "").toLowerCase() === 'student' && (
                           <button
                             onClick={() => {
-                              console.log("Manage Enrollments clicked for:", student);
                               const studentId = student.id || (student as any)._id;
                               onManageEnrollments(studentId, student.fullName);
                             }}

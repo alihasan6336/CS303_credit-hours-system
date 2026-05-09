@@ -471,8 +471,15 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
     }
 
     const results = [];
+    const enrolledCoursesInBatch: any[] = []; // Track courses for conflict checking
     const creditLimit = await getCreditLimitForStudent(student);
     let totalCredits = 0;
+
+    // Pre-fetch all course details for conflict checking (only needed once)
+    const allCourses = !isAdminBulk ? await Course.find({
+      _id: { $in: courseIds }
+    }).lean().session(session) : [];
+    const courseMap = new Map(allCourses.map(c => [c._id.toString(), c]));
 
     // 2. Process each course
     for (const courseId of courseIds) {
@@ -496,6 +503,39 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
 
       if (existing) continue; // Skip if already enrolled
 
+      // === SCHEDULE CONFLICT CHECK ===
+      // Only check conflicts for non-admin users
+      // ONLY superadmin and courses_admin can bypass conflicts (not regular admin)
+      const adminUser = (req as any).adminUser;
+      const canBypassConflict = adminUser && ['superadmin', 'courses_admin'].includes(adminUser.role);
+      if (!canBypassConflict) {
+        // Check for conflicts with existing enrollments
+        const currentEnrollments = await Enrollment.find({
+          student: student._id,
+          semester: student.currentSemester,
+          status: 'active',
+        }).populate('course', 'day startTime endTime code name').session(session);
+
+        for (const enrollment of currentEnrollments) {
+          const enrolledCourse = enrollment.course as any;
+          if (enrolledCourse.day === course.day) {
+            // Time overlap check
+            if (course.startTime < enrolledCourse.endTime && enrolledCourse.startTime < course.endTime) {
+              throw new Error(`Schedule conflict: ${course.code} conflicts with ${enrolledCourse.code} on ${course.day} (${course.time} vs ${enrolledCourse.time})`);
+            }
+          }
+        }
+
+        // Check for conflicts with courses being enrolled in this batch
+        for (const enrolledCourse of enrolledCoursesInBatch) {
+          if (enrolledCourse.day === course.day) {
+            if (course.startTime < enrolledCourse.endTime && enrolledCourse.startTime < course.endTime) {
+              throw new Error(`Schedule conflict: ${course.code} conflicts with ${enrolledCourse.code} on ${course.day} (${course.time} vs ${enrolledCourse.time})`);
+            }
+          }
+        }
+      }
+
       // Create enrollment
       await Enrollment.create([{
         student: student._id,
@@ -510,6 +550,7 @@ export const bulkEnrollCourses = async (req: Request, res: Response): Promise<vo
 
       totalCredits += course.credits;
       results.push(course.code);
+      enrolledCoursesInBatch.push(course); // Track for batch conflict checking
     }
 
     // 3. Final Credit check

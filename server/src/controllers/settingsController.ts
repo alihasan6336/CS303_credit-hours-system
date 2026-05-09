@@ -9,7 +9,7 @@ export const getSettings = async (req: Request, res: Response): Promise<void> =>
         if (!settings) {
             settings = await SystemSettings.create({
                 currentSemester: 'Spring',
-                academicYear: '2024-2025',
+                academicYear: '2025-2026',
                 isRegistrationOpen: false,
                 tableVisible: false,
             });
@@ -42,7 +42,7 @@ export const updateSettings = async (req: Request, res: Response): Promise<void>
         if (!settings) {
             settings = await SystemSettings.create({
                 currentSemester: currentSemester || 'Spring',
-                academicYear: academicYear || '2024-2025',
+                academicYear: academicYear || '2025-2026',
                 isRegistrationOpen: isRegistrationOpen ?? false,
                 tableVisible: tableVisible ?? false,
                 enrollmentStartDate: enrollmentStartDate,
@@ -106,7 +106,7 @@ export const openRegistration = async (req: Request, res: Response): Promise<voi
         if (!settings) {
             settings = await SystemSettings.create({
                 currentSemester: 'Spring',
-                academicYear: '2024-2025',
+                academicYear: '2025-2026',
             });
         }
 
@@ -149,7 +149,7 @@ export const closeRegistration = async (req: Request, res: Response): Promise<vo
         if (!settings) {
             settings = await SystemSettings.create({
                 currentSemester: 'Spring',
-                academicYear: '2024-2025',
+                academicYear: '2025-2026',
             });
         }
 
@@ -200,7 +200,7 @@ export const showTable = async (req: Request, res: Response): Promise<void> => {
         if (!settings) {
             settings = await SystemSettings.create({
                 currentSemester: 'Spring',
-                academicYear: '2024-2025',
+                academicYear: '2025-2026',
             });
         }
         
@@ -235,7 +235,7 @@ export const hideTable = async (req: Request, res: Response): Promise<void> => {
         if (!settings) {
             settings = await SystemSettings.create({
                 currentSemester: 'Spring',
-                academicYear: '2024-2025',
+                academicYear: '2025-2026',
             });
         }
         

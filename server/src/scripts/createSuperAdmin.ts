@@ -45,8 +45,8 @@ const createSuperAdmin = async () => {
     // Create the Super Admin in AdminUser collection
     const superAdmin = await AdminUser.create({
       fullName: 'Super Admin',
-      email: 'sadmin@admin.edu',
-      password: 'sadmin123',
+      email: 'superadmin@uni.com',
+      password: '123456',
       role: 'superadmin',
       isActive: true,
     });

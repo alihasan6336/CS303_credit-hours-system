@@ -9,6 +9,7 @@ import { Request, Response } from 'express';
 import Student from '../models/Student';
 import Enrollment from '../models/Enrollment';
 import CourseAssignment from '../models/CourseAssignment';
+import SystemSettings from '../models/SystemSettings';
 import { ICourse } from '../models/Course';
 
 export const getHomeData = async (
@@ -28,13 +29,16 @@ export const getHomeData = async (
       return;
     }
 
+    // Get academic year from settings
+    const settings = await SystemSettings.findOne().lean();
+    const academicYear = settings?.academicYear || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+
     // Get courses assigned to student's level
     const currentYear = new Date().getFullYear();
     const assignments = await CourseAssignment.find({
       level: student.level,
       semester: student.currentSemester,
-      academicYear: `${currentYear}-${currentYear + 1}`,
-      isActive: true,
+      academicYear,
     }).populate<{
       course: ICourse
     }>('course', 'code name day time room credits instructor');
@@ -76,6 +80,7 @@ export const getHomeData = async (
         major: student.major,
         level: student.level,
         currentSemester: student.currentSemester,
+        academicYear,
         completedCreditHours: student.completedCreditHours,
         currentSemesterCredits,
         phoneNumber: student.phoneNumber,

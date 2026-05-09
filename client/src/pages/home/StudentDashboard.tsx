@@ -97,7 +97,7 @@ const StudentDashboard: React.FC = () => {
           gpa: s.gpa,
           completedHours: s.completedCreditHours,
           major: s.major,
-          semester: `${s.currentSemester} ${s.academicYear}`,
+           semester: `${s.currentSemester} ${s.academicYear}`,
           courses,
         }));
       })
